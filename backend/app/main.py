@@ -1,3 +1,11 @@
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
+print(f"==================================================")
+print(f"CORREOS ADMIN PERMITIDOS: {os.environ.get('ALLOWED_ADMIN_EMAILS')}")
+print(f"==================================================")
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.firebase import db
