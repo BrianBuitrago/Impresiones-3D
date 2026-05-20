@@ -94,3 +94,34 @@ Impresiones 3D/
 4. Desarrollar la visualización 3D para el catálogo.
 5. Desarrollar los endpoints de FastAPI y la integración con Google Sheets.
 6. Probar el flujo completo de cotización -> inventario -> reporte en Google Sheets.
+
+---
+
+## 4. Diseño de Autenticación, Roles y Flujo Git (Backend)
+
+### Requerimientos de Usuario y Registro
+*   **Roles Disponibles:**
+    *   `administrador`: Control total del sistema, puede cambiar roles de otros usuarios.
+    *   `colaborador`: Imprime piezas, registra horas/trabajos e inventario, genera reportes quincenales de pagos.
+    *   `cliente`: Sube piezas, cotiza modelos y realiza pedidos.
+*   **Autenticación Soportada:**
+    *   Correo electrónico y contraseña.
+    *   Google Authentication (Google Sign-In).
+*   **Reglas de Registro:**
+    *   Todo registro público por defecto asigna el rol de `cliente`.
+    *   Únicamente las cuentas con rol `administrador` pueden modificar o asignar roles.
+    *   Se inicializarán **2 cuentas fijas de administrador** preconfiguradas para poder gestionar los roles del sistema desde el principio.
+*   **Datos de Registro Solicitados:**
+    *   `nombre`: Nombre completo.
+    *   `cedula`: Cédula de identidad nacional.
+    *   `rol`: Rol asignado en el sistema (por defecto `cliente`).
+    *   `edad`: Edad del usuario.
+    *   `fecha_nacimiento`: Fecha de nacimiento.
+    *   `telefono`: Número telefónico.
+    *   `password`: Contraseña y validación de contraseña.
+
+### Flujo de Git para el Desarrollo
+Para mantener el proyecto organizado de manera estructurada:
+1.  Todo el desarrollo del backend se realizará en la rama **`backend`**.
+2.  Una vez finalizada la implementación y probados los endpoints, se hará merge de la rama **`backend`** hacia **`main`**.
+
