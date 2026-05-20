@@ -217,3 +217,31 @@ def update_user_role(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al actualizar el rol de usuario: {str(e)}"
         )
+
+@router.get("/users", response_model=list[UserResponse])
+def list_all_users(
+    admin_user: dict = Depends(RoleChecker(["administrador"]))
+):
+    """
+    Retorna la lista de todos los usuarios registrados en Firestore.
+    Únicamente accesible para administradores.
+    """
+    if db is None:
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+        
+    try:
+        users_ref = db.collection("users")
+        docs = users_ref.stream()
+        
+        users_list = []
+        for doc in docs:
+            user_data = doc.to_dict()
+            user_data["uid"] = doc.id
+            users_list.append(user_data)
+            
+        return users_list
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener la lista de usuarios: {str(e)}"
+        )
