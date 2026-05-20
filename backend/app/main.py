@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.firebase import db
 import datetime
 
+from app.api.router import api_router
+from app.core.admin_init import initialize_admins
+
 app = FastAPI(
     title="Impresiones 3D API",
     description="Backend para la aplicación de Impresiones 3D",
@@ -17,6 +20,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Registrar rutas principales de la API
+app.include_router(api_router, prefix="/api/v1")
+
+@app.on_event("startup")
+def startup_event():
+    initialize_admins()
+
 
 @app.get("/")
 def read_root():
