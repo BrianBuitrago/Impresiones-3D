@@ -66,7 +66,8 @@ def sync_google_user(request: GoogleSyncRequest):
     """
     Sincroniza un usuario tras autenticarse con Google en el frontend.
     Verifica el Token de ID. Si el usuario no existe en Firestore, crea su
-    perfil con el rol 'cliente' por defecto.
+    perfil con el rol 'cliente' por defecto o 'administrador' si su correo
+    está en la lista de administradores permitidos.
     """
     if db is None or firebase_auth is None:
         raise HTTPException(
@@ -92,6 +93,12 @@ def sync_google_user(request: GoogleSyncRequest):
             detail=f"Autenticación de Google fallida: {str(e)}"
         )
 
+    # Cargar correos de administradores permitidos por Google Login
+    import os
+    allowed_admin_emails_str = os.environ.get("ALLOWED_ADMIN_EMAILS", "")
+    allowed_admins = [e.strip().lower() for e in allowed_admin_emails_str.split(",") if e.strip()]
+    is_allowed_admin = email.lower() in allowed_admins
+
     # 2. Verificar si ya existe en Firestore
     user_ref = db.collection("users").document(uid)
     user_doc = user_ref.get()
@@ -100,10 +107,18 @@ def sync_google_user(request: GoogleSyncRequest):
         # El usuario ya existe, retornamos su perfil
         user_profile = user_doc.to_dict()
         user_profile["uid"] = uid
+        
+        # Promoción automática si está en la lista de administradores pero su rol no es administrador
+        if is_allowed_admin and user_profile.get("rol") != "administrador":
+            user_profile["rol"] = "administrador"
+            user_ref.update({"rol": "administrador"})
+            print(f"Usuario {email} promovido automáticamente a administrador mediante Google Sync.")
+            
         return user_profile
     else:
         # 3. Es un usuario nuevo que ingresó con Google, creamos su perfil
-        # Los datos específicos como cédula o teléfono los completará después
+        rol_asignado = "administrador" if is_allowed_admin else "cliente"
+        
         user_profile = {
             "nombre": request.nombre or nombre_google,
             "cedula": request.cedula or "",
@@ -111,7 +126,7 @@ def sync_google_user(request: GoogleSyncRequest):
             "fecha_nacimiento": request.fecha_nacimiento or "",
             "telefono": request.telefono or "",
             "email": email,
-            "rol": "cliente",  # Siempre cliente por defecto
+            "rol": rol_asignado,
             "creado_en": datetime.utcnow().isoformat()
         }
         
