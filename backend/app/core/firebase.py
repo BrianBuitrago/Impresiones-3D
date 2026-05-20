@@ -3,22 +3,31 @@ import firebase_admin
 from firebase_admin import credentials, firestore, storage, auth
 
 def init_firebase():
-    # Obtener la ruta absoluta del archivo JSON de credenciales
-    # (Se asume que el JSON está en la misma carpeta que este archivo)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    cred_path = os.path.join(current_dir, "firebase-credentials.json")
-    
-    if not os.path.exists(cred_path):
-        print(f"ADVERTENCIA: No se encontró el archivo de credenciales en {cred_path}")
-        return None
-        
     try:
         # Inicializar Firebase Admin si no se ha inicializado aún
         if not firebase_admin._apps:
-            cred = credentials.Certificate(cred_path)
+            # 1. Intentar cargar las credenciales desde una variable de entorno en formato JSON (para Vercel/Producción)
+            cred_json_str = os.environ.get("FIREBASE_CREDENTIALS_JSON")
+            if cred_json_str:
+                import json
+                try:
+                    cred_info = json.loads(cred_json_str)
+                    cred = credentials.Certificate(cred_info)
+                    print("Cargando credenciales de Firebase desde variable de entorno.")
+                except Exception as ex:
+                    print(f"Error al parsear FIREBASE_CREDENTIALS_JSON: {ex}")
+                    return None
+            else:
+                # 2. Si no existe la variable de entorno, buscar el archivo local (desarrollo local)
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                cred_path = os.path.join(current_dir, "firebase-credentials.json")
+                if not os.path.exists(cred_path):
+                    print(f"ERROR: No se encontró el archivo de credenciales en {cred_path} ni la variable de entorno FIREBASE_CREDENTIALS_JSON.")
+                    return None
+                cred = credentials.Certificate(cred_path)
+                print("Cargando credenciales de Firebase desde archivo local.")
             
-            # Inicializamos la app. El storageBucket se puede sacar del config del frontend
-            # o pasarse como variable de entorno
+            # Inicializamos la app
             bucket_name = os.environ.get("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET", "impresiones-3d-c9884.firebasestorage.app")
             
             firebase_admin.initialize_app(cred, {
