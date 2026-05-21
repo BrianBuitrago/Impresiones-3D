@@ -122,6 +122,7 @@ Impresiones 3D/
 
 ### Flujo de Git para el Desarrollo
 Para mantener el proyecto organizado de manera estructurada:
-1.  Todo el desarrollo del backend se realizará en la rama **`backend`**.
-2.  Una vez finalizada la implementación y probados los endpoints, se hará merge de la rama **`backend`** hacia **`main`**.
+1. Todo el desarrollo del backend se realizará en la rama **`backend`**. Una vez finalizada la implementación y probados los endpoints, se hará merge de la rama **`backend`** hacia **`main`**.
+2. Todo el desarrollo del frontend se realizará en la rama **`frontend`**. Una vez finalizada la implementación y validados los componentes, se hará merge de la rama **`frontend`** hacia **`main`**.
+
 
