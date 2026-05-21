@@ -31,7 +31,7 @@ export default function Navbar() {
             <Link href="/" className="text-slate-300 hover:text-cyan-400 transition-colors font-medium text-sm">Catálogo</Link>
             <Link href="/cotizar" className="text-slate-300 hover:text-cyan-400 transition-colors font-medium text-sm">Cotizar Diseño</Link>
             <Link href="/nosotros" className="text-slate-300 hover:text-cyan-400 transition-colors font-medium text-sm">Nosotros</Link>
-            {profile?.rol === 'administrador' && (
+            {(profile?.rol === 'administrador' || profile?.rol === 'colaborador') && (
               <Link href="/admin" className="text-amber-400 hover:text-amber-300 transition-colors font-medium text-sm flex items-center gap-1">
                 <ShieldAlert className="w-4 h-4" />
                 Panel Admin
@@ -62,7 +62,7 @@ export default function Navbar() {
                       <p className="text-xs text-slate-500">Rol asignado</p>
                       <p className="text-sm font-semibold capitalize text-cyan-400">{profile?.rol || 'Cliente'}</p>
                     </div>
-                    {profile?.rol === 'administrador' && (
+                    {(profile?.rol === 'administrador' || profile?.rol === 'colaborador') && (
                       <Link 
                         href="/admin" 
                         onClick={() => setDropdownOpen(false)}

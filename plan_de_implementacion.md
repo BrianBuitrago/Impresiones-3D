@@ -121,7 +121,13 @@ Impresiones 3D/
     *   `password`: Contraseña y validación de contraseña.
 
 ### Flujo de Git para el Desarrollo
+
 Para mantener el proyecto organizado de manera estructurada:
-1.  Todo el desarrollo del backend se realizará en la rama **`backend`**.
-2.  Una vez finalizada la implementación y probados los endpoints, se hará merge de la rama **`backend`** hacia **`main`**.
+1.  Todo el desarrollo del backend se realizará en la rama **`backend`** y luego se hará merge a **`main`**.
+2.  Todo el desarrollo del frontend se realizará en la rama **`frontend`** y luego se hará merge a **`main`**.
+3.  Los commits siempre deben seguir la siguiente estructura:
+    `<palabra_reservada> (<rama_afectada>) <descripción_de_los_ajustes_o_implementaciones_mencionando_los_archivos_modificados>`
+    *   *Palabras reservadas:* `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, etc.
+    *   *Ejemplo:* `feat (frontend) agregar campo de foto y visualizador de referencia en cotizar/page.tsx y admin/page.tsx`
+
 
