@@ -125,4 +125,17 @@ Para mantener el proyecto organizado de manera estructurada:
 1. Todo el desarrollo del backend se realizará en la rama **`backend`**. Una vez finalizada la implementación y probados los endpoints, se hará merge de la rama **`backend`** hacia **`main`**.
 2. Todo el desarrollo del frontend se realizará en la rama **`frontend`**. Una vez finalizada la implementación y validados los componentes, se hará merge de la rama **`frontend`** hacia **`main`**.
 
+#### Convención de Mensajes de Commit
+Todos los commits del proyecto deberán seguir estrictamente la siguiente estructura:
+```text
+<palabra_reservada>(<rama_afectada>): <descripción_de_los_ajustes_o_implementaciones_mencionando_los_archivos_modificados>
+```
+* **Palabras reservadas:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
+* **Rama afectada:** `backend`, `frontend` o `main`.
+* **Ejemplos:**
+  * `feat(backend): agregar endpoint /users en auth.py`
+  * `fix(frontend): corregir alineación del layout en page.tsx`
+  * `docs(backend): actualizar plan de implementacion con reglas de commits`
+
+
 
