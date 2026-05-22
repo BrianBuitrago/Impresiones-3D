@@ -22,10 +22,7 @@ import {
   Eye,
   CheckCircle2,
   ImageIcon,
-  Package,
   Zap,
-  TrendingUp,
-  Hash,
   ChevronDown,
   ChevronUp,
   RefreshCw,
@@ -83,7 +80,7 @@ export default function AdminPage() {
   const [quotesFetching, setQuotesFetching] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<any | null>(null);
   const [quoteSearchTerm, setQuoteSearchTerm] = useState('');
-  const [quoteStatusFilter, setQuoteStatusFilter] = useState<string>('todos');
+  const [quoteStatusFilter, setQuoteStatusFilter] = useState<string>('pendiente');
 
   // Variables globales de fabricación (editables en el panel)
   const [precioKwhHora, setPrecioKwhHora] = useState<number>(950);
@@ -181,6 +178,16 @@ export default function AdminPage() {
     }));
   };
 
+  const handleSelectQuote = (quote: Record<string, unknown>) => {
+    setSelectedQuote(quote);
+    if (typeof quote.precioKwhHora === 'number') {
+      setPrecioKwhHora(quote.precioKwhHora);
+    }
+    if (typeof quote.precioFilamentoKg === 'number') {
+      setPrecioFilamentoKg(quote.precioFilamentoKg);
+    }
+  };
+
   // ── Cálculos matemáticos por producto ─────────────────────────────────────
   //
   //  precioKwhMinuto   = precioKwhHora / 60
@@ -206,11 +213,11 @@ export default function AdminPage() {
     const costoEnergiaUnitario      = duracion * precioKwhMinuto;
     const costoFilamentoUnitario    = filamento * (precioFilamentoKg / 1000);
     const costoFabricacionUnitario  = costoEnergiaUnitario + costoFilamentoUnitario;
-    const precioConGananciaUnitario = costoFabricacionUnitario * (1 + ganancia / 100);
-    const precioTotalUnitario       = precioConGananciaUnitario + valorEmpaque + valorPersonalizacion;
+    const precioUnitario            = costoFabricacionUnitario * (1 + ganancia / 100);
+    const precioTotalUnitario       = precioUnitario + valorEmpaque + valorPersonalizacion;
 
-    const subtotalFabricacionTotal  = precioConGananciaUnitario * unidades;
-    const gananciaTotal             = (precioConGananciaUnitario - costoFabricacionUnitario) * unidades;
+    const subtotalFabricacionTotal  = precioUnitario * unidades;
+    const gananciaTotal             = (precioUnitario - costoFabricacionUnitario) * unidades;
     const precioTotalProducto       = precioTotalUnitario * unidades;
 
     return {
@@ -219,7 +226,9 @@ export default function AdminPage() {
       costoEnergiaUnitario,
       costoFilamentoUnitario,
       costoFabricacionUnitario,
-      precioConGananciaUnitario,
+      precioUnitario,
+      precioConGananciaUnitario: precioUnitario,
+      precioTotalUnitario,
       subtotalFabricacionTotal,
       gananciaTotal,
       precioTotalProducto,
@@ -253,11 +262,21 @@ export default function AdminPage() {
           valorEmpaqueUnitario: c.valorEmpaque,
           valorPersonalizacionUnitario: c.valorPersonalizacion,
           porcentajeGanancia: c.ganancia,
+          precioKwhHora,
+          precioKwhMinuto: Math.round(c.precioKwhMinuto * 100) / 100,
+          precioFilamentoKg,
+          precioFilamentoGramo: Math.round((precioFilamentoKg / 1000) * 100) / 100,
           costoFabricacionUnitario: Math.round(c.costoFabricacionUnitario * 100) / 100,
+          precioUnitario: Math.round(c.precioUnitario * 100) / 100,
           precioConGananciaUnitario: Math.round(c.precioConGananciaUnitario * 100) / 100,
+          precioTotalUnitario: Math.round(c.precioTotalUnitario * 100) / 100,
           subtotalFabricacionTotal: Math.round(c.subtotalFabricacionTotal * 100) / 100,
           gananciaTotal: Math.round(c.gananciaTotal * 100) / 100,
           precioTotal: Math.round(c.precioTotalProducto * 100) / 100,
+          Precio_Unitario: Math.round(c.precioUnitario * 100) / 100,
+          Valor_Ganancia_Total: Math.round(c.gananciaTotal * 100) / 100,
+          Precio_Total: Math.round(c.precioTotalProducto * 100) / 100,
+          Subtotal_Fabricacion_Total: Math.round(c.subtotalFabricacionTotal * 100) / 100,
         };
       });
 
@@ -266,9 +285,14 @@ export default function AdminPage() {
       await updateDoc(doc(db, 'quotes', selectedQuote.id), {
         productos: updatedProductos,
         estado: newStatus,
+        precioKwhHora,
+        precioFilamentoKg,
         subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
         valorGananciaTotal: Math.round(ganancia * 100) / 100,
         precioTotalCotizacion: Math.round(total * 100) / 100,
+        Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
+        Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
+        Precio_Total_Cotizacion: Math.round(total * 100) / 100,
         actualizadoEn: new Date().toISOString(),
       });
 
@@ -276,9 +300,14 @@ export default function AdminPage() {
         ...prev,
         productos: updatedProductos,
         estado: newStatus,
+        precioKwhHora,
+        precioFilamentoKg,
         subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
         valorGananciaTotal: Math.round(ganancia * 100) / 100,
         precioTotalCotizacion: Math.round(total * 100) / 100,
+        Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
+        Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
+        Precio_Total_Cotizacion: Math.round(total * 100) / 100,
       }));
     } catch (err: any) {
       alert('Error al guardar: ' + err.message);
@@ -472,7 +501,7 @@ export default function AdminPage() {
                       filteredQuotes.map(q => (
                         <button
                           key={q.id}
-                          onClick={() => setSelectedQuote(q)}
+                          onClick={() => handleSelectQuote(q)}
                           className={`w-full text-left p-3.5 rounded-xl border transition-all flex flex-col gap-1.5 cursor-pointer ${
                             selectedQuote?.id === q.id
                               ? 'bg-slate-800/40 border-cyan-500/50 shadow shadow-cyan-500/5'
@@ -603,7 +632,7 @@ export default function AdminPage() {
 
                       {/* ── CALCULADORA POR PRODUCTO ── */}
                       <div className="space-y-5">
-                        <h3 className="text-lg font-bold text-white px-1">Cálculo de Costos por Producto</h3>
+                        <h3 className="text-lg font-bold text-white px-1">Cotizaciones pendientes y cálculo por producto</h3>
 
                         {selectedQuote.productos.map((producto: any, idx: number) => {
                           const c = calcProduct(idx, producto.unidades);
@@ -695,7 +724,7 @@ export default function AdminPage() {
                                 </p>
 
                                 {/* Inputs de entrada */}
-                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
 
                                   {/* Duración */}
                                   <div className="space-y-1.5">
@@ -758,10 +787,24 @@ export default function AdminPage() {
                                     </p>
                                   </div>
 
+                                  {/* Precio unitario calculado */}
+                                  <div className="space-y-1.5">
+                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                      Precio unitario
+                                    </label>
+                                    <input
+                                      type="text"
+                                      readOnly
+                                      value={formatCOP(c.precioUnitario)}
+                                      className="w-full px-2.5 py-2 bg-cyan-950/20 border border-cyan-500/30 rounded-lg text-cyan-300 text-xs font-bold focus:outline-none text-right"
+                                    />
+                                    <p className="text-[9px] text-slate-500">Base + ganancia</p>
+                                  </div>
+
                                   {/* Valor personalización */}
                                   <div className="space-y-1.5">
                                     <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Personaliz. ($)
+                                      Personaliz. ($/u)
                                     </label>
                                     <input
                                       type="number"
@@ -776,7 +819,7 @@ export default function AdminPage() {
                                   {/* Valor empaque */}
                                   <div className="space-y-1.5">
                                     <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Empaque ($)
+                                      Empaque ($/u)
                                     </label>
                                     <input
                                       type="number"
@@ -810,10 +853,13 @@ export default function AdminPage() {
 
                                     <div>
                                       <span className="text-[10px] text-slate-500 block mb-1">
-                                        Precio con Ganancia/u:
+                                        Precio Unitario/u:
                                       </span>
                                       <span className="font-bold text-cyan-400">
-                                        {formatCOP(c.precioConGananciaUnitario)}
+                                        {formatCOP(c.precioUnitario)}
+                                      </span>
+                                      <span className="block text-[9px] text-slate-500 mt-0.5">
+                                        Fabricación + ganancia
                                       </span>
                                     </div>
 
@@ -837,7 +883,7 @@ export default function AdminPage() {
                                         {formatCOP(c.precioTotalProducto)}
                                       </span>
                                       <span className="block text-[9px] text-slate-500 mt-0.5">
-                                        Inc. empaque y personaliz.
+                                        {formatCOP(c.precioTotalUnitario)}/u inc. empaque y personaliz.
                                       </span>
                                     </div>
 

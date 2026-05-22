@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { db, storage } from '@/services/firebase';
 import { collection, addDoc } from 'firebase/firestore';
@@ -23,7 +24,6 @@ import {
   Palette,
   Camera,
   X,
-  ChevronDown,
   Sparkles,
   Box,
   ArrowRight,
@@ -315,12 +315,12 @@ export default function Cotizar() {
             >
               <Plus className="w-4 h-4" /> Nueva Cotización
             </button>
-            <a
+            <Link
               href="/"
               className="flex-1 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl border border-slate-700 text-center transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               Ver Catálogo <ArrowRight className="w-4 h-4" />
-            </a>
+            </Link>
           </div>
         </motion.div>
       </div>
@@ -355,8 +355,8 @@ export default function Cotizar() {
             </span>
           </h1>
           <p className="text-slate-400 text-base max-w-xl mx-auto leading-relaxed">
-            Completa los detalles de tus piezas. Calcularemos los costos exactos
-            basados en filamento, energía y personalización.
+            Completa los datos de contacto y cada producto. El equipo calculará
+            filamento, energía, personalización y empaque desde el panel interno.
           </p>
         </motion.div>
 
