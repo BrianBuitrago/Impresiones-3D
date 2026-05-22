@@ -73,6 +73,8 @@ const EMPAQUE_OPTIONS = [
   { value: 'otra', label: 'Otro tipo', desc: 'Especifica el empaque que necesitas' },
 ];
 
+const MAX_PRODUCTOS = 5;
+
 export default function Cotizar() {
   const { user, profile } = useAuth();
 
@@ -81,8 +83,9 @@ export default function Cotizar() {
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
 
-  // Lista de productos en la cotización
-  const [productos, setProductos] = useState<ProductForm[]>([newProduct()]);
+  // Producto activo y lista agregada a la cotización
+  const [productoActual, setProductoActual] = useState<ProductForm>(newProduct());
+  const [productos, setProductos] = useState<ProductForm[]>([]);
 
   // Estados del envío
   const [loading, setLoading] = useState(false);
@@ -101,43 +104,61 @@ export default function Cotizar() {
 
   // ── Funciones de manejo de productos ──────────────────────────────────────
 
+  const validateProduct = (product: ProductForm, label = 'producto') => {
+    if (!product.nombre.trim()) return `Ingresa el nombre del ${label}.`;
+    if (!product.tamanoHorizontal || parseFloat(product.tamanoHorizontal) <= 0) {
+      return `El tamaño horizontal del ${label} debe ser mayor a 0.`;
+    }
+    if (!product.tamanoVertical || parseFloat(product.tamanoVertical) <= 0) {
+      return `El tamaño vertical del ${label} debe ser mayor a 0.`;
+    }
+    if (product.unidades < 1) return `Las unidades del ${label} deben ser al menos 1.`;
+    if (product.personalizacion.includes('otra') && !product.personalizacionOtraText.trim()) {
+      return `Describe la personalización "Otra" del ${label}.`;
+    }
+    if (product.empaque === 'otra' && !product.empaqueOtraText.trim()) {
+      return `Describe el empaque "Otro" del ${label}.`;
+    }
+    return null;
+  };
+
   const addProduct = () => {
-    setProductos(prev => [...prev, newProduct()]);
+    setError(null);
+    if (productos.length >= MAX_PRODUCTOS) {
+      setError(`Puedes agregar máximo ${MAX_PRODUCTOS} productos por cotización.`);
+      return;
+    }
+
+    const validationError = validateProduct(productoActual, 'producto actual');
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setProductos(prev => [...prev, { ...productoActual, id: Math.random().toString(36).substr(2, 9) }]);
+    setProductoActual(newProduct());
   };
 
   const removeProduct = (id: string) => {
-    if (productos.length > 1) {
-      setProductos(prev => prev.filter(p => p.id !== id));
-    }
+    setProductos(prev => prev.filter(p => p.id !== id));
   };
 
-  const handleProductChange = (id: string, field: keyof ProductForm, value: any) => {
-    setProductos(prev =>
-      prev.map(p => (p.id === id ? { ...p, [field]: value } : p))
-    );
+  const handleProductChange = (field: keyof ProductForm, value: ProductForm[keyof ProductForm]) => {
+    setProductoActual(prev => ({ ...prev, [field]: value }));
   };
 
-  const handlePersonalizacionChange = (id: string, value: string, checked: boolean) => {
-    setProductos(prev =>
-      prev.map(p => {
-        if (p.id !== id) return p;
-        const updated = [...p.personalizacion];
-        if (checked) {
-          if (!updated.includes(value)) updated.push(value);
-        } else {
-          const idx = updated.indexOf(value);
-          if (idx > -1) updated.splice(idx, 1);
-        }
-        return { ...p, personalizacion: updated };
-      })
-    );
+  const handlePersonalizacionChange = (value: string, checked: boolean) => {
+    setProductoActual(prev => {
+      const updated = checked
+        ? [...new Set([...prev.personalizacion, value])]
+        : prev.personalizacion.filter(item => item !== value);
+      return { ...prev, personalizacion: updated };
+    });
   };
 
-  const handleImageChange = (id: string, file: File | null) => {
+  const handleImageChange = (file: File | null) => {
     if (!file) {
-      setProductos(prev =>
-        prev.map(p => (p.id === id ? { ...p, imageFile: null, imagePreview: null } : p))
-      );
+      setProductoActual(prev => ({ ...prev, imageFile: null, imagePreview: null }));
       return;
     }
     if (!file.type.startsWith('image/')) {
@@ -146,13 +167,7 @@ export default function Cotizar() {
     }
     const reader = new FileReader();
     reader.onloadend = () => {
-      setProductos(prev =>
-        prev.map(p =>
-          p.id === id
-            ? { ...p, imageFile: file, imagePreview: reader.result as string }
-            : p
-        )
-      );
+      setProductoActual(prev => ({ ...prev, imageFile: file, imagePreview: reader.result as string }));
     };
     reader.readAsDataURL(file);
   };
@@ -176,7 +191,17 @@ export default function Cotizar() {
       return;
     }
 
+    if (productos.length === 0) {
+      setError('Agrega al menos un producto a la cotización antes de enviarla.');
+      return;
+    }
+
     for (let i = 0; i < productos.length; i++) {
+      const validationError = validateProduct(productos[i], `Producto #${i + 1}`);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
       const p = productos[i];
       if (!p.nombre.trim()) {
         setError(`Ingresa el nombre del Producto #${i + 1}.`);
@@ -248,7 +273,8 @@ export default function Cotizar() {
       const docRef = await addDoc(collection(db, 'quotes'), quoteData);
       setQuoteId(docRef.id);
       setSuccess(true);
-      setProductos([newProduct()]);
+      setProductos([]);
+      setProductoActual(newProduct());
       if (!profile) {
         setNombre('');
         setTelefono('');
@@ -504,6 +530,7 @@ export default function Cotizar() {
               <button
                 type="button"
                 onClick={addProduct}
+                disabled={productos.length >= MAX_PRODUCTOS}
                 className="flex items-center gap-2 py-2.5 px-4 bg-slate-900 border border-slate-700 hover:border-cyan-500/40 hover:bg-slate-800 rounded-xl text-cyan-400 text-xs font-bold transition-all cursor-pointer group"
               >
                 <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-200" />
@@ -511,9 +538,9 @@ export default function Cotizar() {
               </button>
             </motion.div>
 
-            {/* Tarjetas de productos */}
+            {/* Formulario del producto actual */}
             <AnimatePresence initial={false}>
-              {productos.map((producto, index) => (
+              {[productoActual].map((producto, index) => (
                 <motion.div
                   key={producto.id}
                   initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -551,16 +578,6 @@ export default function Cotizar() {
                       </div>
                     </div>
 
-                    {productos.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeProduct(producto.id)}
-                        className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
-                        title="Eliminar producto"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
 
                   {/* Cuerpo de la tarjeta */}
@@ -576,7 +593,7 @@ export default function Cotizar() {
                           type="text"
                           required
                           value={producto.nombre}
-                          onChange={(e) => handleProductChange(producto.id, 'nombre', e.target.value)}
+                          onChange={(e) => handleProductChange('nombre', e.target.value)}
                           placeholder="Ej. Soporte para laptop, figura de colección..."
                           className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
                         />
@@ -596,7 +613,7 @@ export default function Cotizar() {
                             min="1"
                             value={producto.unidades}
                             onChange={(e) =>
-                              handleProductChange(producto.id, 'unidades', parseInt(e.target.value) || 1)
+                              handleProductChange('unidades', parseInt(e.target.value) || 1)
                             }
                             className="w-full pl-9 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono text-center"
                           />
@@ -624,7 +641,7 @@ export default function Cotizar() {
                               min="1"
                               value={producto.tamanoHorizontal}
                               onChange={(e) =>
-                                handleProductChange(producto.id, 'tamanoHorizontal', e.target.value)
+                                handleProductChange('tamanoHorizontal', e.target.value)
                               }
                               placeholder="Ej. 150"
                               className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
@@ -645,7 +662,7 @@ export default function Cotizar() {
                               min="1"
                               value={producto.tamanoVertical}
                               onChange={(e) =>
-                                handleProductChange(producto.id, 'tamanoVertical', e.target.value)
+                                handleProductChange('tamanoVertical', e.target.value)
                               }
                               placeholder="Ej. 80"
                               className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
@@ -669,7 +686,7 @@ export default function Cotizar() {
                       </div>
                       <textarea
                         value={producto.accesorios}
-                        onChange={(e) => handleProductChange(producto.id, 'accesorios', e.target.value)}
+                        onChange={(e) => handleProductChange('accesorios', e.target.value)}
                         rows={2}
                         placeholder="Ej. Tornillos M3, imanes de neodimio, resortes... Deja en blanco si no requiere."
                         className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all resize-none"
@@ -702,7 +719,7 @@ export default function Cotizar() {
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={(e) =>
-                                  handlePersonalizacionChange(producto.id, opt.value, e.target.checked)
+                                  handlePersonalizacionChange(opt.value, e.target.checked)
                                 }
                                 className="sr-only"
                               />
@@ -741,7 +758,7 @@ export default function Cotizar() {
                               required
                               value={producto.personalizacionOtraText}
                               onChange={(e) =>
-                                handleProductChange(producto.id, 'personalizacionOtraText', e.target.value)
+                                handleProductChange('personalizacionOtraText', e.target.value)
                               }
                               placeholder="Describe la personalización adicional que necesitas..."
                               className="w-full px-4 py-3 bg-slate-950/80 border border-cyan-500/30 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
@@ -770,7 +787,7 @@ export default function Cotizar() {
                               <button
                                 key={opt.value}
                                 type="button"
-                                onClick={() => handleProductChange(producto.id, 'empaque', opt.value)}
+                                onClick={() => handleProductChange('empaque', opt.value)}
                                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                                   isSelected
                                     ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300'
@@ -798,7 +815,7 @@ export default function Cotizar() {
                                 required
                                 value={producto.empaqueOtraText}
                                 onChange={(e) =>
-                                  handleProductChange(producto.id, 'empaqueOtraText', e.target.value)
+                                  handleProductChange('empaqueOtraText', e.target.value)
                                 }
                                 placeholder="Especifica el tipo de empaque..."
                                 className="w-full px-4 py-2.5 bg-slate-950/80 border border-indigo-500/30 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 text-sm transition-all"
@@ -824,7 +841,7 @@ export default function Cotizar() {
                               type="file"
                               accept="image/*"
                               onChange={(e) =>
-                                handleImageChange(producto.id, e.target.files ? e.target.files[0] : null)
+                                handleImageChange(e.target.files ? e.target.files[0] : null)
                               }
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             />
@@ -850,7 +867,7 @@ export default function Cotizar() {
                               </span>
                               <button
                                 type="button"
-                                onClick={() => handleImageChange(producto.id, null)}
+                                onClick={() => handleImageChange(null)}
                                 className="p-1.5 bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all cursor-pointer"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -867,12 +884,80 @@ export default function Cotizar() {
             </AnimatePresence>
 
             {/* Botón agregar al final */}
+            {productos.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden"
+              >
+                <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Productos agregados</h3>
+                    <p className="text-xs text-slate-500">
+                      {productos.length} de {MAX_PRODUCTOS} productos en esta cotización.
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-3 py-1">
+                    Listos para enviar
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-950/60 text-[10px] uppercase tracking-wider text-slate-500">
+                      <tr>
+                        <th className="px-5 py-3 font-bold">Producto</th>
+                        <th className="px-5 py-3 font-bold">Tamaño</th>
+                        <th className="px-5 py-3 font-bold">Unidades</th>
+                        <th className="px-5 py-3 font-bold">Personalización</th>
+                        <th className="px-5 py-3 font-bold">Empaque</th>
+                        <th className="px-5 py-3 text-right font-bold">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/70">
+                      {productos.map((producto, index) => (
+                        <tr key={producto.id} className="text-xs text-slate-300">
+                          <td className="px-5 py-3">
+                            <span className="block font-semibold text-white">{producto.nombre}</span>
+                            <span className="text-[10px] text-slate-500">Producto #{index + 1}</span>
+                          </td>
+                          <td className="px-5 py-3 font-mono">
+                            {producto.tamanoHorizontal} x {producto.tamanoVertical} mm
+                          </td>
+                          <td className="px-5 py-3 font-bold text-cyan-300">{producto.unidades}</td>
+                          <td className="px-5 py-3">
+                            {producto.personalizacion.length > 0
+                              ? producto.personalizacion.map(item => item === 'otra' ? producto.personalizacionOtraText : item).join(', ')
+                              : 'Sin personalización'}
+                          </td>
+                          <td className="px-5 py-3 capitalize">
+                            {producto.empaque === 'otra' ? producto.empaqueOtraText : producto.empaque}
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => removeProduct(producto.id)}
+                              className="inline-flex items-center justify-center p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                              title="Eliminar producto"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            )}
+
             <motion.button
               type="button"
               onClick={addProduct}
+              disabled={productos.length >= MAX_PRODUCTOS}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
-              className="w-full py-4 border-2 border-dashed border-slate-800 hover:border-cyan-500/30 rounded-2xl text-slate-500 hover:text-cyan-400 text-sm font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 group"
+              className="w-full py-4 border-2 border-dashed border-slate-800 hover:border-cyan-500/30 rounded-2xl text-slate-500 hover:text-cyan-400 text-sm font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-slate-500 disabled:hover:border-slate-800"
             >
               <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" />
               Agregar otro diseño a esta cotización
