@@ -202,31 +202,6 @@ export default function Cotizar() {
         setError(validationError);
         return;
       }
-      const p = productos[i];
-      if (!p.nombre.trim()) {
-        setError(`Ingresa el nombre del Producto #${i + 1}.`);
-        return;
-      }
-      if (!p.tamanoHorizontal || parseFloat(p.tamanoHorizontal) <= 0) {
-        setError(`El tamaño horizontal del Producto #${i + 1} debe ser mayor a 0.`);
-        return;
-      }
-      if (!p.tamanoVertical || parseFloat(p.tamanoVertical) <= 0) {
-        setError(`El tamaño vertical del Producto #${i + 1} debe ser mayor a 0.`);
-        return;
-      }
-      if (p.unidades < 1) {
-        setError(`Las unidades del Producto #${i + 1} deben ser al menos 1.`);
-        return;
-      }
-      if (p.personalizacion.includes('otra') && !p.personalizacionOtraText.trim()) {
-        setError(`Describe la personalización "Otra" del Producto #${i + 1}.`);
-        return;
-      }
-      if (p.empaque === 'otra' && !p.empaqueOtraText.trim()) {
-        setError(`Describe el empaque "Otro" del Producto #${i + 1}.`);
-        return;
-      }
     }
 
     setLoading(true);
@@ -526,16 +501,6 @@ export default function Cotizar() {
                   <p className="text-xs text-slate-500">Puedes agregar múltiples piezas a la misma solicitud.</p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={addProduct}
-                disabled={productos.length >= MAX_PRODUCTOS}
-                className="flex items-center gap-2 py-2.5 px-4 bg-slate-900 border border-slate-700 hover:border-cyan-500/40 hover:bg-slate-800 rounded-xl text-cyan-400 text-xs font-bold transition-all cursor-pointer group"
-              >
-                <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-200" />
-                Agregar Producto
-              </button>
             </motion.div>
 
             {/* Formulario del producto actual */}
@@ -883,7 +848,20 @@ export default function Cotizar() {
               ))}
             </AnimatePresence>
 
-            {/* Botón agregar al final */}
+            <motion.button
+              type="button"
+              onClick={addProduct}
+              disabled={productos.length >= MAX_PRODUCTOS}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              className="w-full py-4 border-2 border-dashed border-slate-800 hover:border-cyan-500/30 rounded-2xl text-slate-500 hover:text-cyan-400 text-sm font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-slate-500 disabled:hover:border-slate-800"
+            >
+              <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" />
+              {productos.length >= MAX_PRODUCTOS
+                ? `Límite de ${MAX_PRODUCTOS} productos alcanzado`
+                : 'Agregar producto'}
+            </motion.button>
+
             {productos.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
@@ -950,18 +928,6 @@ export default function Cotizar() {
                 </div>
               </motion.div>
             )}
-
-            <motion.button
-              type="button"
-              onClick={addProduct}
-              disabled={productos.length >= MAX_PRODUCTOS}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              className="w-full py-4 border-2 border-dashed border-slate-800 hover:border-cyan-500/30 rounded-2xl text-slate-500 hover:text-cyan-400 text-sm font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-slate-500 disabled:hover:border-slate-800"
-            >
-              <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" />
-              Agregar otro diseño a esta cotización
-            </motion.button>
           </div>
 
           {/* ── Botón de envío ── */}
@@ -986,7 +952,7 @@ export default function Cotizar() {
                 <>
                   <Send className="w-5 h-5" />
                   <span>
-                    Enviar Solicitud de Cotización
+                    Finalizar cotización
                     <span className="ml-2 text-white/70 font-normal">
                       ({productos.length} {productos.length === 1 ? 'producto' : 'productos'})
                     </span>
