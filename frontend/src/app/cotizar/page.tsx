@@ -93,6 +93,18 @@ export default function Cotizar() {
   const [quoteId, setQuoteId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // Verificar si el formulario del producto actual tiene datos
+  const isFormDirty =
+    productoActual.nombre.trim() !== '' ||
+    productoActual.tamanoHorizontal.trim() !== '' ||
+    productoActual.tamanoVertical.trim() !== '' ||
+    productoActual.accesorios.trim() !== '' ||
+    productoActual.personalizacion.length > 0 ||
+    productoActual.empaque !== 'ninguno' ||
+    productoActual.imageFile !== null;
+
+  const totalProductosCount = productos.length + (isFormDirty ? 1 : 0);
+
   // Auto-llenar datos si el usuario está logueado
   useEffect(() => {
     if (profile) {
@@ -191,13 +203,23 @@ export default function Cotizar() {
       return;
     }
 
-    if (productos.length === 0) {
+    let listaProductos = [...productos];
+    if (isFormDirty) {
+      const validationError = validateProduct(productoActual, 'producto en el formulario');
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+      listaProductos.push({ ...productoActual, id: Math.random().toString(36).substr(2, 9) });
+    }
+
+    if (listaProductos.length === 0) {
       setError('Agrega al menos un producto a la cotización antes de enviarla.');
       return;
     }
 
-    for (let i = 0; i < productos.length; i++) {
-      const validationError = validateProduct(productos[i], `Producto #${i + 1}`);
+    for (let i = 0; i < listaProductos.length; i++) {
+      const validationError = validateProduct(listaProductos[i], `Producto #${i + 1}`);
       if (validationError) {
         setError(validationError);
         return;
@@ -207,7 +229,7 @@ export default function Cotizar() {
     setLoading(true);
     try {
       const productosFinales = [];
-      for (const p of productos) {
+      for (const p of listaProductos) {
         let imagenUrl = '';
         if (p.imageFile) {
           try {
@@ -519,7 +541,7 @@ export default function Cotizar() {
                     className="absolute top-0 left-0 right-0 h-[3px] opacity-60"
                     style={{
                       background: `linear-gradient(to right, transparent, ${
-                        ['#06b6d4', '#818cf8', '#34d399', '#f59e0b', '#f43f5e'][index % 5]
+                        ['#06b6d4', '#818cf8', '#34d399', '#f59e0b', '#f43f5e'][productos.length % 5]
                       }, transparent)`,
                     }}
                   />
@@ -528,11 +550,11 @@ export default function Cotizar() {
                   <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-slate-800/60">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-extrabold text-slate-300">
-                        {index + 1}
+                        {productos.length + 1}
                       </div>
                       <div>
                         <span className="text-sm font-bold text-white">
-                          {producto.nombre || `Producto #${index + 1}`}
+                          {producto.nombre || `Producto #${productos.length + 1}`}
                         </span>
                         <p className="text-[11px] text-slate-500">
                           {producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''} ·{' '}
@@ -896,8 +918,25 @@ export default function Cotizar() {
                       {productos.map((producto, index) => (
                         <tr key={producto.id} className="text-xs text-slate-300">
                           <td className="px-5 py-3">
-                            <span className="block font-semibold text-white">{producto.nombre}</span>
-                            <span className="text-[10px] text-slate-500">Producto #{index + 1}</span>
+                            <div className="flex items-center gap-3">
+                              {producto.imagePreview ? (
+                                <img
+                                  src={producto.imagePreview}
+                                  alt="Miniatura"
+                                  className="w-10 h-10 object-cover rounded-lg border border-slate-800 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-600 shrink-0">
+                                  <Camera className="w-4 h-4 text-slate-700" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <span className="block font-semibold text-white truncate max-w-[150px]" title={producto.nombre}>
+                                  {producto.nombre}
+                                </span>
+                                <span className="text-[10px] text-slate-500 block">Producto #{index + 1}</span>
+                              </div>
+                            </div>
                           </td>
                           <td className="px-5 py-3 font-mono">
                             {producto.tamanoHorizontal} x {producto.tamanoVertical} mm
@@ -954,7 +993,7 @@ export default function Cotizar() {
                   <span>
                     Finalizar cotización
                     <span className="ml-2 text-white/70 font-normal">
-                      ({productos.length} {productos.length === 1 ? 'producto' : 'productos'})
+                      ({totalProductosCount} {totalProductosCount === 1 ? 'producto' : 'productos'})
                     </span>
                   </span>
                 </>
