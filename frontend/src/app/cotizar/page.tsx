@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { db, storage } from '@/services/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { storage } from '@/services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   Plus,
@@ -74,9 +73,10 @@ const EMPAQUE_OPTIONS = [
 ];
 
 const MAX_PRODUCTOS = 5;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default function Cotizar() {
-  const { user, profile } = useAuth();
+  const { profile, token } = useAuth();
 
   // Datos de contacto del cliente
   const [nombre, setNombre] = useState('');
@@ -203,7 +203,7 @@ export default function Cotizar() {
       return;
     }
 
-    let listaProductos = [...productos];
+    const listaProductos = [...productos];
     if (isFormDirty) {
       const validationError = validateProduct(productoActual, 'producto en el formulario');
       if (validationError) {
@@ -253,22 +253,34 @@ export default function Cotizar() {
       }
 
       const quoteData = {
-        cliente: {
-          uid: profile?.uid || user?.uid || null,
-          nombre,
-          telefono,
-          email,
-        },
         productos: productosFinales,
-        estado: 'pendiente',
-        creadoEn: new Date().toISOString(),
-        porcentajeGanancia: 30,
-        valorGananciaTotal: 0,
-        precioTotalCotizacion: 0,
+        ...(token
+          ? {}
+          : {
+              cliente: {
+                nombre,
+                telefono,
+                email,
+              },
+            }),
       };
 
-      const docRef = await addDoc(collection(db, 'quotes'), quoteData);
-      setQuoteId(docRef.id);
+      const response = await fetch(`${API_URL}/quotes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(quoteData),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || 'No se pudo registrar la cotización.');
+      }
+
+      const createdQuote = await response.json();
+      setQuoteId(createdQuote.id);
       setSuccess(true);
       setProductos([]);
       setProductoActual(newProduct());

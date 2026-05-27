@@ -3,8 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, UserProfile } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { db } from '@/services/firebase';
-import { collection, query, onSnapshot, doc, updateDoc, orderBy } from 'firebase/firestore';
 import {
   ShieldAlert,
   Users,
@@ -93,19 +91,32 @@ export default function AdminPage() {
   // Guardando cotización
   const [saving, setSaving] = useState(false);
 
-  // ── Cargar cotizaciones desde Firestore (tiempo real) ─────────────────────
+  // ── Cargar cotizaciones desde backend seguro ─────────────────────
+
+  const fetchQuotes = async () => {
+    if (!token || (profile?.rol !== 'administrador' && profile?.rol !== 'colaborador')) return;
+    setQuotesFetching(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/quotes`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'No se pudo obtener la lista de cotizaciones.');
+      }
+      setQuotesList(await res.json());
+    } catch (err: any) {
+      setError(err.message || 'Error al cargar cotizaciones.');
+    } finally {
+      setQuotesFetching(false);
+    }
+  };
 
   useEffect(() => {
     if (!user || (profile?.rol !== 'administrador' && profile?.rol !== 'colaborador')) return;
-    const q = query(collection(db, 'quotes'), orderBy('creadoEn', 'desc'));
-    setQuotesFetching(true);
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setQuotesList(data);
-      setQuotesFetching(false);
-    }, () => setQuotesFetching(false));
-    return () => unsub();
-  }, [user, profile]);
+    fetchQuotes();
+  }, [user, profile, token]);
 
   // ── Cargar usuarios (solo admin) ──────────────────────────────────────────
 
@@ -250,7 +261,7 @@ export default function AdminPage() {
   // ── Guardar cotización ────────────────────────────────────────────────────
 
   const handleSaveQuote = async (newStatus: string) => {
-    if (!selectedQuote) return;
+    if (!selectedQuote || !token) return;
     setSaving(true);
     try {
       const updatedProductos = selectedQuote.productos.map((p: any, idx: number) => {
@@ -282,33 +293,31 @@ export default function AdminPage() {
 
       const { subtotalFabricacion, ganancia, total } = getQuoteTotals();
 
-      await updateDoc(doc(db, 'quotes', selectedQuote.id), {
-        productos: updatedProductos,
-        estado: newStatus,
-        precioKwhHora,
-        precioFilamentoKg,
-        subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
-        valorGananciaTotal: Math.round(ganancia * 100) / 100,
-        precioTotalCotizacion: Math.round(total * 100) / 100,
-        Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
-        Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
-        Precio_Total_Cotizacion: Math.round(total * 100) / 100,
-        actualizadoEn: new Date().toISOString(),
+      const response = await fetch(`${API_URL}/quotes/${selectedQuote.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productos: updatedProductos,
+          estado: newStatus,
+          precioKwhHora,
+          precioFilamentoKg,
+          subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
+          valorGananciaTotal: Math.round(ganancia * 100) / 100,
+          precioTotalCotizacion: Math.round(total * 100) / 100,
+        }),
       });
 
-      setSelectedQuote((prev: any) => ({
-        ...prev,
-        productos: updatedProductos,
-        estado: newStatus,
-        precioKwhHora,
-        precioFilamentoKg,
-        subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
-        valorGananciaTotal: Math.round(ganancia * 100) / 100,
-        precioTotalCotizacion: Math.round(total * 100) / 100,
-        Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
-        Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
-        Precio_Total_Cotizacion: Math.round(total * 100) / 100,
-      }));
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || 'No se pudo guardar la cotización.');
+      }
+
+      const updatedQuote = await response.json();
+      setSelectedQuote(updatedQuote);
+      setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
     } catch (err: any) {
       alert('Error al guardar: ' + err.message);
     } finally {
@@ -490,7 +499,20 @@ export default function AdminPage() {
                       <option value="aceptado">Aceptadas</option>
                       <option value="rechazado">Rechazadas</option>
                     </select>
+                    <button
+                      onClick={fetchQuotes}
+                      className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer"
+                      title="Recargar cotizaciones"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
                   </div>
+
+                  {error && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs">
+                      {error}
+                    </div>
+                  )}
 
                   <div className="border-t border-slate-800 pt-3 max-h-[520px] overflow-y-auto space-y-2 pr-1">
                     {quotesFetching ? (
