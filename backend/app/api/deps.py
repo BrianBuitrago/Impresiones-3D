@@ -10,6 +10,12 @@ def get_firebase_uid(credentials: HTTPAuthorizationCredentials = Depends(securit
     Verifica el token de Firebase enviado en la cabecera Authorization: Bearer <token>
     y retorna el UID del usuario autenticado.
     """
+    if firebase_auth is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Servicio de autenticacion no disponible."
+        )
+
     token = credentials.credentials
     try:
         # Verificar el ID Token con el SDK de Admin de Firebase
