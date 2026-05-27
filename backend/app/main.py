@@ -2,9 +2,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
-print(f"==================================================")
-print(f"CORREOS ADMIN PERMITIDOS: {os.environ.get('ALLOWED_ADMIN_EMAILS')}")
-print(f"==================================================")
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,10 +17,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
+def get_allowed_origins():
+    origins = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+    parsed = [origin.strip() for origin in origins.split(",") if origin.strip()]
+    return parsed or [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
 # Configurar CORS para permitir peticiones del frontend en desarrollo
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, esto debería ser la URL de Vercel
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

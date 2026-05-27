@@ -11,11 +11,14 @@ def initialize_admins():
         print("Firebase no está configurado. Omitiendo inicialización de administradores.")
         return
 
-    # Leer credenciales desde variables de entorno con fallbacks seguros
-    admin_1_email = os.environ.get("ADMIN_1_EMAIL", "admin1@impresiones3d.com")
-    admin_1_pass = os.environ.get("ADMIN_1_PASSWORD", "AdminPassword123!")
-    admin_2_email = os.environ.get("ADMIN_2_EMAIL", "admin2@impresiones3d.com")
-    admin_2_pass = os.environ.get("ADMIN_2_PASSWORD", "AdminPassword456!")
+    admin_1_email = os.environ.get("ADMIN_1_EMAIL")
+    admin_1_pass = os.environ.get("ADMIN_1_PASSWORD")
+    admin_2_email = os.environ.get("ADMIN_2_EMAIL")
+    admin_2_pass = os.environ.get("ADMIN_2_PASSWORD")
+
+    if not all([admin_1_email, admin_1_pass, admin_2_email, admin_2_pass]):
+        print("Admins iniciales no configurados completamente. Omitiendo creacion automatica.")
+        return
 
     admins = [
         {"email": admin_1_email, "pass": admin_1_pass, "name": "Administrador Principal 1"},
