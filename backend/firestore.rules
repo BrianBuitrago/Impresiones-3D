@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Función auxiliar para verificar si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Función para verificar si el usuario es ADMIN o COLABORADOR
+    function isStaff() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userDoc.role in ['administrador', 'colaborador'];
+    }
+
+    // Función para verificar si el usuario es el dueño del documento
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // --- COLECCIÓN: users ---
+    match /users/{userId} {
+      allow read: if isAuthenticated(); // Cualquiera logueado puede leer perfiles (necesario para validar roles)
+      allow create: if isOwner(userId); // Solo el usuario puede crear su propio perfil al registrarse
+      allow update: if isOwner(userId) || isStaff(); // El usuario puede editar sus datos o el staff también
+      allow delete: if isStaff(); // Solo staff puede borrar usuarios
+    }
+
+    // --- COLECCIÓN: quotes (Cotizaciones) ---
+    match /quotes/{quoteId} {
+      allow read: if isAuthenticated() && (resource.data.clientId == request.auth.uid || isStaff());
+      // IMPORTANTE: Nadie puede escribir directamente aquí. Todo debe pasar por el Backend API
+      allow create, update, delete: if false; 
+    }
+
+    // --- COLECCIÓN: products ---
+    match /products/{productId} {
+      allow read: if true; // Público
+      allow create, update, delete: if isStaff(); // Solo staff
+    }
+
+    // --- COLECCIÓN: settings ---
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+  }
+}
