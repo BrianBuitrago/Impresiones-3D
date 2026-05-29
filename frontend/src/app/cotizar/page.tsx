@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { storage } from '@/services/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db } from '@/services/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import {
   Plus,
   Trash2,
@@ -26,8 +26,11 @@ import {
   Sparkles,
   Box,
   ArrowRight,
+  ImageIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface ProductForm {
   id: string;
@@ -60,40 +63,74 @@ const newProduct = (): ProductForm => ({
 });
 
 const PERSONALIZACION_OPTIONS = [
-  { value: 'cosmeticos', label: 'Cosméticos', emoji: '✨' },
-  { value: 'pintura base', label: 'Pintura base', emoji: '🎨' },
-  { value: 'otra', label: 'Otra personalización', emoji: '⚙️' },
+  { value: 'cosmeticos',   label: 'Cosméticos',            emoji: '✨' },
+  { value: 'pintura base', label: 'Pintura base',          emoji: '🎨' },
+  { value: 'otra',         label: 'Otra personalización',  emoji: '⚙️' },
 ];
 
 const EMPAQUE_OPTIONS = [
   { value: 'ninguno', label: 'Sin empaque', desc: 'Entrega básica sin embalaje adicional' },
-  { value: 'bolsa', label: 'Bolsa', desc: 'Bolsa de plástico o tela protectora' },
-  { value: 'caja', label: 'Caja', desc: 'Caja rígida de protección' },
-  { value: 'otra', label: 'Otro tipo', desc: 'Especifica el empaque que necesitas' },
+  { value: 'bolsa',   label: 'Bolsa',       desc: 'Bolsa de plástico o tela protectora'  },
+  { value: 'caja',    label: 'Caja',        desc: 'Caja rígida de protección'             },
+  { value: 'otra',    label: 'Otro tipo',   desc: 'Especifica el empaque que necesitas'  },
 ];
 
 const MAX_PRODUCTOS = 5;
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!;
+const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!;
+
+// ── Subida a Cloudinary (sin backend, sin firma) ──────────────────────────────
+
+async function uploadToCloudinary(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_PRESET);
+  formData.append('folder', 'quotes');
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
+    { method: 'POST', body: formData }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Error al subir imagen a Cloudinary');
+  }
+
+  const data = await res.json();
+  return data.secure_url as string;
+}
+
+// ── Componente principal ───────────────────────────────────────────────────────
 
 export default function Cotizar() {
-  const { profile, token } = useAuth();
+  const { profile, user } = useAuth();
 
-  // Datos de contacto del cliente
-  const [nombre, setNombre] = useState('');
+  // Datos de contacto
+  const [nombre,   setNombre]   = useState('');
   const [telefono, setTelefono] = useState('');
-  const [email, setEmail] = useState('');
+  const [email,    setEmail]    = useState('');
 
-  // Producto activo y lista agregada a la cotización
+  // Producto en edición y lista acumulada
   const [productoActual, setProductoActual] = useState<ProductForm>(newProduct());
-  const [productos, setProductos] = useState<ProductForm[]>([]);
+  const [productos,      setProductos]      = useState<ProductForm[]>([]);
 
-  // Estados del envío
+  // Estados de UI
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [quoteId, setQuoteId] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
 
-  // Verificar si el formulario del producto actual tiene datos
+  // Auto-llenar si está logueado
+  useEffect(() => {
+    if (profile) {
+      setNombre(profile.nombre   || '');
+      setTelefono(profile.telefono || '');
+      setEmail(profile.email     || '');
+    }
+  }, [profile]);
+
+  // ¿El formulario del producto actual tiene datos?
   const isFormDirty =
     productoActual.nombre.trim() !== '' ||
     productoActual.tamanoHorizontal.trim() !== '' ||
@@ -105,32 +142,17 @@ export default function Cotizar() {
 
   const totalProductosCount = productos.length + (isFormDirty ? 1 : 0);
 
-  // Auto-llenar datos si el usuario está logueado
-  useEffect(() => {
-    if (profile) {
-      setNombre(profile.nombre || '');
-      setTelefono(profile.telefono || '');
-      setEmail(profile.email || '');
-    }
-  }, [profile]);
+  // ── Manejo del producto ───────────────────────────────────────────────────
 
-  // ── Funciones de manejo de productos ──────────────────────────────────────
-
-  const validateProduct = (product: ProductForm, label = 'producto') => {
-    if (!product.nombre.trim()) return `Ingresa el nombre del ${label}.`;
-    if (!product.tamanoHorizontal || parseFloat(product.tamanoHorizontal) <= 0) {
-      return `El tamaño horizontal del ${label} debe ser mayor a 0.`;
-    }
-    if (!product.tamanoVertical || parseFloat(product.tamanoVertical) <= 0) {
-      return `El tamaño vertical del ${label} debe ser mayor a 0.`;
-    }
-    if (product.unidades < 1) return `Las unidades del ${label} deben ser al menos 1.`;
-    if (product.personalizacion.includes('otra') && !product.personalizacionOtraText.trim()) {
+  const validateProduct = (p: ProductForm, label = 'producto') => {
+    if (!p.nombre.trim())                                            return `Ingresa el nombre del ${label}.`;
+    if (!p.tamanoHorizontal || parseFloat(p.tamanoHorizontal) <= 0) return `El tamaño horizontal del ${label} debe ser mayor a 0.`;
+    if (!p.tamanoVertical   || parseFloat(p.tamanoVertical)   <= 0) return `El tamaño vertical del ${label} debe ser mayor a 0.`;
+    if (p.unidades < 1)                                              return `Las unidades del ${label} deben ser al menos 1.`;
+    if (p.personalizacion.includes('otra') && !p.personalizacionOtraText.trim())
       return `Describe la personalización "Otra" del ${label}.`;
-    }
-    if (product.empaque === 'otra' && !product.empaqueOtraText.trim()) {
+    if (p.empaque === 'otra' && !p.empaqueOtraText.trim())
       return `Describe el empaque "Otro" del ${label}.`;
-    }
     return null;
   };
 
@@ -140,59 +162,35 @@ export default function Cotizar() {
       setError(`Puedes agregar máximo ${MAX_PRODUCTOS} productos por cotización.`);
       return;
     }
-
-    const validationError = validateProduct(productoActual, 'producto actual');
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
+    const err = validateProduct(productoActual, 'producto actual');
+    if (err) { setError(err); return; }
     setProductos(prev => [...prev, { ...productoActual, id: Math.random().toString(36).substr(2, 9) }]);
     setProductoActual(newProduct());
   };
 
-  const removeProduct = (id: string) => {
-    setProductos(prev => prev.filter(p => p.id !== id));
-  };
+  const removeProduct = (id: string) => setProductos(prev => prev.filter(p => p.id !== id));
 
-  const handleProductChange = (field: keyof ProductForm, value: ProductForm[keyof ProductForm]) => {
+  const handleProductChange = (field: keyof ProductForm, value: ProductForm[keyof ProductForm]) =>
     setProductoActual(prev => ({ ...prev, [field]: value }));
-  };
 
-  const handlePersonalizacionChange = (value: string, checked: boolean) => {
-    setProductoActual(prev => {
-      const updated = checked
+  const handlePersonalizacionChange = (value: string, checked: boolean) =>
+    setProductoActual(prev => ({
+      ...prev,
+      personalizacion: checked
         ? [...new Set([...prev.personalizacion, value])]
-        : prev.personalizacion.filter(item => item !== value);
-      return { ...prev, personalizacion: updated };
-    });
-  };
+        : prev.personalizacion.filter(i => i !== value),
+    }));
 
   const handleImageChange = (file: File | null) => {
-    if (!file) {
-      setProductoActual(prev => ({ ...prev, imageFile: null, imagePreview: null }));
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      alert('Por favor selecciona un archivo de imagen válido.');
-      return;
-    }
+    if (!file) { setProductoActual(prev => ({ ...prev, imageFile: null, imagePreview: null })); return; }
+    if (!file.type.startsWith('image/')) { alert('Por favor selecciona un archivo de imagen válido.'); return; }
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = () =>
       setProductoActual(prev => ({ ...prev, imageFile: file, imagePreview: reader.result as string }));
-    };
     reader.readAsDataURL(file);
   };
 
-  const uploadImage = async (file: File): Promise<string> => {
-    const ext = file.name.split('.').pop();
-    const fileName = `quotes/images/${Math.random().toString(36).substr(2, 9)}_${Date.now()}.${ext}`;
-    const storageRef = ref(storage, fileName);
-    const snapshot = await uploadBytes(storageRef, file);
-    return await getDownloadURL(snapshot.ref);
-  };
-
-  // ── Envío del formulario ──────────────────────────────────────────────────
+  // ── Envío ─────────────────────────────────────────────────────────────────
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,11 +203,8 @@ export default function Cotizar() {
 
     const listaProductos = [...productos];
     if (isFormDirty) {
-      const validationError = validateProduct(productoActual, 'producto en el formulario');
-      if (validationError) {
-        setError(validationError);
-        return;
-      }
+      const err = validateProduct(productoActual, 'producto en el formulario');
+      if (err) { setError(err); return; }
       listaProductos.push({ ...productoActual, id: Math.random().toString(36).substr(2, 9) });
     }
 
@@ -219,76 +214,63 @@ export default function Cotizar() {
     }
 
     for (let i = 0; i < listaProductos.length; i++) {
-      const validationError = validateProduct(listaProductos[i], `Producto #${i + 1}`);
-      if (validationError) {
-        setError(validationError);
-        return;
-      }
+      const err = validateProduct(listaProductos[i], `Producto #${i + 1}`);
+      if (err) { setError(err); return; }
     }
 
     setLoading(true);
     try {
+      // 1. Subir imágenes a Cloudinary
       const productosFinales = [];
       for (const p of listaProductos) {
         let imagenUrl = '';
         if (p.imageFile) {
           try {
-            imagenUrl = await uploadImage(p.imageFile);
+            imagenUrl = await uploadToCloudinary(p.imageFile);
           } catch {
-            imagenUrl = p.imagePreview || '';
+            // Si falla la imagen, continuamos sin ella
+            imagenUrl = '';
           }
         }
         productosFinales.push({
-          nombre: p.nombre,
-          tamanoHorizontal: parseFloat(p.tamanoHorizontal),
-          tamanoVertical: parseFloat(p.tamanoVertical),
-          unidades: p.unidades,
-          accesorios: p.accesorios,
-          personalizacion: p.personalizacion,
+          nombre:                  p.nombre,
+          tamanoHorizontal:        parseFloat(p.tamanoHorizontal),
+          tamanoVertical:          parseFloat(p.tamanoVertical),
+          unidades:                p.unidades,
+          accesorios:              p.accesorios,
+          personalizacion:         p.personalizacion,
           personalizacionOtraText: p.personalizacion.includes('otra') ? p.personalizacionOtraText : '',
-          empaque: p.empaque,
-          empaqueOtraText: p.empaque === 'otra' ? p.empaqueOtraText : '',
+          empaque:                 p.empaque,
+          empaqueOtraText:         p.empaque === 'otra' ? p.empaqueOtraText : '',
           imagenUrl,
         });
       }
 
+      // 2. Guardar en Firestore directamente
       const quoteData = {
-        productos: productosFinales,
-        ...(token
-          ? {}
-          : {
-              cliente: {
-                nombre,
-                telefono,
-                email,
-              },
-            }),
+        cliente: {
+          nombre,
+          telefono,
+          email,
+          uid: user?.uid || null,
+        },
+        productos:  productosFinales,
+        estado:     'pendiente',
+        creadoEn:   serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+        // Campos para que el admin calcule luego
+        subtotalFabricacionTotal: 0,
+        valorGananciaTotal:       0,
+        precioTotalCotizacion:    0,
       };
 
-      const response = await fetch(`${API_URL}/quotes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(quoteData),
-      });
+      const docRef = await addDoc(collection(db, 'quotes'), quoteData);
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.detail || 'No se pudo registrar la cotización.');
-      }
-
-      const createdQuote = await response.json();
-      setQuoteId(createdQuote.id);
+      setQuoteId(docRef.id);
       setSuccess(true);
       setProductos([]);
       setProductoActual(newProduct());
-      if (!profile) {
-        setNombre('');
-        setTelefono('');
-        setEmail('');
-      }
+      if (!profile) { setNombre(''); setTelefono(''); setEmail(''); }
     } catch (err: any) {
       console.error('Error al guardar cotización:', err);
       setError(err.message || 'Ocurrió un error al enviar tu cotización. Inténtalo de nuevo.');
@@ -311,7 +293,6 @@ export default function Cotizar() {
           transition={{ type: 'spring', stiffness: 200, damping: 20 }}
           className="max-w-xl w-full bg-slate-900/50 border border-slate-800/80 rounded-3xl p-10 backdrop-blur-xl shadow-2xl text-center relative"
         >
-          {/* Glow top */}
           <div className="absolute -top-px left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent rounded-full" />
 
           <motion.div
@@ -323,24 +304,16 @@ export default function Cotizar() {
             <CheckCircle2 className="w-10 h-10" />
           </motion.div>
 
-          <h1 className="text-3xl font-extrabold text-white mb-3 font-outfit">
-            ¡Cotización Enviada!
-          </h1>
+          <h1 className="text-3xl font-extrabold text-white mb-3 font-outfit">¡Cotización Enviada!</h1>
           <p className="text-slate-400 text-sm leading-relaxed mb-8">
             Hemos registrado tu solicitud. Nuestro equipo revisará los detalles y te
-            notificará por correo electrónico con los costos de fabricación detallados.
+            notificará por correo con los costos de fabricación detallados.
           </p>
 
           <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-5 mb-8 text-left">
-            <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-widest mb-2">
-              Número de Referencia
-            </span>
-            <span className="text-lg font-mono text-cyan-400 font-bold select-all break-all">
-              {quoteId}
-            </span>
-            <p className="text-xs text-slate-500 mt-2">
-              Guarda este número para hacer seguimiento de tu cotización.
-            </p>
+            <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-widest mb-2">Número de Referencia</span>
+            <span className="text-lg font-mono text-cyan-400 font-bold select-all break-all">{quoteId}</span>
+            <p className="text-xs text-slate-500 mt-2">Guarda este número para hacer seguimiento de tu cotización.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
@@ -366,7 +339,6 @@ export default function Cotizar() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-14 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Decoración de fondo */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(6,182,212,0.06),transparent_50%)] -z-10" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(99,102,241,0.05),transparent_50%)] -z-10" />
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
@@ -374,24 +346,17 @@ export default function Cotizar() {
       <div className="max-w-4xl mx-auto">
 
         {/* ── Hero Header ── */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-full text-cyan-400 text-xs font-bold mb-5 tracking-wider uppercase">
-            <Sparkles className="w-3.5 h-3.5" />
-            Solicita tu presupuesto
+            <Sparkles className="w-3.5 h-3.5" /> Solicita tu presupuesto
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold font-outfit text-white leading-tight mb-4">
             Cotiza tu{' '}
-            <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-              Diseño 3D
-            </span>
+            <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Diseño 3D</span>
           </h1>
           <p className="text-slate-400 text-base max-w-xl mx-auto leading-relaxed">
-            Completa los datos de contacto y cada producto. El equipo calculará
-            filamento, energía, personalización y empaque desde el panel interno.
+            Completa los datos de contacto y cada producto que necesitas imprimir.
+            Nuestro equipo calculará el precio y te contactará pronto.
           </p>
         </motion.div>
 
@@ -419,7 +384,6 @@ export default function Cotizar() {
             transition={{ delay: 0.1 }}
             className="relative bg-slate-900/50 border border-slate-800/80 rounded-3xl p-7 md:p-9 backdrop-blur-md shadow-xl overflow-hidden"
           >
-            {/* Accent line */}
             <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
 
             <div className="flex items-center gap-3 mb-7">
@@ -443,9 +407,7 @@ export default function Cotizar() {
                 className="mb-6 p-3.5 bg-cyan-500/5 border border-cyan-500/15 rounded-xl text-xs text-cyan-300 flex items-center gap-2.5"
               >
                 <Info className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span>
-                  Datos precargados de tu cuenta. Puedes modificarlos si lo requieres.
-                </span>
+                <span>Datos precargados de tu cuenta. Puedes modificarlos si lo requieres.</span>
               </motion.div>
             )}
 
@@ -456,13 +418,11 @@ export default function Cotizar() {
                   Nombre Completo <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500 pointer-events-none">
-                    <User className="w-4 h-4" />
-                  </span>
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                   <input
                     type="text"
                     value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
+                    onChange={e => setNombre(e.target.value)}
                     required
                     placeholder="Tu nombre completo"
                     className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
@@ -476,13 +436,11 @@ export default function Cotizar() {
                   Teléfono <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500 pointer-events-none">
-                    <Phone className="w-4 h-4" />
-                  </span>
+                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                   <input
                     type="tel"
                     value={telefono}
-                    onChange={(e) => setTelefono(e.target.value)}
+                    onChange={e => setTelefono(e.target.value)}
                     required
                     placeholder="+57 300 123 4567"
                     className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
@@ -490,19 +448,17 @@ export default function Cotizar() {
                 </div>
               </div>
 
-              {/* Email */}
+              {/* Correo */}
               <div className="space-y-2">
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                   Correo Electrónico <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500 pointer-events-none">
-                    <Mail className="w-4 h-4" />
-                  </span>
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={e => setEmail(e.target.value)}
                     required
                     placeholder="tu@correo.com"
                     className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
@@ -512,9 +468,8 @@ export default function Cotizar() {
             </div>
           </motion.div>
 
-          {/* ── SECCIÓN 2: Productos ── */}
+          {/* ── SECCIÓN 2: Producto en edición ── */}
           <div className="space-y-5">
-            {/* Encabezado de sección */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -537,9 +492,9 @@ export default function Cotizar() {
               </div>
             </motion.div>
 
-            {/* Formulario del producto actual */}
+            {/* Tarjeta del producto actual */}
             <AnimatePresence initial={false}>
-              {[productoActual].map((producto, index) => (
+              {[productoActual].map(producto => (
                 <motion.div
                   key={producto.id}
                   initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -548,12 +503,12 @@ export default function Cotizar() {
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   className="relative bg-slate-900/50 border border-slate-800/80 rounded-3xl backdrop-blur-md shadow-xl overflow-hidden"
                 >
-                  {/* Accent colorido superior por índice */}
+                  {/* Barra de color superior */}
                   <div
                     className="absolute top-0 left-0 right-0 h-[3px] opacity-60"
                     style={{
                       background: `linear-gradient(to right, transparent, ${
-                        ['#06b6d4', '#818cf8', '#34d399', '#f59e0b', '#f43f5e'][productos.length % 5]
+                        ['#06b6d4','#818cf8','#34d399','#f59e0b','#f43f5e'][productos.length % 5]
                       }, transparent)`,
                     }}
                   />
@@ -576,13 +531,12 @@ export default function Cotizar() {
                         </p>
                       </div>
                     </div>
-
                   </div>
 
-                  {/* Cuerpo de la tarjeta */}
+                  {/* Cuerpo */}
                   <div className="p-7 space-y-7">
 
-                    {/* ── Fila 1: Nombre + Unidades ── */}
+                    {/* Fila 1: Nombre + Unidades */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                       <div className="md:col-span-3 space-y-2">
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -590,37 +544,30 @@ export default function Cotizar() {
                         </label>
                         <input
                           type="text"
-                          required
                           value={producto.nombre}
-                          onChange={(e) => handleProductChange('nombre', e.target.value)}
+                          onChange={e => handleProductChange('nombre', e.target.value)}
                           placeholder="Ej. Soporte para laptop, figura de colección..."
                           className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
                         />
                       </div>
-
                       <div className="space-y-2">
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                           Unidades <span className="text-red-400">*</span>
                         </label>
                         <div className="relative">
-                          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 pointer-events-none">
-                            <Hash className="w-4 h-4" />
-                          </span>
+                          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                           <input
                             type="number"
-                            required
                             min="1"
                             value={producto.unidades}
-                            onChange={(e) =>
-                              handleProductChange('unidades', parseInt(e.target.value) || 1)
-                            }
+                            onChange={e => handleProductChange('unidades', parseInt(e.target.value) || 1)}
                             className="w-full pl-9 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono text-center"
                           />
                         </div>
                       </div>
                     </div>
 
-                    {/* ── Fila 2: Dimensiones ── */}
+                    {/* Fila 2: Dimensiones */}
                     <div>
                       <div className="flex items-center gap-2 mb-3">
                         <Ruler className="w-4 h-4 text-slate-500" />
@@ -630,51 +577,37 @@ export default function Cotizar() {
                       </div>
                       <div className="grid grid-cols-2 gap-5">
                         <div className="space-y-2">
-                          <label className="block text-[11px] text-slate-500 font-semibold">
-                            Tamaño Horizontal (Ancho en mm)
-                          </label>
+                          <label className="block text-[11px] text-slate-500 font-semibold">Tamaño Horizontal — Ancho (mm)</label>
                           <div className="relative">
                             <input
                               type="number"
-                              required
                               min="1"
                               value={producto.tamanoHorizontal}
-                              onChange={(e) =>
-                                handleProductChange('tamanoHorizontal', e.target.value)
-                              }
+                              onChange={e => handleProductChange('tamanoHorizontal', e.target.value)}
                               placeholder="Ej. 150"
                               className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
                             />
-                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">
-                              mm
-                            </span>
+                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">mm</span>
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="block text-[11px] text-slate-500 font-semibold">
-                            Tamaño Vertical (Alto en mm)
-                          </label>
+                          <label className="block text-[11px] text-slate-500 font-semibold">Tamaño Vertical — Alto (mm)</label>
                           <div className="relative">
                             <input
                               type="number"
-                              required
                               min="1"
                               value={producto.tamanoVertical}
-                              onChange={(e) =>
-                                handleProductChange('tamanoVertical', e.target.value)
-                              }
+                              onChange={e => handleProductChange('tamanoVertical', e.target.value)}
                               placeholder="Ej. 80"
                               className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
                             />
-                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">
-                              mm
-                            </span>
+                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">mm</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* ── Fila 3: Accesorios ── */}
+                    {/* Fila 3: Accesorios */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Wrench className="w-4 h-4 text-slate-500" />
@@ -685,14 +618,14 @@ export default function Cotizar() {
                       </div>
                       <textarea
                         value={producto.accesorios}
-                        onChange={(e) => handleProductChange('accesorios', e.target.value)}
+                        onChange={e => handleProductChange('accesorios', e.target.value)}
                         rows={2}
                         placeholder="Ej. Tornillos M3, imanes de neodimio, resortes... Deja en blanco si no requiere."
                         className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all resize-none"
                       />
                     </div>
 
-                    {/* ── Fila 4: Personalización ── */}
+                    {/* Fila 4: Personalización */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <Palette className="w-4 h-4 text-slate-500" />
@@ -703,7 +636,7 @@ export default function Cotizar() {
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {PERSONALIZACION_OPTIONS.map((opt) => {
+                        {PERSONALIZACION_OPTIONS.map(opt => {
                           const isChecked = producto.personalizacion.includes(opt.value);
                           return (
                             <label
@@ -717,18 +650,10 @@ export default function Cotizar() {
                               <input
                                 type="checkbox"
                                 checked={isChecked}
-                                onChange={(e) =>
-                                  handlePersonalizacionChange(opt.value, e.target.checked)
-                                }
+                                onChange={e => handlePersonalizacionChange(opt.value, e.target.checked)}
                                 className="sr-only"
                               />
-                              <div
-                                className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
-                                  isChecked
-                                    ? 'bg-cyan-500 border-cyan-500'
-                                    : 'border-slate-700 bg-transparent'
-                                }`}
-                              >
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${isChecked ? 'bg-cyan-500 border-cyan-500' : 'border-slate-700 bg-transparent'}`}>
                                 {isChecked && (
                                   <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -754,11 +679,8 @@ export default function Cotizar() {
                           >
                             <input
                               type="text"
-                              required
                               value={producto.personalizacionOtraText}
-                              onChange={(e) =>
-                                handleProductChange('personalizacionOtraText', e.target.value)
-                              }
+                              onChange={e => handleProductChange('personalizacionOtraText', e.target.value)}
                               placeholder="Describe la personalización adicional que necesitas..."
                               className="w-full px-4 py-3 bg-slate-950/80 border border-cyan-500/30 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
                             />
@@ -767,36 +689,31 @@ export default function Cotizar() {
                       </AnimatePresence>
                     </div>
 
-                    {/* ── Fila 5: Empaque + Foto ── */}
+                    {/* Fila 5: Empaque + Foto */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
                       {/* Empaque */}
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-slate-500" />
-                          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            Tipo de Empaque
-                          </label>
+                          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tipo de Empaque</label>
                         </div>
-
                         <div className="grid grid-cols-2 gap-2">
-                          {EMPAQUE_OPTIONS.map((opt) => {
-                            const isSelected = producto.empaque === opt.value;
+                          {EMPAQUE_OPTIONS.map(opt => {
+                            const isSel = producto.empaque === opt.value;
                             return (
                               <button
                                 key={opt.value}
                                 type="button"
                                 onClick={() => handleProductChange('empaque', opt.value)}
                                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                                  isSelected
+                                  isSel
                                     ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300'
                                     : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'
                                 }`}
                               >
                                 <span className="block text-xs font-bold">{opt.label}</span>
-                                <span className="block text-[10px] text-slate-500 mt-0.5 leading-tight">
-                                  {opt.desc}
-                                </span>
+                                <span className="block text-[10px] text-slate-500 mt-0.5 leading-tight">{opt.desc}</span>
                               </button>
                             );
                           })}
@@ -811,11 +728,8 @@ export default function Cotizar() {
                             >
                               <input
                                 type="text"
-                                required
                                 value={producto.empaqueOtraText}
-                                onChange={(e) =>
-                                  handleProductChange('empaqueOtraText', e.target.value)
-                                }
+                                onChange={e => handleProductChange('empaqueOtraText', e.target.value)}
                                 placeholder="Especifica el tipo de empaque..."
                                 className="w-full px-4 py-2.5 bg-slate-950/80 border border-indigo-500/30 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 text-sm transition-all"
                               />
@@ -828,9 +742,7 @@ export default function Cotizar() {
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <Camera className="w-4 h-4 text-slate-500" />
-                          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            Foto / Referencia Visual
-                          </label>
+                          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Foto / Referencia Visual</label>
                           <span className="text-[10px] text-slate-600 italic">(Opcional)</span>
                         </div>
 
@@ -839,26 +751,18 @@ export default function Cotizar() {
                             <input
                               type="file"
                               accept="image/*"
-                              onChange={(e) =>
-                                handleImageChange(e.target.files ? e.target.files[0] : null)
-                              }
+                              onChange={e => handleImageChange(e.target.files?.[0] ?? null)}
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             />
                             <Upload className="w-8 h-8 text-slate-600 group-hover:text-cyan-400 mb-3 transition-colors" />
                             <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors font-semibold text-center">
                               Arrastra o haz clic para adjuntar
                             </span>
-                            <span className="text-[10px] text-slate-600 mt-1">
-                              JPG, PNG, WEBP — máx. 10 MB
-                            </span>
+                            <span className="text-[10px] text-slate-600 mt-1">JPG, PNG, WEBP — máx. 10 MB</span>
                           </label>
                         ) : (
                           <div className="relative border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
-                            <img
-                              src={producto.imagePreview}
-                              alt="Preview"
-                              className="w-full h-36 object-cover"
-                            />
+                            <img src={producto.imagePreview} alt="Preview" className="w-full h-36 object-cover" />
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
                             <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
                               <span className="text-xs text-slate-300 font-medium truncate max-w-[160px]">
@@ -882,6 +786,7 @@ export default function Cotizar() {
               ))}
             </AnimatePresence>
 
+            {/* Botón agregar otro producto */}
             <motion.button
               type="button"
               onClick={addProduct}
@@ -893,9 +798,10 @@ export default function Cotizar() {
               <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" />
               {productos.length >= MAX_PRODUCTOS
                 ? `Límite de ${MAX_PRODUCTOS} productos alcanzado`
-                : 'Agregar producto'}
+                : 'Guardar producto y agregar otro'}
             </motion.button>
 
+            {/* Tabla de productos ya agregados */}
             {productos.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
@@ -905,15 +811,12 @@ export default function Cotizar() {
                 <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-bold text-white">Productos agregados</h3>
-                    <p className="text-xs text-slate-500">
-                      {productos.length} de {MAX_PRODUCTOS} productos en esta cotización.
-                    </p>
+                    <p className="text-xs text-slate-500">{productos.length} de {MAX_PRODUCTOS} productos en esta cotización.</p>
                   </div>
                   <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-3 py-1">
                     Listos para enviar
                   </span>
                 </div>
-
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead className="bg-slate-950/60 text-[10px] uppercase tracking-wider text-slate-500">
@@ -927,47 +830,38 @@ export default function Cotizar() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/70">
-                      {productos.map((producto, index) => (
-                        <tr key={producto.id} className="text-xs text-slate-300">
+                      {productos.map((p, index) => (
+                        <tr key={p.id} className="text-xs text-slate-300">
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3">
-                              {producto.imagePreview ? (
-                                <img
-                                  src={producto.imagePreview}
-                                  alt="Miniatura"
-                                  className="w-10 h-10 object-cover rounded-lg border border-slate-800 shrink-0"
-                                />
+                              {p.imagePreview ? (
+                                <img src={p.imagePreview} alt="mini" className="w-10 h-10 object-cover rounded-lg border border-slate-800 shrink-0" />
                               ) : (
-                                <div className="w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-600 shrink-0">
-                                  <Camera className="w-4 h-4 text-slate-700" />
+                                <div className="w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-700 shrink-0">
+                                  <ImageIcon className="w-4 h-4" />
                                 </div>
                               )}
                               <div className="min-w-0">
-                                <span className="block font-semibold text-white truncate max-w-[150px]" title={producto.nombre}>
-                                  {producto.nombre}
-                                </span>
-                                <span className="text-[10px] text-slate-500 block">Producto #{index + 1}</span>
+                                <span className="block font-semibold text-white truncate max-w-[150px]">{p.nombre}</span>
+                                <span className="text-[10px] text-slate-500">Producto #{index + 1}</span>
                               </div>
                             </div>
                           </td>
-                          <td className="px-5 py-3 font-mono">
-                            {producto.tamanoHorizontal} x {producto.tamanoVertical} mm
-                          </td>
-                          <td className="px-5 py-3 font-bold text-cyan-300">{producto.unidades}</td>
+                          <td className="px-5 py-3 font-mono">{p.tamanoHorizontal} × {p.tamanoVertical} mm</td>
+                          <td className="px-5 py-3 font-bold text-cyan-300">{p.unidades}</td>
                           <td className="px-5 py-3">
-                            {producto.personalizacion.length > 0
-                              ? producto.personalizacion.map(item => item === 'otra' ? producto.personalizacionOtraText : item).join(', ')
+                            {p.personalizacion.length > 0
+                              ? p.personalizacion.map(i => i === 'otra' ? p.personalizacionOtraText : i).join(', ')
                               : 'Sin personalización'}
                           </td>
                           <td className="px-5 py-3 capitalize">
-                            {producto.empaque === 'otra' ? producto.empaqueOtraText : producto.empaque}
+                            {p.empaque === 'otra' ? p.empaqueOtraText : p.empaque}
                           </td>
                           <td className="px-5 py-3 text-right">
                             <button
                               type="button"
-                              onClick={() => removeProduct(producto.id)}
+                              onClick={() => removeProduct(p.id)}
                               className="inline-flex items-center justify-center p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
-                              title="Eliminar producto"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -991,8 +885,8 @@ export default function Cotizar() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed text-base"
               style={{ paddingTop: '1.125rem', paddingBottom: '1.125rem' }}
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed text-base"
             >
               {loading ? (
                 <>
