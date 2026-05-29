@@ -13,6 +13,7 @@ cloudinary.config(
 )
 
 print(f"🔍 Conectando a Cloudinary (Cloud: {os.getenv('CLOUD_NAME', 'dobul5gbb')})...")
+print('🔐 API key: (oculta)')
 
 try:
     result = cloudinary.uploader.upload(
