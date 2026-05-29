@@ -28,9 +28,14 @@ service cloud.firestore {
 
     // --- COLECCIÓN: quotes (Cotizaciones) ---
     match /quotes/{quoteId} {
-      allow read: if isAuthenticated() && (resource.data.clientId == request.auth.uid || isStaff());
-      // IMPORTANTE: Nadie puede escribir directamente aquí. Todo debe pasar por el Backend API
-      allow create, update, delete: if false; 
+      allow read: if isAuthenticated() && (
+        isStaff() || 
+        (resource.data.cliente != null && resource.data.cliente.uid == request.auth.uid)
+      );
+      // Permitir creación de cotizaciones directa por cualquier usuario
+      allow create: if true; 
+      // Solo el personal (staff) de la aplicación puede modificar o eliminar cotizaciones
+      allow update, delete: if isAuthenticated() && isStaff();
     }
 
     // --- COLECCIÓN: products ---
