@@ -6,13 +6,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 cloudinary.config(
-    cloud_name=os.getenv("CLOUD_NAME"),
+    cloud_name=os.getenv("CLOUD_NAME", "dobul5gbb"),
     api_key=os.getenv("API_KEY"),
     api_secret=os.getenv("API_SECRET"),
     secure=True
 )
 
-print(f"🔍 Conectando a Cloudinary (Cloud: {os.getenv('CLOUD_NAME')})...")
+print(f"🔍 Conectando a Cloudinary (Cloud: {os.getenv('CLOUD_NAME', 'dobul5gbb')})...")
 
 try:
     result = cloudinary.uploader.upload(
