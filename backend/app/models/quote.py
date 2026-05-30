@@ -19,7 +19,6 @@ class ProductoItem(BaseModel):
     empaqueOtraText: Optional[str] = Field("", max_length=300, description="Detalle si se seleccionó 'Otra'")
     imagenUrl: Optional[str] = Field("", max_length=1000, description="URL de la imagen de referencia")
 
-    # Campos de cálculo (opcionales al inicio, asignados por admin/colaborador)
     duracionImpresionUnidad: Optional[float] = 0.0
     filamentoUsadoUnidad: Optional[float] = 0.0
     valorEmpaqueUnitario: Optional[float] = 0.0
@@ -80,25 +79,12 @@ class ProductoItem(BaseModel):
         return value
 
     @validator(
-        "duracionImpresionUnidad",
-        "filamentoUsadoUnidad",
-        "valorEmpaqueUnitario",
-        "valorPersonalizacionUnitario",
-        "precioKwhHora",
-        "precioKwhMinuto",
-        "precioFilamentoKg",
-        "precioFilamentoGramo",
-        "costoFabricacionUnitario",
-        "precioUnitario",
-        "precioConGananciaUnitario",
-        "precioTotalUnitario",
-        "subtotalFabricacionTotal",
-        "gananciaTotal",
-        "precioTotal",
-        "Precio_Unitario",
-        "Valor_Ganancia_Total",
-        "Precio_Total",
-        "Subtotal_Fabricacion_Total",
+        "duracionImpresionUnidad", "filamentoUsadoUnidad", "valorEmpaqueUnitario",
+        "valorPersonalizacionUnitario", "precioKwhHora", "precioKwhMinuto",
+        "precioFilamentoKg", "precioFilamentoGramo", "costoFabricacionUnitario",
+        "precioUnitario", "precioConGananciaUnitario", "precioTotalUnitario",
+        "subtotalFabricacionTotal", "gananciaTotal", "precioTotal",
+        "Precio_Unitario", "Valor_Ganancia_Total", "Precio_Total", "Subtotal_Fabricacion_Total",
         always=True,
     )
     def validate_non_negative_number(cls, value):
@@ -116,9 +102,11 @@ class ProductoItem(BaseModel):
             raise ValueError("El porcentaje de ganancia debe estar entre 0 y 1000.")
         return value
 
+
 class QuoteCreate(BaseModel):
     productos: List[ProductoItem] = Field(..., min_items=1, max_items=5, description="Lista de productos a cotizar")
     cliente: Optional[ClienteInfo] = Field(None, description="Datos de contacto si es invitado")
+
 
 class QuoteUpdate(BaseModel):
     productos: List[ProductoItem] = Field(..., min_items=1, max_items=5, description="Lista de productos con cálculos actualizados")
@@ -137,19 +125,29 @@ class QuoteUpdate(BaseModel):
             raise ValueError("Estado de cotizacion no permitido.")
         return normalized
 
+
+# ─── FIX: QuoteResponse acepta DatetimeWithNanoseconds de Firestore ───────────
 class QuoteResponse(BaseModel):
     id: str = Field(..., description="ID del documento en Firestore")
     cliente: ClienteInfo
     productos: List[ProductoItem]
     estado: str = Field("pendiente", description="Estado de la cotización")
-    creadoEn: str
+    creadoEn: Optional[str] = None        # ← era `str`, ahora Optional[str]
     actualizadoEn: Optional[str] = None
     precioKwhHora: Optional[float] = None
     precioFilamentoKg: Optional[float] = None
     subtotalFabricacionTotal: Optional[float] = None
     valorGananciaTotal: Optional[float] = None
     precioTotalCotizacion: Optional[float] = None
-    # Compatibilidad con casing alternativo
     Subtotal_Fabricacion_Total: Optional[float] = None
     Valor_Ganancia_Total: Optional[float] = None
     Precio_Total_Cotizacion: Optional[float] = None
+
+    @validator("creadoEn", "actualizadoEn", pre=True, always=True)
+    def parse_datetime_field(cls, v):
+        """Convierte DatetimeWithNanoseconds de Firestore a string ISO 8601."""
+        if v is None:
+            return None
+        if hasattr(v, "isoformat"):   # DatetimeWithNanoseconds y datetime estándar
+            return v.isoformat()
+        return str(v)

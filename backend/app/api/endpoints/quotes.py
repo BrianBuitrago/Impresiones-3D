@@ -11,20 +11,22 @@ DEFAULT_PRECIO_KWH_HORA = 950.0
 DEFAULT_PRECIO_FILAMENTO_KG = 87000.0
 
 CLIENT_PRODUCT_FIELDS = {
-    "nombre",
-    "tamanoHorizontal",
-    "tamanoVertical",
-    "unidades",
-    "accesorios",
-    "personalizacion",
-    "personalizacionOtraText",
-    "empaque",
-    "empaqueOtraText",
-    "imagenUrl",
+    "nombre", "tamanoHorizontal", "tamanoVertical", "unidades",
+    "accesorios", "personalizacion", "personalizacionOtraText",
+    "empaque", "empaqueOtraText", "imagenUrl",
 }
 
 def round_money(value: float) -> float:
     return round(float(value or 0), 2)
+
+# ─── FIX: convierte DatetimeWithNanoseconds a str antes de pasar a Pydantic ───
+def serialize_doc(data: dict) -> dict:
+    """Normaliza fechas de Firestore (DatetimeWithNanoseconds → ISO string)."""
+    for key, value in data.items():
+        if hasattr(value, "isoformat"):
+            data[key] = value.isoformat()
+    return data
+# ──────────────────────────────────────────────────────────────────────────────
 
 def clean_client_product(product) -> dict:
     data = product.dict()
@@ -95,12 +97,6 @@ def calculate_product(product, precio_kwh_hora: float, precio_filamento_kg: floa
     return data
 
 def get_optional_uid(request: Request) -> Optional[str]:
-    """
-    Dependency que extrae y verifica el UID de Firebase de forma opcional.
-    Si se provee la cabecera Authorization con un token válido, retorna el UID.
-    Si la cabecera no se provee, retorna None (para clientes invitados).
-    Si la cabecera es inválida o expiró, lanza error 401.
-    """
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return None
@@ -119,30 +115,18 @@ def get_optional_uid(request: Request) -> Optional[str]:
             detail=f"Token de autenticación inválido o vencido: {str(e)}"
         )
 
+
 @router.post("", response_model=QuoteResponse, status_code=status.HTTP_201_CREATED)
 def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optional_uid)):
-    """
-    Crea una nueva cotización.
-    - Si el usuario está autenticado (uid provisto), sus datos de contacto se obtienen
-      de forma segura de Firestore, evitando suplantación o filtración del perfil.
-    - Si es invitado, se usan los datos de contacto proveídos en el body.
-    - Todos los campos de precios y costos calculados son forzados a cero para evitar manipulación de precios.
-    """
     if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Servicio de base de datos no disponible."
-        )
-
-    # 1. Resolver información del cliente de forma segura
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Servicio de base de datos no disponible.")
     if uid:
         user_ref = db.collection("users").document(uid)
         user_doc = user_ref.get()
         if not user_doc.exists:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="El perfil de usuario autenticado no existe en la base de datos."
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail="El perfil de usuario autenticado no existe en la base de datos.")
         user_data = user_doc.to_dict()
         cliente_data = {
             "uid": uid,
@@ -151,17 +135,12 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
             "email": user_data.get("email", "")
         }
     else:
-        # Validación obligatoria para invitados
         if not quote_in.cliente:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Se requieren los datos de contacto del cliente para cotizaciones de invitados."
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Se requieren los datos de contacto del cliente para cotizaciones de invitados.")
         if not quote_in.cliente.nombre.strip() or not quote_in.cliente.telefono.strip() or not quote_in.cliente.email.strip():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El nombre, teléfono y correo son obligatorios para invitados."
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="El nombre, teléfono y correo son obligatorios para invitados.")
         cliente_data = {
             "uid": None,
             "nombre": quote_in.cliente.nombre.strip(),
@@ -169,12 +148,8 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
             "email": quote_in.cliente.email.strip()
         }
 
-    # 2. Formatear y purgar los productos. El backend descarta cualquier costo enviado por cliente.
-    productos_dict = []
-    for prod in quote_in.productos:
-        productos_dict.append(reset_product_costs(clean_client_product(prod)))
+    productos_dict = [reset_product_costs(clean_client_product(prod)) for prod in quote_in.productos]
 
-    # 3. Documento base de la cotización
     quote_doc = {
         "cliente": cliente_data,
         "productos": productos_dict,
@@ -192,129 +167,83 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
     }
 
     try:
-        # Guardar documento en Firestore
         doc_ref = db.collection("quotes").document()
         doc_ref.set(quote_doc)
-        
         quote_doc["id"] = doc_ref.id
         return quote_doc
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al guardar la cotización en Firestore: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Error al guardar la cotización en Firestore: {str(e)}")
+
 
 @router.get("", response_model=List[QuoteResponse])
 def get_all_quotes(
     current_user: dict = Depends(RoleChecker(["administrador", "colaborador"]))
 ):
-    """
-    Retorna la lista de todas las cotizaciones de Firestore (orden descendente por fecha de creación).
-    Acceso restringido únicamente a Administradores y Colaboradores.
-    """
     if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Servicio de base de datos no disponible."
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Servicio de base de datos no disponible.")
     try:
         quotes_ref = db.collection("quotes").order_by("creadoEn", direction="DESCENDING")
         docs = quotes_ref.stream()
-        
         quotes_list = []
         for doc in docs:
             q_data = doc.to_dict()
             q_data["id"] = doc.id
-            quotes_list.append(q_data)
-            
+            quotes_list.append(serialize_doc(q_data))  # ← FIX
         return quotes_list
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al obtener cotizaciones: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Error al obtener cotizaciones: {str(e)}")
+
 
 @router.get("/my", response_model=List[QuoteResponse])
-def get_my_quotes(
-    uid: str = Depends(get_firebase_uid)
-):
-    """
-    Retorna la lista de cotizaciones que pertenecen al usuario autenticado.
-    El UID es extraído directamente del token verificado de Firebase para evitar accesos indebidos.
-    """
+def get_my_quotes(uid: str = Depends(get_firebase_uid)):
     if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Servicio de base de datos no disponible."
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Servicio de base de datos no disponible.")
     try:
         quotes_ref = db.collection("quotes").where("cliente.uid", "==", uid)
         docs = quotes_ref.stream()
-        
         quotes_list = []
         for doc in docs:
             q_data = doc.to_dict()
             q_data["id"] = doc.id
-            quotes_list.append(q_data)
-            
-        # Ordenar localmente
+            quotes_list.append(serialize_doc(q_data))  # ← FIX
         quotes_list.sort(key=lambda x: x.get("creadoEn", ""), reverse=True)
         return quotes_list
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al obtener tus cotizaciones: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Error al obtener tus cotizaciones: {str(e)}")
+
 
 @router.get("/{quote_id}", response_model=QuoteResponse)
-def get_quote_by_id(
-    quote_id: str,
-    uid: str = Depends(get_firebase_uid)
-):
-    """
-    Obtiene los detalles de una cotización específica.
-    Permite acceso si:
-    - El usuario autenticado es el propietario de la cotización (cliente.uid coincide con el token).
-    - El usuario tiene rol de Administrador o Colaborador.
-    """
+def get_quote_by_id(quote_id: str, uid: str = Depends(get_firebase_uid)):
     if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Servicio de base de datos no disponible."
-        )
-    
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Servicio de base de datos no disponible.")
     quote_ref = db.collection("quotes").document(quote_id)
     quote_doc = quote_ref.get()
-    
     if not quote_doc.exists:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="La cotización no existe."
-        )
-        
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="La cotización no existe.")
     q_data = quote_doc.to_dict()
     q_data["id"] = quote_doc.id
-    
-    # Consultar rol de usuario
+    serialize_doc(q_data)  # ← FIX
+
     user_ref = db.collection("users").document(uid)
     user_doc = user_ref.get()
     if not user_doc.exists:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no registrado en base de datos de Firestore."
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Usuario no registrado en base de datos de Firestore.")
     user_role = user_doc.to_dict().get("rol", "cliente")
-    
     is_owner = q_data.get("cliente", {}).get("uid") == uid
     is_staff = user_role in ["administrador", "colaborador"]
-    
     if not is_owner and not is_staff:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos suficientes para ver los detalles de esta cotización."
-        )
-        
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="No tienes permisos suficientes para ver los detalles de esta cotización.")
     return q_data
+
 
 @router.put("/{quote_id}", response_model=QuoteResponse)
 def update_quote(
@@ -322,25 +251,14 @@ def update_quote(
     quote_up: QuoteUpdate,
     current_user: dict = Depends(RoleChecker(["administrador", "colaborador"]))
 ):
-    """
-    Actualiza el estado y cálculos de una cotización.
-    Restringido a Administradores y Colaboradores.
-    """
     if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Servicio de base de datos no disponible."
-        )
-
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Servicio de base de datos no disponible.")
     quote_ref = db.collection("quotes").document(quote_id)
     quote_doc = quote_ref.get()
-    
     if not quote_doc.exists:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="La cotización solicitada no existe."
-        )
-
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="La cotización solicitada no existe.")
     try:
         productos_dict = [
             calculate_product(p, quote_up.precioKwhHora, quote_up.precioFilamentoKg)
@@ -349,7 +267,7 @@ def update_quote(
         subtotal_fabricacion = round_money(sum(p["subtotalFabricacionTotal"] for p in productos_dict))
         valor_ganancia = round_money(sum(p["gananciaTotal"] for p in productos_dict))
         precio_total = round_money(sum(p["precioTotal"] for p in productos_dict))
-        
+
         update_data = {
             "productos": productos_dict,
             "estado": quote_up.estado,
@@ -358,20 +276,16 @@ def update_quote(
             "subtotalFabricacionTotal": subtotal_fabricacion,
             "valorGananciaTotal": valor_ganancia,
             "precioTotalCotizacion": precio_total,
-            # Mayúsculas por compatibilidad con el frontend
             "Subtotal_Fabricacion_Total": subtotal_fabricacion,
             "Valor_Ganancia_Total": valor_ganancia,
             "Precio_Total_Cotizacion": precio_total,
             "actualizadoEn": datetime.utcnow().isoformat()
         }
-        
         quote_ref.update(update_data)
-        
         final_doc = quote_ref.get().to_dict()
         final_doc["id"] = quote_id
+        serialize_doc(final_doc)  # ← FIX
         return final_doc
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al actualizar la cotización: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Error al actualizar la cotización: {str(e)}")
