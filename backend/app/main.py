@@ -69,6 +69,30 @@ def read_root():
 def health_check():
     return {"status": "ok", "firebase_connected": db is not None}
 
+
+@app.get("/internal/diag")
+def internal_diag():
+    """Endpoint temporal para diagnosticar el estado del app en producción.
+    Devuelve rutas registradas y si el módulo `quotes` es importable, además
+    del estado de la variable de entorno de Firebase y si `db` está inicializado.
+    """
+    routes = [getattr(r, 'path', str(r)) for r in app.routes if getattr(r, 'path', None)]
+    try:
+        import importlib
+        importlib.import_module('app.api.endpoints.quotes')
+        quotes_ok = True
+    except Exception as e:
+        quotes_ok = False
+        quotes_error = str(e)
+
+    return {
+        "routes": routes,
+        "quotes_importable": quotes_ok,
+        "quotes_error": quotes_error if not quotes_ok else None,
+        "FIREBASE_CREDENTIALS_JSON_present": 'FIREBASE_CREDENTIALS_JSON' in os.environ,
+        "db_initialized": db is not None,
+    }
+
 @app.post("/test-db")
 def test_database():
     if db is None:
