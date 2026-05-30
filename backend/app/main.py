@@ -10,6 +10,9 @@ import datetime
 
 from app.api.router import api_router
 from app.core.admin_init import initialize_admins
+import os
+import sys
+import traceback
 
 app = FastAPI(
     title="Impresiones 3D API",
@@ -40,6 +43,22 @@ app.include_router(api_router, prefix="/api/v1")
 @app.on_event("startup")
 def startup_event():
     initialize_admins()
+    # Diagnostic info for deployment logs
+    try:
+        print("[startup] Listing registered routes:")
+        for r in app.routes:
+            try:
+                path = getattr(r, 'path', None)
+                if path:
+                    print(f"[route] {path}")
+            except Exception:
+                print(f"[route] <uninspectable route> {r}")
+        firebase_present = 'FIREBASE_CREDENTIALS_JSON' in os.environ
+        print(f"[startup] FIREBASE_CREDENTIALS_JSON present: {firebase_present}")
+        print(f"[startup] db initialized: {db is not None}")
+    except Exception as e:
+        print("[startup] Error printing diagnostic info:", e, file=sys.stderr)
+        traceback.print_exc()
 
 
 @app.get("/")
