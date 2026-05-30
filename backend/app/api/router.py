@@ -1,6 +1,20 @@
 from fastapi import APIRouter
-from app.api.endpoints import auth, quotes
+import sys
 
 api_router = APIRouter()
-api_router.include_router(auth.router, prefix="/auth", tags=["Autenticación y Roles"])
-api_router.include_router(quotes.router, prefix="/quotes", tags=["Cotizaciones"])
+
+# Importar auth siempre
+try:
+    from app.api.endpoints import auth
+    api_router.include_router(auth.router, prefix="/auth", tags=["Autenticación y Roles"])
+except Exception as e:
+    print(f"ERROR: No se pudo registrar router de auth: {e}", file=sys.stderr)
+
+# Importar quotes de forma segura
+try:
+    from app.api.endpoints import quotes
+    api_router.include_router(quotes.router, prefix="/quotes", tags=["Cotizaciones"])
+except Exception as e:
+    print(f"ERROR: No se pudo registrar router de quotes: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc()
