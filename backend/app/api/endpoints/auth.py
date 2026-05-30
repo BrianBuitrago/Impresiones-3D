@@ -3,8 +3,20 @@ from app.core.firebase import db, firebase_auth
 from app.models.user import UserCreate, UserResponse, UserRoleUpdate, GoogleSyncRequest
 from app.api.deps import get_current_user, RoleChecker, get_firebase_uid
 from datetime import datetime
+from google.cloud.firestore_v1.base_query import FieldFilter # Importación útil si usas filtros modernos
 
 router = APIRouter()
+
+# --- Función Auxiliar para limpiar datos de Firestore ---
+def clean_firestore_data(data: dict) -> dict:
+    """
+    Convierte objetos datetime de Firestore a strings ISO format
+    para evitar errores de validación en Pydantic/FastAPI.
+    """
+    for key, value in data.items():
+        if hasattr(value, 'isoformat'): # Detecta si es un objeto datetime
+            data[key] = value.isoformat()
+    return data
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_in: UserCreate):
@@ -65,9 +77,6 @@ def register_user(user_in: UserCreate):
 def sync_google_user(request: GoogleSyncRequest):
     """
     Sincroniza un usuario tras autenticarse con Google en el frontend.
-    Verifica el Token de ID. Si el usuario no existe en Firestore, crea su
-    perfil con el rol 'cliente' por defecto o 'administrador' si su correo
-    está en la lista de administradores permitidos.
     """
     if db is None or firebase_auth is None:
         raise HTTPException(
@@ -108,7 +117,7 @@ def sync_google_user(request: GoogleSyncRequest):
         user_profile = user_doc.to_dict()
         user_profile["uid"] = uid
         
-        # Promoción automática si está en la lista de administradores pero su rol no es administrador
+        # Promoción automática si está en la lista de administradores
         if is_allowed_admin and user_profile.get("rol") != "administrador":
             user_profile["rol"] = "administrador"
             user_ref.update({"rol": "administrador"})
@@ -154,7 +163,7 @@ def update_my_profile(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Permite al usuario autenticado actualizar sus datos personales (excepto rol e email).
+    Permite al usuario autenticado actualizar sus datos personales.
     """
     if db is None:
         raise HTTPException(status_code=503, detail="Base de datos no disponible")
@@ -164,7 +173,6 @@ def update_my_profile(
         if key in updated_fields:
             del updated_fields[key]
             
-    # Validamos que al menos venga un campo a actualizar
     if not updated_fields:
         raise HTTPException(status_code=400, detail="No se enviaron campos válidos para actualizar.")
         
@@ -204,10 +212,8 @@ def update_user_role(
         )
         
     try:
-        # Actualizar rol en Firestore
         user_ref.update({"rol": role_update.rol})
         
-        # Retornar el perfil con el rol cambiado
         updated_user = user_doc.to_dict()
         updated_user["uid"] = target_uid
         updated_user["rol"] = role_update.rol
@@ -237,6 +243,10 @@ def list_all_users(
         for doc in docs:
             user_data = doc.to_dict()
             user_data["uid"] = doc.id
+            
+            # CORRECCIÓN: Limpiar fechas antes de retornar
+            user_data = clean_firestore_data(user_data)
+            
             users_list.append(user_data)
             
         return users_list
