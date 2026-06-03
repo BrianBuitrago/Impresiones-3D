@@ -867,79 +867,9 @@ export default function AdminPage() {
                                   </div>
                                 </div>
                               )}
-                                <div className="space-y-3">
-                                  <div>
-                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Accesorios</span>
-                                    <p className="text-xs text-slate-300 mt-1">{producto.accesorios || 'Ninguno'}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Personalización</span>
-                                    <div className="flex flex-wrap gap-1.5 mt-1">
-                                      {producto.personalizacion?.length > 0 ? (
-                                        producto.personalizacion.map((pz: string, pIdx: number) => (
-                                          <span key={pIdx} className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 capitalize">
-                                            {pz === 'otra' ? `Otra: ${producto.personalizacionOtraText || ''}` : pz}
-                                          </span>
-                                        ))
-                                      ) : (
-                                        <span className="text-xs text-slate-500">Sin personalización</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Empaque</span>
-                                    <p className="text-xs text-slate-300 mt-1 capitalize">
-                                      {producto.empaque === 'otra'
-                                        ? `Otro: ${producto.empaqueOtraText || ''}`
-                                        : producto.empaque}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {/* Foto */}
-                                <div className="flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-xl p-3">
-                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">
-                                    Foto Referencial
-                                  </span>
-                                  {producto.imagenUrl ? (
-                                    <a
-                                      href={producto.imagenUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="relative w-28 h-28 rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group transition-all"
-                                    >
-                                      <img
-                                        src={producto.imagenUrl}
-                                        alt="Referencia"
-                                        className="w-full h-full object-cover"
-                                      />
-                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1">
-                                        <Eye className="w-4 h-4" /> Ampliar
-                                      </div>
-                                    </a>
-                                  ) : (
-                                    <div className="w-28 h-28 rounded-lg border border-dashed border-slate-800 bg-slate-950 flex flex-col items-center justify-center text-slate-600">
-                                      <ImageIcon className="w-6 h-6 mb-1 text-slate-700" />
-                                      <span className="text-[9px]">Sin foto</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* ── CALCULADORA ── */}
-                              <div className="px-5 py-5 space-y-5">
-                                <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                                  <DollarSign className="w-4 h-4 text-cyan-400" />
-                                  Asignación de Costos y Variables
-                                </p>
-
-                                {/* Inputs de entrada */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-
-                                  {/* Duración */}
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Tiempo (h)
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                  Tiempo (h)
                                     </label>
                                     <div className="relative">
                                       <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
@@ -1087,7 +1017,6 @@ export default function AdminPage() {
                                     />
                                     <p className="text-[9px] text-slate-500">Por unidad</p>
                                   </div>
-                                </div>
 
                                 {/* Resultados desglosados */}
                                 <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
@@ -1149,7 +1078,6 @@ export default function AdminPage() {
                                   </div>
                                 </div>
 
-                              </div>
                             </div>
                           );
                         })}
