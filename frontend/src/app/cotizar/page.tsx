@@ -794,9 +794,6 @@ export default function Cotizar() {
                       </div>
                     </div>
 
-                    {/* Fila 4: Accesorios */}
-                    <div className="space-y-2">
-
                     {/* Fila 4: Personalización */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
