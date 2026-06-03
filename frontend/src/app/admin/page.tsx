@@ -91,6 +91,9 @@ export default function AdminPage() {
   // Cálculos por producto (index → valores)
   const [calcValues, setCalcValues] = useState<{ [key: number]: CalcEntry }>({});
 
+  // Controla qué producto está expandido en la UI para reducir el desorden
+  const [openProductIndex, setOpenProductIndex] = useState<number | null>(null);
+
   // Guardando cotización
   const [saving, setSaving] = useState(false);
 
@@ -767,13 +770,97 @@ export default function AdminPage() {
                                     <span className="text-slate-300 font-semibold">{producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''}</span>
                                   </p>
                                 </div>
-                                <span className="text-xs font-bold text-cyan-400 px-3 py-1 bg-cyan-950/20 border border-cyan-800/20 rounded-lg shrink-0">
-                                  Producto #{idx + 1}
-                                </span>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs font-bold text-cyan-400 px-3 py-1 bg-cyan-950/20 border border-cyan-800/20 rounded-lg shrink-0">
+                                    Producto #{idx + 1}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenProductIndex(openProductIndex === idx ? null : idx)}
+                                    className="p-2 rounded-md bg-slate-900/30 hover:bg-slate-900/40 border border-slate-800 text-slate-300 transition-colors"
+                                    aria-expanded={openProductIndex === idx}
+                                    aria-controls={`producto-detalle-${idx}`}
+                                    title={openProductIndex === idx ? 'Contraer producto' : 'Expandir producto'}
+                                  >
+                                    {openProductIndex === idx ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                  </button>
+                                </div>
                               </div>
 
                               {/* Info del cliente: requerimientos + foto */}
-                              <div className="px-5 py-4 border-b border-slate-800/50 bg-slate-950/20 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {openProductIndex === idx ? (
+                                <div id={`producto-detalle-${idx}`} className="px-5 py-4 border-b border-slate-800/50 bg-slate-950/20 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  
+                                  <div className="space-y-3">
+                                    <div>
+                                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Accesorios</span>
+                                      <p className="text-xs text-slate-300 mt-1">{producto.accesorios || 'Ninguno'}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Personalización</span>
+                                      <div className="flex flex-wrap gap-1.5 mt-1">
+                                        {producto.personalizacion?.length > 0 ? (
+                                          producto.personalizacion.map((pz: string, pIdx: number) => (
+                                            <span key={pIdx} className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 capitalize">
+                                              {pz === 'otra' ? `Otra: ${producto.personalizacionOtraText || ''}` : pz}
+                                            </span>
+                                          ))
+                                        ) : (
+                                          <span className="text-xs text-slate-500">Sin personalización</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Empaque</span>
+                                      <p className="text-xs text-slate-300 mt-1 capitalize">
+                                        {producto.empaque === 'otra'
+                                          ? `Otro: ${producto.empaqueOtraText || ''}`
+                                          : producto.empaque}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Foto */}
+                                  <div className="flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-xl p-3">
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">
+                                      Foto Referencial
+                                    </span>
+                                    {producto.imagenUrl ? (
+                                      <a
+                                        href={producto.imagenUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="relative w-28 h-28 rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group transition-all"
+                                      >
+                                        <img
+                                          src={producto.imagenUrl}
+                                          alt="Referencia"
+                                          className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1">
+                                          <Eye className="w-4 h-4" /> Ampliar
+                                        </div>
+                                      </a>
+                                    ) : (
+                                      <div className="w-28 h-28 rounded-lg border border-dashed border-slate-800 bg-slate-950 flex flex-col items-center justify-center text-slate-600">
+                                        <ImageIcon className="w-6 h-6 mb-1 text-slate-700" />
+                                        <span className="text-[9px]">Sin foto</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="px-5 py-4 border-b border-slate-800/50 bg-slate-950/10 flex items-center justify-between">
+                                  <div>
+                                    <div className="text-xs text-slate-400">{producto.accesorios || 'Ninguno'}</div>
+                                    <div className="text-[10px] text-slate-500 mt-1">{producto.personalizacion?.length > 0 ? producto.personalizacion.join(' · ') : 'Sin personalización'}</div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-[10px] text-slate-500">Precio estimado</div>
+                                    <div className="font-bold text-emerald-400">{formatCOP(c.precioTotalProducto)}</div>
+                                  </div>
+                                </div>
+                              )}
                                 <div className="space-y-3">
                                   <div>
                                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Accesorios</span>
