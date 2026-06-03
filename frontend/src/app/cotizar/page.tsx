@@ -712,47 +712,8 @@ export default function Cotizar() {
                       </div>
                     </div>
 
-                    {/* Fila 3: Tiempos, peso y costos */}
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-                      <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Tiempo - Horas
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={producto.tiempoHoras}
-                          onChange={e => handleProductChange('tiempoHoras', e.target.value)}
-                          placeholder="0"
-                          className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Tiempo - Minutos
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={producto.tiempoMinutos}
-                          onChange={e => handleProductChange('tiempoMinutos', e.target.value)}
-                          placeholder="0"
-                          className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Peso (g)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={producto.pesoGramos}
-                          onChange={e => handleProductChange('pesoGramos', e.target.value)}
-                          placeholder="0"
-                          className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
-                        />
-                      </div>
+                    {/* Fila 3: Costos directos */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       <div className="space-y-2">
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                           Costos directos
