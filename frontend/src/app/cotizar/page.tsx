@@ -42,6 +42,7 @@ interface ProductForm {
   accesorios: string;
   personalizacion: string[];
   personalizacionOtraText: string;
+  personalizacionComentarios: Record<string, string>;
   empaque: string;
   empaqueOtraText: string;
   imageFile: File | null;
@@ -65,6 +66,7 @@ const newProduct = (): ProductForm => ({
   accesorios: '',
   personalizacion: [],
   personalizacionOtraText: '',
+  personalizacionComentarios: {},
   empaque: 'ninguno',
   empaqueOtraText: '',
   imageFile: null,
@@ -208,11 +210,32 @@ export default function Cotizar() {
     setProductoActual(prev => ({ ...prev, [field]: value }));
 
   const handlePersonalizacionChange = (value: string, checked: boolean) =>
+    setProductoActual(prev => {
+      const nextPersonalizacion = checked
+        ? [...new Set([...prev.personalizacion, value])]
+        : prev.personalizacion.filter(i => i !== value);
+
+      const nextComentarios = { ...prev.personalizacionComentarios };
+      if (checked) {
+        nextComentarios[value] = nextComentarios[value] || '';
+      } else {
+        delete nextComentarios[value];
+      }
+
+      return {
+        ...prev,
+        personalizacion: nextPersonalizacion,
+        personalizacionComentarios: nextComentarios,
+      };
+    });
+
+  const handlePersonalizacionComentarioChange = (key: string, value: string) =>
     setProductoActual(prev => ({
       ...prev,
-      personalizacion: checked
-        ? [...new Set([...prev.personalizacion, value])]
-        : prev.personalizacion.filter(i => i !== value),
+      personalizacionComentarios: {
+        ...prev.personalizacionComentarios,
+        [key]: value,
+      },
     }));
 
   const handleImageChange = (file: File | null) => {
@@ -280,6 +303,7 @@ export default function Cotizar() {
           accesorios:              p.accesorios,
           personalizacion:         p.personalizacion,
           personalizacionOtraText: p.personalizacion.includes('otra') ? p.personalizacionOtraText : '',
+          personalizacionComentarios: p.personalizacionComentarios || {},
           empaque:                 p.empaque,
           empaqueOtraText:         p.empaque === 'otra' ? p.empaqueOtraText : '',
           imagenUrl,
@@ -798,6 +822,52 @@ export default function Cotizar() {
                           );
                         })}
                       </div>
+
+                      {producto.personalizacion.length > 0 && (
+                        <div className="space-y-3 pt-3">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Comentarios por personalización</span>
+                          <div className="grid gap-3">
+                            {producto.personalizacion.map(selected => {
+                              if (selected === 'otra') {
+                                return (
+                                  <motion.div
+                                    key={selected}
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                  >
+                                    <input
+                                      type="text"
+                                      value={producto.personalizacionOtraText}
+                                      onChange={e => handleProductChange('personalizacionOtraText', e.target.value)}
+                                      placeholder="Describe cómo quieres la personalización adicional..."
+                                      className="w-full px-4 py-3 bg-slate-950/80 border border-cyan-500/30 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
+                                    />
+                                  </motion.div>
+                                );
+                              }
+
+                              const option = PERSONALIZACION_OPTIONS.find(opt => opt.value === selected);
+                              return (
+                                <motion.div
+                                  key={selected}
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                >
+                                  <textarea
+                                    value={producto.personalizacionComentarios[selected] || ''}
+                                    onChange={e => handlePersonalizacionComentarioChange(selected, e.target.value)}
+                                    rows={2}
+                                    placeholder={`Describe cómo quieres ${option?.label.toLowerCase()}...`}
+                                    className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all resize-none"
+                                  />
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Input adicional para "Otra" */}
                       <AnimatePresence>
