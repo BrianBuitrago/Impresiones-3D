@@ -35,6 +35,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface ProductForm {
   id: string;
   nombre: string;
+  descripcionLineal: string;
   tamanoHorizontal: string;
   tamanoVertical: string;
   unidades: number;
@@ -45,11 +46,19 @@ interface ProductForm {
   empaqueOtraText: string;
   imageFile: File | null;
   imagePreview: string | null;
+  tiempoHoras: string;
+  tiempoMinutos: string;
+  pesoGramos: string;
+  costoDiseno: string;
+  costoAccesorios: string;
+  costoPersonalizado: string;
+  costoEmpaque: string;
 }
 
 const newProduct = (): ProductForm => ({
   id: Math.random().toString(36).substr(2, 9),
   nombre: '',
+  descripcionLineal: '',
   tamanoHorizontal: '',
   tamanoVertical: '',
   unidades: 1,
@@ -60,6 +69,13 @@ const newProduct = (): ProductForm => ({
   empaqueOtraText: '',
   imageFile: null,
   imagePreview: null,
+  tiempoHoras: '',
+  tiempoMinutos: '',
+  pesoGramos: '',
+  costoDiseno: '',
+  costoAccesorios: '',
+  costoPersonalizado: '',
+  costoEmpaque: '',
 });
 
 const PERSONALIZACION_OPTIONS = [
@@ -119,6 +135,7 @@ export default function Cotizar() {
   const [nombre,   setNombre]   = useState('');
   const [telefono, setTelefono] = useState('');
   const [email,    setEmail]    = useState('');
+  const [notasCotizacion, setNotasCotizacion] = useState('');
 
   // Producto en edición y lista acumulada
   const [productoActual, setProductoActual] = useState<ProductForm>(newProduct());
@@ -142,6 +159,7 @@ export default function Cotizar() {
   // ¿El formulario del producto actual tiene datos?
   const isFormDirty =
     productoActual.nombre.trim() !== '' ||
+    productoActual.descripcionLineal.trim() !== '' ||
     productoActual.tamanoHorizontal.trim() !== '' ||
     productoActual.tamanoVertical.trim() !== '' ||
     productoActual.accesorios.trim() !== '' ||
@@ -158,6 +176,13 @@ export default function Cotizar() {
     if (!p.tamanoHorizontal || parseFloat(p.tamanoHorizontal) <= 0) return `El tamaño horizontal del ${label} debe ser mayor a 0.`;
     if (!p.tamanoVertical   || parseFloat(p.tamanoVertical)   <= 0) return `El tamaño vertical del ${label} debe ser mayor a 0.`;
     if (p.unidades < 1)                                              return `Las unidades del ${label} deben ser al menos 1.`;
+    if (p.tiempoHoras && parseFloat(p.tiempoHoras) < 0)            return `Las horas de impresión del ${label} no pueden ser negativas.`;
+    if (p.tiempoMinutos && parseFloat(p.tiempoMinutos) < 0)        return `Los minutos de impresión del ${label} no pueden ser negativos.`;
+    if (p.pesoGramos && parseFloat(p.pesoGramos) < 0)              return `El peso en gramos del ${label} no puede ser negativo.`;
+    if (p.costoDiseno && parseFloat(p.costoDiseno) < 0)            return `El costo de diseño del ${label} no puede ser negativo.`;
+    if (p.costoAccesorios && parseFloat(p.costoAccesorios) < 0)    return `El costo de accesorios del ${label} no puede ser negativo.`;
+    if (p.costoPersonalizado && parseFloat(p.costoPersonalizado) < 0) return `El costo personalizado del ${label} no puede ser negativo.`;
+    if (p.costoEmpaque && parseFloat(p.costoEmpaque) < 0)          return `El costo de empaque del ${label} no puede ser negativo.`;
     if (p.personalizacion.includes('otra') && !p.personalizacionOtraText.trim())
       return `Describe la personalización "Otra" del ${label}.`;
     if (p.empaque === 'otra' && !p.empaqueOtraText.trim())
@@ -231,7 +256,8 @@ export default function Cotizar() {
     try {
       // 1. Subir imágenes a Cloudinary
       const productosFinales = [];
-      for (const p of listaProductos) {
+      for (const [index, p] of listaProductos.entries()) {
+        const idProducto = p.id || `PROD-${index + 1}`;
         let imagenUrl = '';
         if (p.imageFile) {
           try {
@@ -242,20 +268,50 @@ export default function Cotizar() {
           }
         }
         productosFinales.push({
+          idProducto,
+          ID_Producto: idProducto,
           nombre:                  p.nombre,
+          descripcionLineal:       p.descripcionLineal,
+          Descripcion_Lineal:      p.descripcionLineal || p.nombre,
           tamanoHorizontal:        parseFloat(p.tamanoHorizontal),
           tamanoVertical:          parseFloat(p.tamanoVertical),
           unidades:                p.unidades,
+          Cantidad_Piezas:         p.unidades,
           accesorios:              p.accesorios,
           personalizacion:         p.personalizacion,
           personalizacionOtraText: p.personalizacion.includes('otra') ? p.personalizacionOtraText : '',
           empaque:                 p.empaque,
           empaqueOtraText:         p.empaque === 'otra' ? p.empaqueOtraText : '',
           imagenUrl,
+          tiempoHoras:             parseFloat(p.tiempoHoras) || 0,
+          tiempoMinutos:           parseFloat(p.tiempoMinutos) || 0,
+          pesoGramos:              parseFloat(p.pesoGramos) || 0,
+          costoDiseno:             parseFloat(p.costoDiseno) || 0,
+          costoAccesorios:         parseFloat(p.costoAccesorios) || 0,
+          costoPersonalizado:      parseFloat(p.costoPersonalizado) || 0,
+          costoEmpaque:            parseFloat(p.costoEmpaque) || 0,
+          Tiempo_Horas:            parseFloat(p.tiempoHoras) || 0,
+          Tiempo_Minutos:          parseFloat(p.tiempoMinutos) || 0,
+          Peso_Gramos:             parseFloat(p.pesoGramos) || 0,
+          'Costo_Diseño':          parseFloat(p.costoDiseno) || 0,
+          Costo_Accesorios:        parseFloat(p.costoAccesorios) || 0,
+          Costo_Personalizado:     parseFloat(p.costoPersonalizado) || 0,
+          Costo_Empaque:           parseFloat(p.costoEmpaque) || 0,
+          Subtotal_Energia:        0,
+          Subtotal_Material:       0,
+          Subtotal_Fabricacion:    0,
+          Precio_Unitario_Con_Ganancia: 0,
+          Precio_Lineal_Total:      0,
+          costoDisenoUnitario:      parseFloat(p.costoDiseno) || 0,
+          costoAccesoriosUnitario:  parseFloat(p.costoAccesorios) || 0,
+          valorPersonalizacionUnitario: parseFloat(p.costoPersonalizado) || 0,
+          valorEmpaqueUnitario:     parseFloat(p.costoEmpaque) || 0,
         });
       }
 
       // 2. Guardar en Firestore directamente
+      const fecha = new Date();
+      const cantidadTotalPiezas = productosFinales.reduce((acc, p) => acc + (p.unidades || 0), 0);
       const quoteData = {
         cliente: {
           nombre,
@@ -267,10 +323,23 @@ export default function Cotizar() {
         estado:     'pendiente',
         creadoEn:   serverTimestamp(),
         actualizadoEn: serverTimestamp(),
+        Fecha: fecha.toISOString(),
+        ID_Cliente: user?.uid || null,
+        porcentajeGanancia: 30,
+        Porcentaje_Ganancia: 30,
         // Campos para que el admin calcule luego
         subtotalFabricacionTotal: 0,
         valorGananciaTotal:       0,
+        precioTotal:              0,
         precioTotalCotizacion:    0,
+        cantidadTotalPiezas,
+        notasCotizacion,
+        Subtotal_Fabricacion_Total: 0,
+        Valor_Ganancia_Total:       0,
+        Precio_Total:               0,
+        Precio_Total_Cotizacion:    0,
+        Cantidad_Total_Piezas:      cantidadTotalPiezas,
+        Notas_Cotizacion:           notasCotizacion,
       };
 
       const docRef = await addDoc(collection(db, 'quotes'), quoteData);
@@ -279,6 +348,7 @@ export default function Cotizar() {
       setSuccess(true);
       setProductos([]);
       setProductoActual(newProduct());
+      setNotasCotizacion('');
       if (!profile) { setNombre(''); setTelefono(''); setEmail(''); }
     } catch (err: any) {
       console.error('Error al guardar cotización:', err);
@@ -475,6 +545,19 @@ export default function Cotizar() {
                 </div>
               </div>
             </div>
+
+            <div className="mt-5 space-y-2">
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Notas de cotización
+              </label>
+              <textarea
+                value={notasCotizacion}
+                onChange={e => setNotasCotizacion(e.target.value)}
+                rows={3}
+                placeholder="Agrega fechas objetivo, restricciones, acabado esperado o cualquier detalle general..."
+                className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all resize-none"
+              />
+            </div>
           </motion.div>
 
           {/* ── SECCIÓN 2: Producto en edición ── */}
@@ -576,6 +659,19 @@ export default function Cotizar() {
                       </div>
                     </div>
 
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Descripción lineal
+                      </label>
+                      <textarea
+                        value={producto.descripcionLineal}
+                        onChange={e => handleProductChange('descripcionLineal', e.target.value)}
+                        rows={2}
+                        placeholder="Describe el uso, forma o detalle principal de esta pieza..."
+                        className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all resize-none"
+                      />
+                    </div>
+
                     {/* Fila 2: Dimensiones */}
                     <div>
                       <div className="flex items-center gap-2 mb-3">
@@ -616,23 +712,90 @@ export default function Cotizar() {
                       </div>
                     </div>
 
-                    {/* Fila 3: Accesorios */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Wrench className="w-4 h-4 text-slate-500" />
+                    {/* Fila 3: Tiempos, peso y costos */}
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+                      <div className="space-y-2">
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Accesorios Requeridos
+                          Tiempo - Horas
                         </label>
-                        <span className="text-[10px] text-slate-600 italic">(Opcional)</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={producto.tiempoHoras}
+                          onChange={e => handleProductChange('tiempoHoras', e.target.value)}
+                          placeholder="0"
+                          className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
+                        />
                       </div>
-                      <textarea
-                        value={producto.accesorios}
-                        onChange={e => handleProductChange('accesorios', e.target.value)}
-                        rows={2}
-                        placeholder="Ej. Tornillos M3, imanes de neodimio, resortes... Deja en blanco si no requiere."
-                        className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all resize-none"
-                      />
+                      <div className="space-y-2">
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Tiempo - Minutos
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={producto.tiempoMinutos}
+                          onChange={e => handleProductChange('tiempoMinutos', e.target.value)}
+                          placeholder="0"
+                          className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Peso (g)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={producto.pesoGramos}
+                          onChange={e => handleProductChange('pesoGramos', e.target.value)}
+                          placeholder="0"
+                          className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Costos directos
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            value={producto.costoDiseno}
+                            onChange={e => handleProductChange('costoDiseno', e.target.value)}
+                            placeholder="Diseño"
+                            className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-xs font-mono"
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={producto.costoAccesorios}
+                            onChange={e => handleProductChange('costoAccesorios', e.target.value)}
+                            placeholder="Accesorios"
+                            className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-xs font-mono"
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={producto.costoPersonalizado}
+                            onChange={e => handleProductChange('costoPersonalizado', e.target.value)}
+                            placeholder="Personalizado"
+                            className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-xs font-mono"
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={producto.costoEmpaque}
+                            onChange={e => handleProductChange('costoEmpaque', e.target.value)}
+                            placeholder="Empaque"
+                            className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-xs font-mono"
+                          />
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Fila 4: Accesorios */}
+                    <div className="space-y-2">
 
                     {/* Fila 4: Personalización */}
                     <div className="space-y-3">

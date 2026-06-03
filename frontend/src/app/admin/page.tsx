@@ -48,11 +48,14 @@ const estadoBadgeClass = (estado: string) => {
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface CalcEntry {
-  duracion: string;        // minutos de impresión por unidad
-  filamento: string;       // gramos de filamento por unidad
-  valorEmpaque: string;    // COP por unidad
-  valorPersonalizacion: string; // COP por unidad
-  ganancia: string;        // porcentaje
+  tiempoHoras: string;
+  tiempoMinutos: string;
+  pesoGramos: string;
+  costoDiseno: string;
+  costoAccesorios: string;
+  costoEmpaque: string;
+  costoPersonalizado: string;
+  ganancia: string;
 }
 
 // ── Componente principal ───────────────────────────────────────────────────────
@@ -147,11 +150,15 @@ export default function AdminPage() {
     if (!selectedQuote) return;
     const init: { [k: number]: CalcEntry } = {};
     selectedQuote.productos.forEach((p: any, idx: number) => {
+      const duracion = Number(p.duracionImpresionUnidad || 0);
       init[idx] = {
-        duracion: p.duracionImpresionUnidad?.toString() || '0',
-        filamento: p.filamentoUsadoUnidad?.toString() || '0',
-        valorEmpaque: p.valorEmpaqueUnitario?.toString() || '0',
-        valorPersonalizacion: p.valorPersonalizacionUnitario?.toString() || '0',
+        tiempoHoras: (p.tiempoHoras ?? p.Tiempo_Horas ?? Math.floor(duracion / 60)).toString(),
+        tiempoMinutos: (p.tiempoMinutos ?? p.Tiempo_Minutos ?? duracion % 60).toString(),
+        pesoGramos: (p.pesoGramos ?? p.Peso_Gramos ?? p.filamentoUsadoUnidad ?? 0).toString(),
+        costoDiseno: (p.costoDisenoUnitario ?? p['Costo_Diseño'] ?? p.Costo_Diseno ?? 0).toString(),
+        costoAccesorios: (p.costoAccesoriosUnitario ?? p.Costo_Accesorios ?? 0).toString(),
+        costoEmpaque: (p.valorEmpaqueUnitario ?? p.Costo_Empaque ?? 0).toString(),
+        costoPersonalizado: (p.valorPersonalizacionUnitario ?? p.Costo_Personalizado ?? 0).toString(),
         ganancia: p.porcentajeGanancia?.toString() || '30',
       };
     });
@@ -212,27 +219,43 @@ export default function AdminPage() {
   //  precioTotal Prod  = precioTotal/u × unidades
 
   const calcProduct = (idx: number, unidades: number) => {
-    const v = calcValues[idx] || { duracion: '0', filamento: '0', valorEmpaque: '0', valorPersonalizacion: '0', ganancia: '30' };
+    const v = calcValues[idx] || {
+      tiempoHoras: '0',
+      tiempoMinutos: '0',
+      pesoGramos: '0',
+      costoDiseno: '0',
+      costoAccesorios: '0',
+      costoEmpaque: '0',
+      costoPersonalizado: '0',
+      ganancia: '30',
+    };
 
-    const duracion          = parseFloat(v.duracion) || 0;
-    const filamento         = parseFloat(v.filamento) || 0;
-    const valorEmpaque      = parseFloat(v.valorEmpaque) || 0;
-    const valorPersonalizacion = parseFloat(v.valorPersonalizacion) || 0;
+    const tiempoHoras      = parseFloat(v.tiempoHoras) || 0;
+    const tiempoMinutos    = parseFloat(v.tiempoMinutos) || 0;
+    const duracion         = tiempoHoras * 60 + tiempoMinutos;
+    const filamento        = parseFloat(v.pesoGramos) || 0;
+    const costoDiseno      = parseFloat(v.costoDiseno) || 0;
+    const costoAccesorios  = parseFloat(v.costoAccesorios) || 0;
+    const valorEmpaque     = parseFloat(v.costoEmpaque) || 0;
+    const valorPersonalizacion = parseFloat(v.costoPersonalizado) || 0;
     const ganancia          = parseFloat(v.ganancia) || 0;
 
     const precioKwhMinuto           = precioKwhHora / 60;
     const costoEnergiaUnitario      = duracion * precioKwhMinuto;
     const costoFilamentoUnitario    = filamento * (precioFilamentoKg / 1000);
-    const costoFabricacionUnitario  = costoEnergiaUnitario + costoFilamentoUnitario;
+    const costoFabricacionUnitario  = costoEnergiaUnitario + costoFilamentoUnitario + costoDiseno + costoAccesorios;
     const precioUnitario            = costoFabricacionUnitario * (1 + ganancia / 100);
     const precioTotalUnitario       = precioUnitario + valorEmpaque + valorPersonalizacion;
 
-    const subtotalFabricacionTotal  = precioUnitario * unidades;
+    const subtotalEnergia           = costoEnergiaUnitario * unidades;
+    const subtotalMaterial          = costoFilamentoUnitario * unidades;
+    const subtotalFabricacionTotal  = costoFabricacionUnitario * unidades;
     const gananciaTotal             = (precioUnitario - costoFabricacionUnitario) * unidades;
     const precioTotalProducto       = precioTotalUnitario * unidades;
 
     return {
-      duracion, filamento, valorEmpaque, valorPersonalizacion, ganancia,
+      tiempoHoras, tiempoMinutos, duracion, filamento, costoDiseno, costoAccesorios,
+      valorEmpaque, valorPersonalizacion, ganancia,
       precioKwhMinuto,
       costoEnergiaUnitario,
       costoFilamentoUnitario,
@@ -240,6 +263,8 @@ export default function AdminPage() {
       precioUnitario,
       precioConGananciaUnitario: precioUnitario,
       precioTotalUnitario,
+      subtotalEnergia,
+      subtotalMaterial,
       subtotalFabricacionTotal,
       gananciaTotal,
       precioTotalProducto,
@@ -268,6 +293,13 @@ export default function AdminPage() {
         const c = calcProduct(idx, p.unidades);
         return {
           ...p,
+          idProducto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
+          descripcionLineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
+          tiempoHoras: c.tiempoHoras,
+          tiempoMinutos: c.tiempoMinutos,
+          pesoGramos: c.filamento,
+          costoDisenoUnitario: c.costoDiseno,
+          costoAccesoriosUnitario: c.costoAccesorios,
           duracionImpresionUnidad: c.duracion,
           filamentoUsadoUnidad: c.filamento,
           valorEmpaqueUnitario: c.valorEmpaque,
@@ -288,6 +320,24 @@ export default function AdminPage() {
           Valor_Ganancia_Total: Math.round(c.gananciaTotal * 100) / 100,
           Precio_Total: Math.round(c.precioTotalProducto * 100) / 100,
           Subtotal_Fabricacion_Total: Math.round(c.subtotalFabricacionTotal * 100) / 100,
+          subtotalEnergia: Math.round(c.subtotalEnergia * 100) / 100,
+          subtotalMaterial: Math.round(c.subtotalMaterial * 100) / 100,
+          precioLinealTotal: Math.round(c.precioTotalProducto * 100) / 100,
+          ID_Producto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
+          Descripcion_Lineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
+          Tiempo_Horas: Math.round(c.tiempoHoras * 100) / 100,
+          Tiempo_Minutos: Math.round(c.tiempoMinutos * 100) / 100,
+          Peso_Gramos: Math.round(c.filamento * 100) / 100,
+          Cantidad_Piezas: p.unidades,
+          'Costo_Diseño': Math.round(c.costoDiseno * 100) / 100,
+          Costo_Accesorios: Math.round(c.costoAccesorios * 100) / 100,
+          Costo_Personalizado: Math.round(c.valorPersonalizacion * 100) / 100,
+          Costo_Empaque: Math.round(c.valorEmpaque * 100) / 100,
+          Subtotal_Energia: Math.round(c.subtotalEnergia * 100) / 100,
+          Subtotal_Material: Math.round(c.subtotalMaterial * 100) / 100,
+          Subtotal_Fabricacion: Math.round(c.subtotalFabricacionTotal * 100) / 100,
+          Precio_Unitario_Con_Ganancia: Math.round(c.precioUnitario * 100) / 100,
+          Precio_Lineal_Total: Math.round(c.precioTotalProducto * 100) / 100,
         };
       });
 
@@ -307,6 +357,16 @@ export default function AdminPage() {
           subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
           valorGananciaTotal: Math.round(ganancia * 100) / 100,
           precioTotalCotizacion: Math.round(total * 100) / 100,
+          porcentajeGanancia: updatedProductos.length > 0
+            ? Math.round((updatedProductos.reduce((acc: number, p: any) => acc + (p.porcentajeGanancia || 0), 0) / updatedProductos.length) * 100) / 100
+            : 30,
+          notasCotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
+          Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
+          Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
+          Precio_Total: Math.round(total * 100) / 100,
+          Precio_Total_Cotizacion: Math.round(total * 100) / 100,
+          Cantidad_Total_Piezas: updatedProductos.reduce((acc: number, p: any) => acc + (p.unidades || 0), 0),
+          Notas_Cotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
         }),
       });
 
@@ -581,6 +641,32 @@ export default function AdminPage() {
                             <span className="text-[10px] font-mono text-slate-500 select-all">{selectedQuote.id}</span>
                           </div>
                         </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] text-slate-400 mt-4">
+                          <div>
+                            <span className="block text-slate-500 uppercase tracking-wider">Fecha</span>
+                            <span className="font-semibold text-slate-200 block truncate">
+                              {selectedQuote.Fecha || selectedQuote.creadoEn || 'Sin fecha'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-slate-500 uppercase tracking-wider">ID Cliente</span>
+                            <span className="font-semibold text-slate-200 block truncate">
+                              {selectedQuote.ID_Cliente || selectedQuote.cliente?.uid || 'No disponible'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-slate-500 uppercase tracking-wider">Piezas totales</span>
+                            <span className="font-semibold text-slate-200 block">
+                              {selectedQuote.Cantidad_Total_Piezas || selectedQuote.cantidadTotalPiezas || 0}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-slate-500 uppercase tracking-wider">Ganancia</span>
+                            <span className="font-semibold text-slate-200 block">
+                              {selectedQuote.Porcentaje_Ganancia || selectedQuote.porcentajeGanancia || 30}%
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
                       {/* ── CONFIGURACIÓN GLOBAL DE FABRICACIÓN ── */}
@@ -658,7 +744,16 @@ export default function AdminPage() {
 
                         {selectedQuote.productos.map((producto: any, idx: number) => {
                           const c = calcProduct(idx, producto.unidades);
-                          const vals = calcValues[idx] || { duracion: '0', filamento: '0', valorEmpaque: '0', valorPersonalizacion: '0', ganancia: '30' };
+                          const vals = calcValues[idx] || {
+                            tiempoHoras: '0',
+                            tiempoMinutos: '0',
+                            pesoGramos: '0',
+                            costoDiseno: '0',
+                            costoAccesorios: '0',
+                            costoEmpaque: '0',
+                            costoPersonalizado: '0',
+                            ganancia: '30',
+                          };
 
                           return (
                             <div key={idx} className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
@@ -746,20 +841,39 @@ export default function AdminPage() {
                                 </p>
 
                                 {/* Inputs de entrada */}
-                                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
 
                                   {/* Duración */}
                                   <div className="space-y-1.5">
                                     <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Duración (min)
+                                      Tiempo (h)
                                     </label>
                                     <div className="relative">
                                       <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
                                       <input
                                         type="number"
                                         min="0"
-                                        value={vals.duracion}
-                                        onChange={e => handleCalcChange(idx, 'duracion', e.target.value)}
+                                        value={vals.tiempoHoras}
+                                        onChange={e => handleCalcChange(idx, 'tiempoHoras', e.target.value)}
+                                        className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40"
+                                      />
+                                    </div>
+                                    <p className="text-[9px] text-yellow-400/70">
+                                      {Math.round(c.duracion)} min total
+                                    </p>
+                                  </div>
+
+                                  <div className="space-y-1.5">
+                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                      Tiempo (min)
+                                    </label>
+                                    <div className="relative">
+                                      <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={vals.tiempoMinutos}
+                                        onChange={e => handleCalcChange(idx, 'tiempoMinutos', e.target.value)}
                                         className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40"
                                       />
                                     </div>
@@ -771,21 +885,49 @@ export default function AdminPage() {
                                   {/* Filamento */}
                                   <div className="space-y-1.5">
                                     <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Filamento (g)
+                                      Peso (g)
                                     </label>
                                     <div className="relative">
                                       <Weight className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
                                       <input
                                         type="number"
                                         min="0"
-                                        value={vals.filamento}
-                                        onChange={e => handleCalcChange(idx, 'filamento', e.target.value)}
+                                        value={vals.pesoGramos}
+                                        onChange={e => handleCalcChange(idx, 'pesoGramos', e.target.value)}
                                         className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40"
                                       />
                                     </div>
                                     <p className="text-[9px] text-blue-400/70">
                                       = {formatCOP(c.costoFilamentoUnitario)}/u
                                     </p>
+                                  </div>
+
+                                  <div className="space-y-1.5">
+                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                      Diseño ($/u)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={vals.costoDiseno}
+                                      onChange={e => handleCalcChange(idx, 'costoDiseno', e.target.value)}
+                                      className="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40 text-right"
+                                    />
+                                    <p className="text-[9px] text-slate-500">Por unidad</p>
+                                  </div>
+
+                                  <div className="space-y-1.5">
+                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                      Accesorios ($/u)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={vals.costoAccesorios}
+                                      onChange={e => handleCalcChange(idx, 'costoAccesorios', e.target.value)}
+                                      className="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40 text-right"
+                                    />
+                                    <p className="text-[9px] text-slate-500">Por unidad</p>
                                   </div>
 
                                   {/* Ganancia */}
@@ -831,8 +973,8 @@ export default function AdminPage() {
                                     <input
                                       type="number"
                                       min="0"
-                                      value={vals.valorPersonalizacion}
-                                      onChange={e => handleCalcChange(idx, 'valorPersonalizacion', e.target.value)}
+                                      value={vals.costoPersonalizado}
+                                      onChange={e => handleCalcChange(idx, 'costoPersonalizado', e.target.value)}
                                       className="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40 text-right"
                                     />
                                     <p className="text-[9px] text-slate-500">Por unidad</p>
@@ -846,8 +988,8 @@ export default function AdminPage() {
                                     <input
                                       type="number"
                                       min="0"
-                                      value={vals.valorEmpaque}
-                                      onChange={e => handleCalcChange(idx, 'valorEmpaque', e.target.value)}
+                                      value={vals.costoEmpaque}
+                                      onChange={e => handleCalcChange(idx, 'costoEmpaque', e.target.value)}
                                       className="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40 text-right"
                                     />
                                     <p className="text-[9px] text-slate-500">Por unidad</p>
@@ -869,7 +1011,9 @@ export default function AdminPage() {
                                         {formatCOP(c.costoFabricacionUnitario)}
                                       </span>
                                       <span className="block text-[9px] text-slate-500 mt-0.5">
-                                        (⚡{formatCOP(c.costoEnergiaUnitario)} + 🧵{formatCOP(c.costoFilamentoUnitario)})
+                                        Energía {formatCOP(c.costoEnergiaUnitario)} · Material {formatCOP(c.costoFilamentoUnitario)}
+                                        {c.costoDiseno > 0 ? ` · Diseño ${formatCOP(c.costoDiseno)}` : ''}
+                                        {c.costoAccesorios > 0 ? ` · Accesorios ${formatCOP(c.costoAccesorios)}` : ''}
                                       </span>
                                     </div>
 
