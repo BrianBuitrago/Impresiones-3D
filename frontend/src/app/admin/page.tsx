@@ -743,7 +743,13 @@ export default function AdminPage() {
 
                       {/* ── CALCULADORA POR PRODUCTO ── */}
                       <div className="space-y-5">
-                        <h3 className="text-lg font-bold text-white px-1">Cotizaciones pendientes y cálculo por producto</h3>
+                        <div className="flex items-center justify-between p-3 bg-slate-900/30 border border-slate-800 rounded-lg">
+                          <h3 className="text-xl md:text-2xl font-extrabold text-white flex items-center gap-3">
+                            <FileText className="w-5 h-5 text-cyan-400" />
+                            <span>Cotizaciones pendientes y cálculo por producto</span>
+                          </h3>
+                          <div className="text-sm text-slate-400">{filteredQuotes.length} cotización{filteredQuotes.length !== 1 ? 'es' : ''}</div>
+                        </div>
 
                         {selectedQuote.productos.map((producto: any, idx: number) => {
                           const c = calcProduct(idx, producto.unidades);
