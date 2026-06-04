@@ -27,6 +27,7 @@ import {
   Percent,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { jsPDF } from 'jspdf';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -388,6 +389,89 @@ export default function AdminPage() {
     }
   };
 
+  const handleGeneratePdfAndOpenWhatsApp = () => {
+    if (!selectedQuote) return;
+
+    const totals = getQuoteTotals();
+    const cliente = selectedQuote.cliente || {};
+    const clienteNombre = cliente.nombre || 'Cliente';
+    const clienteCedula = cliente.cedula || 'No disponible';
+    const clienteTelefono = String(cliente.telefono || '').replace(/[^0-9]/g, '');
+
+    if (!clienteTelefono) {
+      alert('El teléfono del cliente no es válido para WhatsApp. Verifica el número en la cotización.');
+      return;
+    }
+
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const margin = 40;
+    let y = 50;
+
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cotización de Impresión 3D', margin, y);
+
+    y += 30;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Referencia: ${selectedQuote.id}`, margin, y);
+    doc.text(`Fecha: ${selectedQuote.Fecha || selectedQuote.creadoEn || 'N/A'}`, margin + 300, y);
+
+    y += 20;
+    doc.text(`Cliente: ${clienteNombre}`, margin, y);
+    doc.text(`Cédula: ${clienteCedula}`, margin + 300, y);
+
+    y += 20;
+    doc.text(`Teléfono: ${selectedQuote.cliente?.telefono || 'No disponible'}`, margin, y);
+    doc.text(`Correo: ${selectedQuote.cliente?.email || 'No disponible'}`, margin + 300, y);
+
+    y += 25;
+    doc.setDrawColor(200);
+    doc.line(margin, y, 555, y);
+    y += 20;
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Productos', margin, y);
+    y += 18;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    selectedQuote.productos.forEach((p: any, idx: number) => {
+      if (y > 730) {
+        doc.addPage();
+        y = 50;
+      }
+      const nombreProducto = p.nombre || p.descripcionLineal || `Producto ${idx + 1}`;
+      doc.text(`${idx + 1}. ${nombreProducto}`, margin, y);
+      y += 14;
+      doc.text(`   Cantidad: ${p.unidades || 0} · Precio unitario: ${formatCOP(p.precioUnitario || p.Precio_Unitario || 0)}`, margin, y);
+      y += 14;
+      doc.text(`   Total: ${formatCOP(p.precioTotal || p.Precio_Total || 0)}`, margin, y);
+      y += 16;
+    });
+
+    doc.setDrawColor(200);
+    doc.line(margin, y, 555, y);
+    y += 18;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total cotización: ${formatCOP(totals.total)}`, margin, y);
+    y += 16;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Subtotal fabricación: ${formatCOP(totals.subtotalFabricacion)}`, margin, y);
+    y += 14;
+    doc.text(`Ganancia: ${formatCOP(totals.ganancia)}`, margin, y);
+
+    const filename = `cotizacion-${selectedQuote.id}.pdf`;
+    doc.save(filename);
+
+    const message = `Hola ${clienteNombre}, te envío la cotización final. Cédula: ${clienteCedula}. Total: ${formatCOP(totals.total)}. Referencia: ${selectedQuote.id}.`;
+    const waUrl = `https://wa.me/${clienteTelefono}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+  };
+
   // ── Guards ────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -655,6 +739,12 @@ export default function AdminPage() {
                             <span className="block text-slate-500 uppercase tracking-wider">ID Cliente</span>
                             <span className="font-semibold text-slate-200 block truncate">
                               {selectedQuote.ID_Cliente || selectedQuote.cliente?.uid || 'No disponible'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-slate-500 uppercase tracking-wider">Cédula</span>
+                            <span className="font-semibold text-slate-200 block truncate">
+                              {selectedQuote.cliente?.cedula || 'No disponible'}
                             </span>
                           </div>
                           <div>
@@ -1121,6 +1211,15 @@ export default function AdminPage() {
                                 <CheckCircle2 className="w-4 h-4" />
                               )}
                               Guardar y Enviar Cotización
+                            </button>
+
+                            <button
+                              disabled={saving}
+                              onClick={handleGeneratePdfAndOpenWhatsApp}
+                              className="py-3 px-5 bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/10 disabled:opacity-50"
+                            >
+                              <Zap className="w-4 h-4" />
+                              Generar PDF y WhatsApp
                             </button>
 
                             <div className="flex gap-2">

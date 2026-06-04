@@ -16,6 +16,7 @@ import {
   User,
   Phone,
   Mail,
+  IdCard,
   Package,
   Ruler,
   Hash,
@@ -137,6 +138,7 @@ export default function Cotizar() {
   const [nombre,   setNombre]   = useState('');
   const [telefono, setTelefono] = useState('');
   const [email,    setEmail]    = useState('');
+  const [cedula,   setCedula]   = useState('');
   const [notasCotizacion, setNotasCotizacion] = useState('');
 
   // Producto en edición y lista acumulada
@@ -155,6 +157,7 @@ export default function Cotizar() {
       setNombre(profile.nombre   || '');
       setTelefono(profile.telefono || '');
       setEmail(profile.email     || '');
+      setCedula(profile.cedula     || '');
     }
   }, [profile]);
 
@@ -253,8 +256,8 @@ export default function Cotizar() {
     e.preventDefault();
     setError(null);
 
-    if (!nombre.trim() || !telefono.trim() || !email.trim()) {
-      setError('Por favor completa todos los campos de contacto.');
+    if (!nombre.trim() || !telefono.trim() || !email.trim() || !cedula.trim()) {
+      setError('Por favor completa todos los campos de contacto, incluida tu cédula.');
       return;
     }
 
@@ -341,6 +344,7 @@ export default function Cotizar() {
           nombre,
           telefono,
           email,
+          cedula,
           uid: user?.uid || null,
         },
         productos:  productosFinales,
@@ -373,7 +377,7 @@ export default function Cotizar() {
       setProductos([]);
       setProductoActual(newProduct());
       setNotasCotizacion('');
-      if (!profile) { setNombre(''); setTelefono(''); setEmail(''); }
+      if (!profile) { setNombre(''); setTelefono(''); setEmail(''); setCedula(''); }
     } catch (err: any) {
       console.error('Error al guardar cotización:', err);
       setError(err.message || 'Ocurrió un error al enviar tu cotización. Inténtalo de nuevo.');
@@ -546,6 +550,24 @@ export default function Cotizar() {
                     onChange={e => setTelefono(e.target.value)}
                     required
                     placeholder="+57 300 123 4567"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Cédula */}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Cédula <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={cedula}
+                    onChange={e => setCedula(e.target.value)}
+                    required
+                    placeholder="1234567890"
                     className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
                   />
                 </div>
