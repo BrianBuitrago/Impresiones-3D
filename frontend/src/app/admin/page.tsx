@@ -389,7 +389,29 @@ export default function AdminPage() {
     }
   };
 
-  const handleGeneratePdfAndOpenWhatsApp = () => {
+  const fetchImageDataUrl = async (imageUrl: string): Promise<string | null> => {
+    try {
+      return await new Promise<string>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject(new Error('No se puede acceder al canvas.'));
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => reject(new Error('No se pudo cargar la imagen.'));
+        img.src = imageUrl;
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  const handleGeneratePdfAndOpenWhatsApp = async () => {
     if (!selectedQuote) return;
 
     const totals = getQuoteTotals();
@@ -405,64 +427,94 @@ export default function AdminPage() {
 
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const margin = 40;
-    let y = 50;
+    let y = 40;
 
-    doc.setFontSize(18);
+    doc.setFillColor(6, 182, 212);
+    doc.rect(0, 0, 595, 120, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.text('Cotización de Impresión 3D', margin, y);
-
-    y += 30;
+    doc.setFontSize(24);
+    doc.setTextColor(255, 255, 255);
+    doc.text('Impresiones 3D', margin, y + 20);
     doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Referencia: ${selectedQuote.id}`, margin, y);
-    doc.text(`Fecha: ${selectedQuote.Fecha || selectedQuote.creadoEn || 'N/A'}`, margin + 300, y);
+    doc.setTextColor(229, 231, 235);
+    doc.text('Cotización de fabricación 3D', margin, y + 38);
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(1.2);
+    doc.line(margin, y + 48, 555, y + 48);
 
-    y += 20;
-    doc.text(`Cliente: ${clienteNombre}`, margin, y);
-    doc.text(`Cédula: ${clienteCedula}`, margin + 300, y);
+    const quoteImageUrl = selectedQuote.productos?.find((p: any) => p.imagenUrl)?.imagenUrl;
+    if (quoteImageUrl) {
+      const imageDataUrl = await fetchImageDataUrl(quoteImageUrl);
+      if (imageDataUrl) {
+        try {
+          doc.addImage(imageDataUrl, 'JPEG', 420, 20, 150, 90);
+        } catch {
+          doc.setFillColor(15, 118, 255);
+          doc.rect(420, 20, 150, 90, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(10);
+          doc.text('Imagen', 435, 65);
+          doc.text('de cotización', 435, 80);
+        }
+      }
+    } else {
+      doc.setFillColor(15, 118, 255);
+      doc.rect(420, 20, 150, 90, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.text('Imagen', 435, 65);
+      doc.text('de cotización', 435, 80);
+    }
 
-    y += 20;
-    doc.text(`Teléfono: ${selectedQuote.cliente?.telefono || 'No disponible'}`, margin, y);
-    doc.text(`Correo: ${selectedQuote.cliente?.email || 'No disponible'}`, margin + 300, y);
+    y += 80;
+    doc.setTextColor(13, 42, 56);
+    doc.setFontSize(10);
+    doc.text(`Referencia: ${selectedQuote.id}`, margin, y + 14);
+    doc.text(`Fecha: ${selectedQuote.Fecha || selectedQuote.creadoEn || 'N/A'}`, margin + 250, y + 14);
+    doc.text(`Cédula: ${clienteCedula}`, margin, y + 32);
+    doc.text(`Teléfono: ${selectedQuote.cliente?.telefono || 'No disponible'}`, margin + 250, y + 32);
+    doc.text(`Email: ${selectedQuote.cliente?.email || 'No disponible'}`, margin, y + 50);
 
-    y += 25;
-    doc.setDrawColor(200);
-    doc.line(margin, y, 555, y);
-    y += 20;
+    y += 70;
+    doc.setFillColor(14, 165, 233);
+    doc.rect(margin, y, 515, 18, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.text('Resumen de la cotización', margin + 8, y + 13);
 
-    doc.setFontSize(12);
+    y += 35;
+    doc.setTextColor(17, 24, 39);
+    doc.setFontSize(11);
+    doc.text(`Subtotal fabricación: ${formatCOP(totals.subtotalFabricacion)}`, margin, y);
+    doc.text(`Ganancia: ${formatCOP(totals.ganancia)}`, margin + 280, y);
+    y += 18;
     doc.setFont('helvetica', 'bold');
-    doc.text('Productos', margin, y);
+    doc.setFontSize(14);
+    doc.text(`Total cotización: ${formatCOP(totals.total)}`, margin, y);
+
+    y += 28;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.text('Productos cotizados', margin, y);
     y += 18;
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-
     selectedQuote.productos.forEach((p: any, idx: number) => {
-      if (y > 730) {
+      if (y > 720) {
         doc.addPage();
         y = 50;
       }
       const nombreProducto = p.nombre || p.descripcionLineal || `Producto ${idx + 1}`;
+      doc.setFontSize(10);
+      doc.setTextColor(51, 65, 85);
       doc.text(`${idx + 1}. ${nombreProducto}`, margin, y);
       y += 14;
-      doc.text(`   Cantidad: ${p.unidades || 0} · Precio unitario: ${formatCOP(p.precioUnitario || p.Precio_Unitario || 0)}`, margin, y);
+      doc.setFontSize(9);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Cantidad: ${p.unidades || 0} · Precio unitario: ${formatCOP(p.precioUnitario || p.Precio_Unitario || 0)}`, margin, y);
+      y += 12;
+      doc.text(`Total: ${formatCOP(p.precioTotal || p.Precio_Total || 0)}`, margin, y);
       y += 14;
-      doc.text(`   Total: ${formatCOP(p.precioTotal || p.Precio_Total || 0)}`, margin, y);
-      y += 16;
     });
-
-    doc.setDrawColor(200);
-    doc.line(margin, y, 555, y);
-    y += 18;
-
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Total cotización: ${formatCOP(totals.total)}`, margin, y);
-    y += 16;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Subtotal fabricación: ${formatCOP(totals.subtotalFabricacion)}`, margin, y);
-    y += 14;
-    doc.text(`Ganancia: ${formatCOP(totals.ganancia)}`, margin, y);
 
     const filename = `cotizacion-${selectedQuote.id}.pdf`;
     doc.save(filename);
@@ -833,13 +885,22 @@ export default function AdminPage() {
 
                       {/* ── CALCULADORA POR PRODUCTO ── */}
                       <div className="space-y-5">
-                        <div className="flex items-center justify-between p-3 bg-slate-900/30 border border-slate-800 rounded-lg">
-                          <h3 className="text-xl md:text-2xl font-extrabold text-white flex items-center gap-3">
-                            <FileText className="w-5 h-5 text-cyan-400" />
-                            <span>Cotizaciones pendientes y cálculo por producto</span>
-                          </h3>
-                          <div className="text-sm text-slate-400">{filteredQuotes.length} cotización{filteredQuotes.length !== 1 ? 'es' : ''}</div>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-gradient-to-r from-slate-950 via-cyan-950 to-blue-950 border border-cyan-500/20 rounded-3xl shadow-xl shadow-cyan-500/10 text-white">
+                        <div className="space-y-2 max-w-3xl">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/20 text-cyan-200 text-[11px] font-bold uppercase tracking-[0.22em]">
+                            <FileText className="w-4 h-4" />
+                            PENDIENTES
+                          </div>
+                          <h3 className="text-xl md:text-2xl font-extrabold">Cálculo por producto</h3>
+                          <p className="text-sm text-slate-300">
+                            Ajusta horas, peso, empaque y personalización con mayor claridad. El panel ahora aprovecha mejor el espacio.
+                          </p>
                         </div>
+                        <div className="flex flex-col items-start sm:items-end gap-1">
+                          <span className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Total cotizaciones</span>
+                          <span className="text-3xl font-extrabold text-white">{filteredQuotes.length}</span>
+                        </div>
+                      </div>
 
                         {selectedQuote.productos.map((producto: any, idx: number) => {
                           const c = calcProduct(idx, producto.unidades);
@@ -957,156 +1018,145 @@ export default function AdminPage() {
                                   </div>
                                 </div>
                               )}
-                              <div className="space-y-1.5">
-                                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                  Tiempo (h)
-                                    </label>
-                                    <div className="relative">
-                                      <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={vals.tiempoHoras}
-                                        onChange={e => handleCalcChange(idx, 'tiempoHoras', e.target.value)}
-                                        className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40"
-                                      />
-                                    </div>
-                                    <p className="text-[9px] text-yellow-400/70">
-                                      {Math.round(c.duracion)} min total
-                                    </p>
-                                  </div>
-
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Tiempo (min)
-                                    </label>
-                                    <div className="relative">
-                                      <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={vals.tiempoMinutos}
-                                        onChange={e => handleCalcChange(idx, 'tiempoMinutos', e.target.value)}
-                                        className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40"
-                                      />
-                                    </div>
-                                    <p className="text-[9px] text-yellow-400/70">
-                                      = {formatCOP(c.costoEnergiaUnitario)}/u
-                                    </p>
-                                  </div>
-
-                                  {/* Filamento */}
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Peso (g)
-                                    </label>
-                                    <div className="relative">
-                                      <Weight className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={vals.pesoGramos}
-                                        onChange={e => handleCalcChange(idx, 'pesoGramos', e.target.value)}
-                                        className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40"
-                                      />
-                                    </div>
-                                    <p className="text-[9px] text-blue-400/70">
-                                      = {formatCOP(c.costoFilamentoUnitario)}/u
-                                    </p>
-                                  </div>
-
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Diseño ($/u)
-                                    </label>
+                              <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 border-b border-slate-800/50 bg-slate-950/80 rounded-b-3xl">
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Tiempo (h)
+                                  </label>
+                                  <div className="relative">
+                                    <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-300" />
                                     <input
                                       type="number"
                                       min="0"
-                                      value={vals.costoDiseno}
-                                      onChange={e => handleCalcChange(idx, 'costoDiseno', e.target.value)}
-                                      className="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40 text-right"
+                                      value={vals.tiempoHoras}
+                                      onChange={e => handleCalcChange(idx, 'tiempoHoras', e.target.value)}
+                                      className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400"
                                     />
-                                    <p className="text-[9px] text-slate-500">Por unidad</p>
                                   </div>
+                                  <p className="text-[9px] text-slate-400">{Math.round(c.duracion)} min total</p>
+                                </div>
 
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Accesorios ($/u)
-                                    </label>
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Tiempo (min)
+                                  </label>
+                                  <div className="relative">
+                                    <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-300" />
                                     <input
                                       type="number"
                                       min="0"
-                                      value={vals.costoAccesorios}
-                                      onChange={e => handleCalcChange(idx, 'costoAccesorios', e.target.value)}
-                                      className="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40 text-right"
+                                      value={vals.tiempoMinutos}
+                                      onChange={e => handleCalcChange(idx, 'tiempoMinutos', e.target.value)}
+                                      className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400"
                                     />
-                                    <p className="text-[9px] text-slate-500">Por unidad</p>
                                   </div>
+                                  <p className="text-[9px] text-slate-400">= {formatCOP(c.costoEnergiaUnitario)}/u</p>
+                                </div>
 
-                                  {/* Ganancia */}
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Ganancia (%)
-                                    </label>
-                                    <div className="relative">
-                                      <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="1000"
-                                        value={vals.ganancia}
-                                        onChange={e => handleCalcChange(idx, 'ganancia', e.target.value)}
-                                        className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-bold focus:outline-none focus:border-cyan-500/40"
-                                      />
-                                    </div>
-                                    <p className="text-[9px] text-emerald-400/70">
-                                      + {formatCOP(c.gananciaTotal / (producto.unidades || 1))}/u
-                                    </p>
-                                  </div>
-
-                                  {/* Precio unitario calculado */}
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Precio unitario
-                                    </label>
-                                    <input
-                                      type="text"
-                                      readOnly
-                                      value={formatCOP(c.precioUnitario)}
-                                      className="w-full px-2.5 py-2 bg-cyan-950/20 border border-cyan-500/30 rounded-lg text-cyan-300 text-xs font-bold focus:outline-none text-right"
-                                    />
-                                    <p className="text-[9px] text-slate-500">Base + ganancia</p>
-                                  </div>
-
-                                  {/* Valor personalización */}
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Personaliz. ($/u)
-                                    </label>
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Peso (g)
+                                  </label>
+                                  <div className="relative">
+                                    <Weight className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-300" />
                                     <input
                                       type="number"
                                       min="0"
-                                      value={vals.costoPersonalizado}
-                                      onChange={e => handleCalcChange(idx, 'costoPersonalizado', e.target.value)}
-                                      className="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40 text-right"
+                                      value={vals.pesoGramos}
+                                      onChange={e => handleCalcChange(idx, 'pesoGramos', e.target.value)}
+                                      className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400"
                                     />
-                                    <p className="text-[9px] text-slate-500">Por unidad</p>
                                   </div>
+                                  <p className="text-[9px] text-slate-400">= {formatCOP(c.costoFilamentoUnitario)}/u</p>
+                                </div>
 
-                                  {/* Valor empaque */}
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                      Empaque ($/u)
-                                    </label>
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Diseño ($/u)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={vals.costoDiseno}
+                                    onChange={e => handleCalcChange(idx, 'costoDiseno', e.target.value)}
+                                    className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400 text-right"
+                                  />
+                                  <p className="text-[9px] text-slate-500">Por unidad</p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Accesorios ($/u)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={vals.costoAccesorios}
+                                    onChange={e => handleCalcChange(idx, 'costoAccesorios', e.target.value)}
+                                    className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400 text-right"
+                                  />
+                                  <p className="text-[9px] text-slate-500">Por unidad</p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Ganancia (%)
+                                  </label>
+                                  <div className="relative">
+                                    <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-300" />
                                     <input
                                       type="number"
                                       min="0"
-                                      value={vals.costoEmpaque}
-                                      onChange={e => handleCalcChange(idx, 'costoEmpaque', e.target.value)}
-                                      className="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs font-semibold focus:outline-none focus:border-cyan-500/40 text-right"
+                                      max="1000"
+                                      value={vals.ganancia}
+                                      onChange={e => handleCalcChange(idx, 'ganancia', e.target.value)}
+                                      className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-bold focus:outline-none focus:border-cyan-400"
                                     />
-                                    <p className="text-[9px] text-slate-500">Por unidad</p>
                                   </div>
+                                  <p className="text-[9px] text-emerald-400/70">+ {formatCOP(c.gananciaTotal / (producto.unidades || 1))}/u</p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Precio unitario
+                                  </label>
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={formatCOP(c.precioUnitario)}
+                                    className="w-full px-2.5 py-2 bg-cyan-950/20 border border-cyan-500/30 rounded-2xl text-cyan-300 text-xs font-bold focus:outline-none text-right"
+                                  />
+                                  <p className="text-[9px] text-slate-500">Base + ganancia</p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Personaliz. ($/u)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={vals.costoPersonalizado}
+                                    onChange={e => handleCalcChange(idx, 'costoPersonalizado', e.target.value)}
+                                    className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400 text-right"
+                                  />
+                                  <p className="text-[9px] text-slate-500">Por unidad</p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Empaque ($/u)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={vals.costoEmpaque}
+                                    onChange={e => handleCalcChange(idx, 'costoEmpaque', e.target.value)}
+                                    className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400 text-right"
+                                  />
+                                  <p className="text-[9px] text-slate-500">Por unidad</p>
+                                </div>
+                              </div>
 
                                 {/* Resultados desglosados */}
                                 <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
