@@ -25,6 +25,11 @@ import {
   ChevronUp,
   RefreshCw,
   Percent,
+  X,
+  Table2,
+  FileDown,
+  Printer,
+  LayoutGrid,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
@@ -58,6 +63,118 @@ interface CalcEntry {
   costoPersonalizado: string;
   ganancia: string;
 }
+
+const ProductCalculatedCostsTable = ({ producto, index, c }: { producto: any; index: number; c: any }) => {
+  return (
+    <div className="border border-slate-800 rounded-2xl overflow-hidden bg-slate-950/50 mb-4">
+      {/* Barra de título del producto */}
+      <div className="bg-slate-900/60 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
+        <span className="text-xs font-bold text-white">Producto #{index + 1}: {producto.nombre}</span>
+        <span className="text-[10px] bg-cyan-950/40 text-cyan-400 px-2.5 py-0.5 rounded-full border border-cyan-800/20 font-semibold">
+          {producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''}
+        </span>
+      </div>
+
+      <div className="divide-y divide-slate-850">
+        {/* PARÁMETROS */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
+          <div className="md:col-span-1 flex items-center">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Parámetros</span>
+          </div>
+          <div className="md:col-span-3 grid grid-cols-3 gap-2">
+            <div className="bg-slate-900/20 p-2.5 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Tiempo Unidad</span>
+              <span className="text-xs font-semibold text-slate-200">{c.tiempoHoras}h {c.tiempoMinutos}min ({Math.round(c.duracion)} min)</span>
+            </div>
+            <div className="bg-slate-900/20 p-2.5 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Peso Unidad</span>
+              <span className="text-xs font-semibold text-slate-200">{c.filamento}g</span>
+            </div>
+            <div className="bg-slate-900/20 p-2.5 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Cantidad</span>
+              <span className="text-xs font-semibold text-slate-200">{producto.unidades} unds.</span>
+            </div>
+          </div>
+        </div>
+
+        {/* COSTOS UNITARIOS */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
+          <div className="md:col-span-1 flex items-center">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Costos/u</span>
+          </div>
+          <div className="md:col-span-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div className="bg-slate-900/20 p-2 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Energía</span>
+              <span className="text-xs font-semibold text-slate-300">{formatCOP(c.costoEnergiaUnitario)}</span>
+            </div>
+            <div className="bg-slate-900/20 p-2 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Material</span>
+              <span className="text-xs font-semibold text-slate-300">{formatCOP(c.costoFilamentoUnitario)}</span>
+            </div>
+            <div className="bg-slate-900/20 p-2 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Diseño</span>
+              <span className="text-xs font-semibold text-slate-300">{formatCOP(c.costoDiseno)}</span>
+            </div>
+            <div className="bg-slate-900/20 p-2 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Accesorios</span>
+              <span className="text-xs font-semibold text-slate-300">{formatCOP(c.costoAccesorios)}</span>
+            </div>
+            <div className="bg-slate-900/20 p-2 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Empaque</span>
+              <span className="text-xs font-semibold text-slate-300">{formatCOP(c.valorEmpaque)}</span>
+            </div>
+            <div className="bg-slate-900/20 p-2 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Personaliz.</span>
+              <span className="text-xs font-semibold text-slate-300">{formatCOP(c.valorPersonalizacion)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* SUBTOTALES */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
+          <div className="md:col-span-1 flex items-center">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Subtotales</span>
+          </div>
+          <div className="md:col-span-3 grid grid-cols-3 gap-2">
+            <div className="bg-slate-900/20 p-2.5 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Subtotal Energía</span>
+              <span className="text-xs font-semibold text-slate-300">{formatCOP(c.subtotalEnergia)}</span>
+            </div>
+            <div className="bg-slate-900/20 p-2.5 rounded-xl border border-slate-800/40">
+              <span className="text-[9px] text-slate-500 block">Subtotal Material</span>
+              <span className="text-xs font-semibold text-slate-300">{formatCOP(c.subtotalMaterial)}</span>
+            </div>
+            <div className="bg-slate-900/20 p-2.5 rounded-xl border border-slate-800/40 text-cyan-400">
+              <span className="text-[9px] text-slate-500 block">Fabricación Total</span>
+              <span className="text-xs font-bold">{formatCOP(c.subtotalFabricacionTotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* PRECIO FINAL */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-slate-950/60">
+          <div className="md:col-span-1 flex items-center">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Precio Final</span>
+          </div>
+          <div className="md:col-span-3 grid grid-cols-3 gap-2">
+            <div className="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/60">
+              <span className="text-[9px] text-slate-500 block">Unitario Base</span>
+              <span className="text-xs font-semibold text-slate-300">{formatCOP(c.costoFabricacionUnitario)}</span>
+            </div>
+            <div className="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/60">
+              <span className="text-[9px] text-slate-500 block">Unitario c/Ganancia ({c.ganancia}%)</span>
+              <span className="text-xs font-bold text-cyan-400">{formatCOP(c.precioUnitario)}</span>
+            </div>
+            <div className="bg-emerald-950/15 p-2.5 rounded-xl border border-emerald-850 text-emerald-400">
+              <span className="text-[9px] text-emerald-500/80 block">Total Producto</span>
+              <span className="text-xs font-extrabold">{formatCOP(c.precioTotalProducto)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ── Componente principal ───────────────────────────────────────────────────────
 
@@ -97,6 +214,10 @@ export default function AdminPage() {
 
   // Guardando cotización
   const [saving, setSaving] = useState(false);
+
+  // Modal de Detalle
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailModalTab, setDetailModalTab] = useState<'resumen' | 'productos' | 'calculadora'>('resumen');
 
   // ── Cargar cotizaciones desde backend seguro ─────────────────────
 
@@ -411,6 +532,16 @@ export default function AdminPage() {
     }
   };
 
+  const formatQuoteDate = (isoDate?: string) => {
+    if (!isoDate) return 'N/A';
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) return 'N/A';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}/${month}/${year}`;
+  };
+
   const handleGeneratePdfAndOpenWhatsApp = async () => {
     if (!selectedQuote) return;
 
@@ -426,100 +557,311 @@ export default function AdminPage() {
     }
 
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageWidth = 595;
+    const pageHeight = 842;
     const margin = 40;
-    let y = 40;
+    const contentWidth = pageWidth - margin * 2; // 515
 
-    doc.setFillColor(6, 182, 212);
-    doc.rect(0, 0, 595, 120, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(24);
-    doc.setTextColor(255, 255, 255);
-    doc.text('Impresiones 3D', margin, y + 20);
-    doc.setFontSize(11);
-    doc.setTextColor(229, 231, 235);
-    doc.text('Cotización de fabricación 3D', margin, y + 38);
-    doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(1.2);
-    doc.line(margin, y + 48, 555, y + 48);
+    let pageNum = 1;
 
-    const quoteImageUrl = selectedQuote.productos?.find((p: any) => p.imagenUrl)?.imagenUrl;
-    if (quoteImageUrl) {
-      const imageDataUrl = await fetchImageDataUrl(quoteImageUrl);
-      if (imageDataUrl) {
-        try {
-          doc.addImage(imageDataUrl, 'JPEG', 420, 20, 150, 90);
-        } catch {
-          doc.setFillColor(15, 118, 255);
-          doc.rect(420, 20, 150, 90, 'F');
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(10);
-          doc.text('Imagen', 435, 65);
-          doc.text('de cotización', 435, 80);
-        }
-      }
-    } else {
-      doc.setFillColor(15, 118, 255);
-      doc.rect(420, 20, 150, 90, 'F');
+    // Helper to draw Header and Footer
+    const drawPageDecorations = (pageNumber: number) => {
+      // Header Banner
+      doc.setFillColor(15, 23, 42); // Slate 900
+      doc.rect(0, 0, pageWidth, 90, 'F');
+      
+      doc.setFillColor(6, 182, 212); // Cyan 500 accent line
+      doc.rect(0, 90, pageWidth, 5, 'F');
+
+      // Title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.text('Imagen', 435, 65);
-      doc.text('de cotización', 435, 80);
+      doc.text('IMPRESIONES 3D', margin, 45);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(165, 180, 252); // soft indigo/blue
+      doc.text('Soluciones en Impresión y Diseño 3D', margin, 60);
+
+      // Quote Info (Right side)
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`COTIZACIÓN: ${selectedQuote.id}`, pageWidth - margin, 40, { align: 'right' });
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(209, 213, 219);
+      const fechaStr = formatQuoteDate(selectedQuote.Fecha || selectedQuote.creadoEn || '');
+      doc.text(`Fecha: ${fechaStr}   |   Estado: ${(selectedQuote.estado || 'pendiente').toUpperCase()}`, pageWidth - margin, 58, { align: 'right' });
+
+      // Footer
+      doc.setFillColor(248, 250, 252); // Slate 50
+      doc.rect(0, pageHeight - 40, pageWidth, 40, 'F');
+      
+      doc.setDrawColor(226, 232, 240); // Slate 200
+      doc.setLineWidth(0.5);
+      doc.line(0, pageHeight - 40, pageWidth, pageHeight - 40);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139); // Slate 500
+      doc.text('Impresiones 3D | Tel: +57 300 000 0000 | info@impresiones3d.com', margin, pageHeight - 20);
+      doc.text(`Página ${pageNumber}`, pageWidth - margin, pageHeight - 20, { align: 'right' });
+    };
+
+    // Initialize Page 1
+    drawPageDecorations(pageNum);
+    let y = 120;
+
+    // --- CLIENT CARD ---
+    doc.setFillColor(248, 250, 252); // Slate 50 background
+    doc.rect(margin, y, contentWidth, 80, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(1);
+    doc.rect(margin, y, contentWidth, 80, 'D');
+
+    // Accent line on the left side of client card
+    doc.setFillColor(6, 182, 212);
+    doc.rect(margin, y, 4, 80, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105); // Slate 600
+    doc.text('DATOS DEL CLIENTE', margin + 15, y + 18);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42); // Slate 900
+    doc.text(clienteNombre, margin + 15, y + 34);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Cédula: ${clienteCedula}`, margin + 15, y + 50);
+    doc.text(`Teléfono: ${selectedQuote.cliente?.telefono || 'No disponible'}`, margin + 15, y + 64);
+
+    doc.text(`Email: ${selectedQuote.cliente?.email || 'No disponible'}`, margin + 250, y + 50);
+    doc.text(`ID Cliente: ${selectedQuote.ID_Cliente || selectedQuote.cliente?.uid || 'No disponible'}`, margin + 250, y + 64);
+
+    y += 100;
+
+    // --- NOTES BOX (if exists) ---
+    const notasText = selectedQuote.Notas_Cotizacion || selectedQuote.notasCotizacion || '';
+    if (notasText.trim()) {
+      doc.setFillColor(254, 253, 246); // Warm Amber 50
+      doc.setDrawColor(253, 230, 138); // Amber 200
+      
+      const splitNotes = doc.splitTextToSize(`Notas: ${notasText}`, contentWidth - 30);
+      const notesHeight = Math.max(36, splitNotes.length * 11 + 16);
+      
+      doc.rect(margin, y, contentWidth, notesHeight, 'F');
+      doc.rect(margin, y, contentWidth, notesHeight, 'D');
+      
+      doc.setFillColor(245, 158, 11); // Amber 500 left strip
+      doc.rect(margin, y, 4, notesHeight, 'F');
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(120, 53, 4); // Amber 900
+      doc.text(splitNotes, margin + 15, y + 14);
+      
+      y += notesHeight + 15;
     }
 
-    y += 80;
-    doc.setTextColor(13, 42, 56);
-    doc.setFontSize(10);
-    doc.text(`Referencia: ${selectedQuote.id}`, margin, y + 14);
-    doc.text(`Fecha: ${selectedQuote.Fecha || selectedQuote.creadoEn || 'N/A'}`, margin + 250, y + 14);
-    doc.text(`Cédula: ${clienteCedula}`, margin, y + 32);
-    doc.text(`Teléfono: ${selectedQuote.cliente?.telefono || 'No disponible'}`, margin + 250, y + 32);
-    doc.text(`Email: ${selectedQuote.cliente?.email || 'No disponible'}`, margin, y + 50);
-
-    y += 70;
-    doc.setFillColor(14, 165, 233);
-    doc.rect(margin, y, 515, 18, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.text('Resumen de la cotización', margin + 8, y + 13);
-
-    y += 35;
-    doc.setTextColor(17, 24, 39);
-    doc.setFontSize(11);
-    doc.text(`Subtotal fabricación: ${formatCOP(totals.subtotalFabricacion)}`, margin, y);
-    doc.text(`Ganancia: ${formatCOP(totals.ganancia)}`, margin + 280, y);
-    y += 18;
+    // --- PRODUCTS ---
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(`Total cotización: ${formatCOP(totals.total)}`, margin, y);
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text('DETALLE DE PRODUCTOS COTIZADOS', margin, y);
+    y += 15;
 
-    y += 28;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    doc.text('Productos cotizados', margin, y);
-    y += 18;
-
-    selectedQuote.productos.forEach((p: any, idx: number) => {
-      if (y > 720) {
+    // We will render each product in a beautifully styled card box.
+    for (let idx = 0; idx < selectedQuote.productos.length; idx++) {
+      const p = selectedQuote.productos[idx];
+      const c = calcProduct(idx, p.unidades);
+      
+      const boxHeight = 150;
+      if (y + boxHeight > pageHeight - 60) {
         doc.addPage();
-        y = 50;
+        pageNum++;
+        drawPageDecorations(pageNum);
+        y = 120;
       }
-      const nombreProducto = p.nombre || p.descripcionLineal || `Producto ${idx + 1}`;
-      doc.setFontSize(10);
-      doc.setTextColor(51, 65, 85);
-      doc.text(`${idx + 1}. ${nombreProducto}`, margin, y);
-      y += 14;
-      doc.setFontSize(9);
-      doc.setTextColor(107, 114, 128);
-      doc.text(`Cantidad: ${p.unidades || 0} · Precio unitario: ${formatCOP(p.precioUnitario || p.Precio_Unitario || 0)}`, margin, y);
-      y += 12;
-      doc.text(`Total: ${formatCOP(p.precioTotal || p.Precio_Total || 0)}`, margin, y);
-      y += 14;
-    });
 
+      // Draw product card background
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(203, 213, 225); // Slate 300
+      doc.setLineWidth(1);
+      doc.rect(margin, y, contentWidth, boxHeight, 'FD');
+
+      // Top title bar for product card
+      doc.setFillColor(241, 245, 249); // Slate 100
+      doc.rect(margin, y, contentWidth, 24, 'F');
+      doc.line(margin, y + 24, margin + contentWidth, y + 24);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`PRODUCTO #${idx + 1}: ${p.nombre || p.descripcionLineal}`, margin + 12, y + 15);
+      doc.text(`${p.unidades} unidad${p.unidades !== 1 ? 'es' : ''}`, margin + contentWidth - 12, y + 15, { align: 'right' });
+
+      const col1X = margin + 12;
+      const col2X = margin + 172;
+      const col3X = margin + 352;
+
+      // Division lines vertical
+      doc.setDrawColor(226, 232, 240);
+      doc.line(col2X - 10, y + 24, col2X - 10, y + boxHeight);
+      doc.line(col3X - 10, y + 24, col3X - 10, y + boxHeight);
+
+      // --- Col 1: Parámetros ---
+      let innerY = y + 38;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('PARÁMETROS', col1X, innerY);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`• Tiempo: ${c.tiempoHoras}h ${c.tiempoMinutos}m`, col1X, innerY + 14);
+      doc.text(`• Peso: ${c.filamento} g`, col1X, innerY + 26);
+      doc.text(`• Tamaño: ${p.tamanoHorizontal || 0}×${p.tamanoVertical || 0} mm`, col1X, innerY + 38);
+      doc.text(`• Empaque: ${p.empaque || 'Ninguno'}`, col1X, innerY + 50);
+
+      // --- Col 2: Costos Unitarios ($/u) ---
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('DESGLOSE DE COSTO UNITARIO', col2X, innerY);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text(`Energía:`, col2X, innerY + 14);
+      doc.text(formatCOP(c.costoEnergiaUnitario), col2X + 110, innerY + 14, { align: 'right' });
+      
+      doc.text(`Material:`, col2X, innerY + 24);
+      doc.text(formatCOP(c.costoFilamentoUnitario), col2X + 110, innerY + 24, { align: 'right' });
+      
+      doc.text(`Diseño:`, col2X, innerY + 34);
+      doc.text(formatCOP(c.costoDiseno), col2X + 110, innerY + 34, { align: 'right' });
+
+      doc.text(`Accesorios:`, col2X, innerY + 44);
+      doc.text(formatCOP(c.costoAccesorios), col2X + 110, innerY + 44, { align: 'right' });
+
+      doc.text(`Empaque:`, col2X, innerY + 54);
+      doc.text(formatCOP(c.valorEmpaque), col2X + 110, innerY + 54, { align: 'right' });
+
+      doc.text(`Personalización:`, col2X, innerY + 64);
+      doc.text(formatCOP(c.valorPersonalizacion), col2X + 110, innerY + 64, { align: 'right' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Costo Fab. Base/u:`, col2X, innerY + 80);
+      doc.text(formatCOP(c.costoFabricacionUnitario), col2X + 110, innerY + 80, { align: 'right' });
+
+      // --- Col 3: Totales ---
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('TOTALES DE LÍNEA', col3X, innerY);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text(`Subtotal Energía:`, col3X, innerY + 14);
+      doc.text(formatCOP(c.subtotalEnergia), col3X + 140, innerY + 14, { align: 'right' });
+
+      doc.text(`Subtotal Material:`, col3X, innerY + 24);
+      doc.text(formatCOP(c.subtotalMaterial), col3X + 140, innerY + 24, { align: 'right' });
+
+      doc.text(`Costo Fab. Total:`, col3X, innerY + 34);
+      doc.text(formatCOP(c.subtotalFabricacionTotal), col3X + 140, innerY + 34, { align: 'right' });
+
+      doc.text(`Margen Ganancia (${c.ganancia}%):`, col3X, innerY + 44);
+      doc.text(formatCOP(c.gananciaTotal), col3X + 140, innerY + 44, { align: 'right' });
+
+      doc.text(`Precio Unit. c/Gan.:`, col3X, innerY + 58);
+      doc.text(formatCOP(c.precioUnitario), col3X + 140, innerY + 58, { align: 'right' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(16, 185, 129); // Emerald 500
+      doc.text(`PRECIO TOTAL PRODUCTO:`, col3X, innerY + 76);
+      doc.text(formatCOP(c.precioTotalProducto), col3X + 140, innerY + 76, { align: 'right' });
+
+      y += boxHeight + 12;
+    }
+
+    // --- FINAL TOTALS BOX ---
+    const totalBoxHeight = 100;
+    if (y + totalBoxHeight > pageHeight - 60) {
+      doc.addPage();
+      pageNum++;
+      drawPageDecorations(pageNum);
+      y = 120;
+    }
+
+    doc.setFillColor(15, 23, 42); // Slate 900 background
+    doc.rect(margin, y, contentWidth, totalBoxHeight, 'F');
+
+    // Decorative vertical line on left side
+    doc.setFillColor(16, 185, 129); // Emerald 500 accent
+    doc.rect(margin, y, 4, totalBoxHeight, 'F');
+
+    let totalY = y + 22;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(226, 232, 240);
+    doc.text('RESUMEN GENERAL DE COTIZACIÓN', margin + 20, totalY);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(148, 163, 184); // Slate 400
+    doc.text(`Subtotal Fabricación Acumulado:`, margin + 20, totalY + 18);
+    doc.text(formatCOP(totals.subtotalFabricacion), margin + 280, totalY + 18);
+
+    doc.text(`Ganancia Total Estimada:`, margin + 20, totalY + 32);
+    doc.text(formatCOP(totals.ganancia), margin + 280, totalY + 32);
+
+    const promedioGanancia = selectedQuote.productos.length > 0
+      ? Math.round(selectedQuote.productos.reduce((acc: number, p: any) => acc + (p.porcentajeGanancia || p.ganancia || 30), 0) / selectedQuote.productos.length)
+      : 30;
+    doc.text(`Promedio Porcentaje Ganancia:`, margin + 20, totalY + 46);
+    doc.text(`${promedioGanancia}%`, margin + 280, totalY + 46);
+
+    doc.setDrawColor(51, 65, 85);
+    doc.setLineWidth(0.5);
+    doc.line(margin + 20, totalY + 56, margin + contentWidth - 20, totalY + 56);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`PRECIO TOTAL FINAL:`, margin + 20, totalY + 70);
+    doc.setTextColor(52, 211, 153); // Emerald 400
+    doc.text(formatCOP(totals.total), margin + 280, totalY + 70);
+
+    y += totalBoxHeight + 20;
+
+    // Contact/Signature line
+    if (y + 40 > pageHeight - 60) {
+      doc.addPage();
+      pageNum++;
+      drawPageDecorations(pageNum);
+      y = 120;
+    }
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Esta cotización es válida por 15 días a partir de la fecha de expedición.', margin, y);
+
+    // Save and send WhatsApp
     const filename = `cotizacion-${selectedQuote.id}.pdf`;
     doc.save(filename);
 
-    const message = `Hola ${clienteNombre}, te envío la cotización final. Cédula: ${clienteCedula}. Total: ${formatCOP(totals.total)}. Referencia: ${selectedQuote.id}.`;
+    const message = `Hola ${clienteNombre}, te envío la cotización detallada. Cédula: ${clienteCedula}. Total: ${formatCOP(totals.total)}. Referencia: ${selectedQuote.id}.`;
     const waUrl = `https://wa.me/${clienteTelefono}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank');
   };
@@ -719,37 +1061,57 @@ export default function AdminPage() {
                     ) : filteredQuotes.length === 0 ? (
                       <div className="py-10 text-center text-slate-500 text-xs">Sin resultados</div>
                     ) : (
-                      filteredQuotes.map(q => (
-                        <button
-                          key={q.id}
-                          onClick={() => handleSelectQuote(q)}
-                          className={`w-full text-left p-3.5 rounded-xl border transition-all flex flex-col gap-1.5 cursor-pointer ${
-                            selectedQuote?.id === q.id
-                              ? 'bg-slate-800/40 border-cyan-500/50 shadow shadow-cyan-500/5'
-                              : 'bg-slate-950/30 border-slate-800 hover:bg-slate-900/30'
-                          }`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-mono text-cyan-400 font-bold truncate max-w-[120px]">
-                              {q.id}
-                            </span>
-                            <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${estadoBadgeClass(q.estado)}`}>
-                              {q.estado}
-                            </span>
+                      filteredQuotes.map(q => {
+                        const isSelected = selectedQuote?.id === q.id;
+                        return (
+                          <div
+                            key={q.id}
+                            onClick={() => handleSelectQuote(q)}
+                            className={`w-full text-left p-3.5 rounded-xl border transition-all flex flex-col gap-2 cursor-pointer ${
+                              isSelected
+                                ? 'bg-slate-800/40 border-cyan-500/50 shadow shadow-cyan-500/5'
+                                : 'bg-slate-950/30 border-slate-800 hover:bg-slate-900/30'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start">
+                              <span className="text-[10px] font-mono text-cyan-400 font-bold truncate max-w-[120px]">
+                                {q.id}
+                              </span>
+                              <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${estadoBadgeClass(q.estado)}`}>
+                                {q.estado}
+                              </span>
+                            </div>
+                            <p className="text-xs font-semibold text-white truncate">
+                              {q.cliente?.nombre || 'Sin nombre'}
+                            </p>
+                            <div className="flex justify-between items-center mt-1">
+                              <span className="text-[10px] text-slate-400">
+                                {q.productos?.length || 0} producto{q.productos?.length !== 1 ? 's' : ''}
+                              </span>
+                              {q.precioTotalCotizacion > 0 && (
+                                <span className="text-xs font-bold text-emerald-400">
+                                  {formatCOP(q.precioTotalCotizacion)}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="flex justify-end pt-2 border-t border-slate-800/40 mt-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectQuote(q);
+                                  setDetailModalTab('resumen');
+                                  setIsDetailModalOpen(true);
+                                }}
+                                className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-[10px] font-bold rounded-md flex items-center gap-1 transition-all cursor-pointer"
+                              >
+                                <Eye className="w-3 h-3" />
+                                Ver Detalle
+                              </button>
+                            </div>
                           </div>
-                          <p className="text-xs font-semibold text-white truncate">
-                            {q.cliente?.nombre || 'Sin nombre'}
-                          </p>
-                          <span className="text-[10px] text-slate-400">
-                            {q.productos?.length || 0} producto{q.productos?.length !== 1 ? 's' : ''}
-                          </span>
-                          {q.precioTotalCotizacion > 0 && (
-                            <span className="text-xs font-bold text-emerald-400">
-                              {formatCOP(q.precioTotalCotizacion)}
-                            </span>
-                          )}
-                        </button>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -766,7 +1128,19 @@ export default function AdminPage() {
                             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">
                               Cotización
                             </span>
-                            <h2 className="text-2xl font-extrabold text-white">{selectedQuote.cliente?.nombre}</h2>
+                            <h2 className="text-2xl font-extrabold text-white flex flex-wrap items-center gap-3">
+                              {selectedQuote.cliente?.nombre}
+                              <button
+                                onClick={() => {
+                                  setDetailModalTab('resumen');
+                                  setIsDetailModalOpen(true);
+                                }}
+                                className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-[10px] font-bold rounded-lg flex items-center gap-1 transition-all border border-cyan-500/20 cursor-pointer"
+                              >
+                                <LayoutGrid className="w-3.5 h-3.5" />
+                                Vista Detalle
+                              </button>
+                            </h2>
                             <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-400 mt-2">
                               <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {selectedQuote.cliente?.email}</span>
                               <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {selectedQuote.cliente?.telefono}</span>
@@ -1159,64 +1533,7 @@ export default function AdminPage() {
                               </div>
 
                                 {/* Resultados desglosados */}
-                                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
-                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-3">
-                                    Resumen de Costos — {producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''}
-                                  </p>
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-
-                                    <div>
-                                      <span className="text-[10px] text-slate-500 block mb-1">
-                                        Costo Fabricación Base/u:
-                                      </span>
-                                      <span className="font-semibold text-slate-300">
-                                        {formatCOP(c.costoFabricacionUnitario)}
-                                      </span>
-                                      <span className="block text-[9px] text-slate-500 mt-0.5">
-                                        Energía {formatCOP(c.costoEnergiaUnitario)} · Material {formatCOP(c.costoFilamentoUnitario)}
-                                        {c.costoDiseno > 0 ? ` · Diseño ${formatCOP(c.costoDiseno)}` : ''}
-                                        {c.costoAccesorios > 0 ? ` · Accesorios ${formatCOP(c.costoAccesorios)}` : ''}
-                                      </span>
-                                    </div>
-
-                                    <div>
-                                      <span className="text-[10px] text-slate-500 block mb-1">
-                                        Precio Unitario/u:
-                                      </span>
-                                      <span className="font-bold text-cyan-400">
-                                        {formatCOP(c.precioUnitario)}
-                                      </span>
-                                      <span className="block text-[9px] text-slate-500 mt-0.5">
-                                        Fabricación + ganancia
-                                      </span>
-                                    </div>
-
-                                    <div>
-                                      <span className="text-[10px] text-slate-500 block mb-1">
-                                        Subtotal Fabricación Total:
-                                      </span>
-                                      <span className="font-semibold text-slate-200">
-                                        {formatCOP(c.subtotalFabricacionTotal)}
-                                      </span>
-                                      <span className="block text-[9px] text-emerald-400/80 mt-0.5">
-                                        Ganancia: {formatCOP(c.gananciaTotal)}
-                                      </span>
-                                    </div>
-
-                                    <div className="border-l border-slate-800 pl-4">
-                                      <span className="text-[10px] text-slate-500 block mb-1">
-                                        Precio Total Producto:
-                                      </span>
-                                      <span className="font-extrabold text-emerald-400 text-sm">
-                                        {formatCOP(c.precioTotalProducto)}
-                                      </span>
-                                      <span className="block text-[9px] text-slate-500 mt-0.5">
-                                        {formatCOP(c.precioTotalUnitario)}/u inc. empaque y personaliz.
-                                      </span>
-                                    </div>
-
-                                  </div>
-                                </div>
+                                <ProductCalculatedCostsTable producto={producto} index={idx} c={c} />
 
                             </div>
                           );
@@ -1225,31 +1542,31 @@ export default function AdminPage() {
 
                       {/* ── TOTALES Y ACCIONES ── */}
                       <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
 
                           {/* Totales */}
-                          <div className="space-y-1">
+                          <div className="space-y-1 min-w-0">
                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                               Totales de la Cotización
                             </p>
-                            <div className="grid grid-cols-3 gap-6 mt-2 text-xs text-slate-400">
-                              <div>
-                                <span className="block">Subtotal Fabricación:</span>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2 text-xs text-slate-400">
+                              <div className="min-w-0">
+                                <span className="block truncate">Subtotal Fabricación:</span>
                                 <span className="font-bold text-slate-200">{formatCOP(totals.subtotalFabricacion)}</span>
                               </div>
-                              <div>
-                                <span className="block">Valor Ganancia:</span>
+                              <div className="min-w-0">
+                                <span className="block truncate">Valor Ganancia:</span>
                                 <span className="font-bold text-cyan-400">{formatCOP(totals.ganancia)}</span>
                               </div>
-                              <div>
-                                <span className="block text-sm font-bold text-white">Precio Total:</span>
-                                <span className="font-extrabold text-emerald-400 text-2xl">{formatCOP(totals.total)}</span>
+                              <div className="min-w-0">
+                                <span className="block text-sm font-bold text-white truncate">Precio Total:</span>
+                                <span className="font-extrabold text-emerald-400 text-2xl block truncate">{formatCOP(totals.total)}</span>
                               </div>
                             </div>
                           </div>
 
                           {/* Botones de acción */}
-                          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                             <button
                               disabled={saving}
                               onClick={() => handleSaveQuote('cotizado')}
@@ -1456,6 +1773,383 @@ export default function AdminPage() {
 
         </AnimatePresence>
       </div>
+
+      {/* ── Modal de Detalle Completo ── */}
+      <AnimatePresence>
+        {isDetailModalOpen && selectedQuote && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDetailModalOpen(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+
+            {/* Modal Content */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-2xl z-10"
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">
+                    VISTA DETALLADA
+                  </span>
+                  <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-cyan-400" />
+                    {selectedQuote.cliente?.nombre}
+                  </h3>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${estadoBadgeClass(selectedQuote.estado)}`}>
+                    {selectedQuote.estado}
+                  </span>
+                  <span className="text-xs font-mono text-slate-500">{selectedQuote.id}</span>
+                  <button
+                    onClick={() => setIsDetailModalOpen(false)}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Navigation Tabs */}
+              <div className="flex bg-slate-950/20 border-b border-slate-800/80 px-6">
+                {[
+                  { id: 'resumen', label: '📋 Resumen' },
+                  { id: 'productos', label: '🔧 Productos' },
+                  { id: 'calculadora', label: '🖩 Calculadora' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setDetailModalTab(tab.id as any)}
+                    className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+                      detailModalTab === tab.id
+                        ? 'border-cyan-500 text-cyan-400'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {detailModalTab === 'resumen' && (
+                  <div className="space-y-6">
+                    {/* Client & Date Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800">
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Información de Contacto</h4>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-slate-500 block">Nombre</span>
+                            <span className="text-slate-200 font-semibold">{selectedQuote.cliente?.nombre}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block">Cédula</span>
+                            <span className="text-slate-200 font-semibold">{selectedQuote.cliente?.cedula || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block">Teléfono</span>
+                            <span className="text-slate-200 font-semibold">{selectedQuote.cliente?.telefono}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block">Email</span>
+                            <span className="text-slate-200 font-semibold truncate block">{selectedQuote.cliente?.email}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Detalles de Cotización</h4>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-slate-500 block">Fecha Creación</span>
+                            <span className="text-slate-200 font-semibold">{formatQuoteDate(selectedQuote.Fecha || selectedQuote.creadoEn)}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block">ID Cliente</span>
+                            <span className="text-slate-200 font-semibold truncate block">{selectedQuote.ID_Cliente || selectedQuote.cliente?.uid || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block">Piezas Totales</span>
+                            <span className="text-slate-200 font-semibold">{selectedQuote.Cantidad_Total_Piezas || selectedQuote.cantidadTotalPiezas || 0}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block">Estado Actual</span>
+                            <span className="text-cyan-400 font-semibold capitalize">{selectedQuote.estado}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    <div className="bg-slate-950/40 p-5 rounded-2xl border border-slate-800 space-y-2">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Notas de Cotización</h4>
+                      {selectedQuote.Notas_Cotizacion || selectedQuote.notasCotizacion ? (
+                        <p className="text-xs text-slate-300 bg-slate-900/50 p-3 rounded-xl border border-slate-800/80 italic">
+                          "{selectedQuote.Notas_Cotizacion || selectedQuote.notasCotizacion}"
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-500 italic">No hay notas registradas para esta cotización.</p>
+                      )}
+                    </div>
+
+                    {/* Totals Summary */}
+                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Totales Estimados</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/50">
+                          <span className="text-[10px] text-slate-500 block mb-1">SUBTOTAL FABRICACIÓN ACUMULADO</span>
+                          <span className="text-lg font-bold text-slate-200">{formatCOP(totals.subtotalFabricacion)}</span>
+                        </div>
+                        <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/50">
+                          <span className="text-[10px] text-slate-500 block mb-1">VALOR GANANCIA TOTAL</span>
+                          <span className="text-lg font-bold text-cyan-400">{formatCOP(totals.ganancia)}</span>
+                        </div>
+                        <div className="bg-emerald-950/10 p-4 rounded-xl border border-emerald-800/30 text-emerald-400">
+                          <span className="text-[10px] text-emerald-500/80 block mb-1">PRECIO TOTAL COTIZACIÓN</span>
+                          <span className="text-2xl font-extrabold block">{formatCOP(totals.total)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Estado controls in summary */}
+                    <div className="flex flex-wrap gap-3 items-center justify-between bg-slate-950/30 p-4 rounded-2xl border border-slate-800/50">
+                      <span className="text-xs text-slate-400 font-medium">Cambiar Estado Directamente:</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSaveQuote('cotizado')}
+                          className="py-2 px-3 bg-cyan-950/40 border border-cyan-800/35 hover:bg-cyan-900/50 text-cyan-400 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                        >
+                          Cotizado
+                        </button>
+                        <button
+                          onClick={() => handleSaveQuote('aceptado')}
+                          className="py-2 px-3 bg-emerald-950/40 border border-emerald-800/35 hover:bg-emerald-900/50 text-emerald-400 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                        >
+                          Aceptado
+                        </button>
+                        <button
+                          onClick={() => handleSaveQuote('rechazado')}
+                          className="py-2 px-3 bg-red-950/40 border border-red-800/35 hover:bg-red-900/50 text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                        >
+                          Rechazado
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {detailModalTab === 'productos' && (
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Desglose de Costos de Fabricación y Precios por Producto</h4>
+                    {selectedQuote.productos.map((producto: any, idx: number) => {
+                      const c = calcProduct(idx, producto.unidades);
+                      return (
+                        <ProductCalculatedCostsTable
+                          key={idx}
+                          producto={producto}
+                          index={idx}
+                          c={c}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                {detailModalTab === 'calculadora' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">Editar Valores y Costos de Fabricación</h4>
+                        <p className="text-xs text-slate-500">Los cambios se aplican al instante para recalcular los totales.</p>
+                      </div>
+                    </div>
+
+                    {selectedQuote.productos.map((producto: any, idx: number) => {
+                      const c = calcProduct(idx, producto.unidades);
+                      const vals = calcValues[idx] || {
+                        tiempoHoras: '0',
+                        tiempoMinutos: '0',
+                        pesoGramos: '0',
+                        costoDiseno: '0',
+                        costoAccesorios: '0',
+                        costoEmpaque: '0',
+                        costoPersonalizado: '0',
+                        ganancia: '30',
+                      };
+
+                      return (
+                        <div key={idx} className="bg-slate-950/30 border border-slate-850 rounded-2xl p-5 space-y-4">
+                          <div className="flex items-center justify-between border-b border-slate-800/50 pb-2">
+                            <span className="text-xs font-bold text-cyan-400">#{idx + 1} - {producto.nombre}</span>
+                            <span className="text-[10px] text-slate-400">{producto.unidades} unidades</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tiempo (h)</label>
+                              <div className="relative">
+                                <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-300" />
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={vals.tiempoHoras}
+                                  onChange={e => handleCalcChange(idx, 'tiempoHoras', e.target.value)}
+                                  className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-cyan-500/20 rounded-xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tiempo (min)</label>
+                              <div className="relative">
+                                <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-300" />
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={vals.tiempoMinutos}
+                                  onChange={e => handleCalcChange(idx, 'tiempoMinutos', e.target.value)}
+                                  className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-cyan-500/20 rounded-xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Peso (g)</label>
+                              <div className="relative">
+                                <Weight className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-300" />
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={vals.pesoGramos}
+                                  onChange={e => handleCalcChange(idx, 'pesoGramos', e.target.value)}
+                                  className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-cyan-500/20 rounded-xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Diseño ($/u)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={vals.costoDiseno}
+                                onChange={e => handleCalcChange(idx, 'costoDiseno', e.target.value)}
+                                className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400 text-right"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Accesorios ($/u)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={vals.costoAccesorios}
+                                onChange={e => handleCalcChange(idx, 'costoAccesorios', e.target.value)}
+                                className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400 text-right"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Ganancia (%)</label>
+                              <div className="relative">
+                                <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-300" />
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={vals.ganancia}
+                                  onChange={e => handleCalcChange(idx, 'ganancia', e.target.value)}
+                                  className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-cyan-500/20 rounded-xl text-slate-100 text-xs font-bold focus:outline-none focus:border-cyan-400"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Personaliz. ($/u)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={vals.costoPersonalizado}
+                                onChange={e => handleCalcChange(idx, 'costoPersonalizado', e.target.value)}
+                                className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400 text-right"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Empaque ($/u)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={vals.costoEmpaque}
+                                onChange={e => handleCalcChange(idx, 'costoEmpaque', e.target.value)}
+                                className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400 text-right"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Precio Unitario c/Ganancia</label>
+                              <input
+                                type="text"
+                                readOnly
+                                value={formatCOP(c.precioUnitario)}
+                                className="w-full px-2.5 py-2 bg-cyan-950/20 border border-cyan-500/30 rounded-xl text-cyan-300 text-xs font-bold focus:outline-none text-right"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div className="px-6 py-4 border-t border-slate-800 bg-slate-950/40 flex flex-col sm:flex-row sm:justify-between items-center gap-3">
+                <div>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">Total Seleccionado</span>
+                  <span className="text-lg font-extrabold text-emerald-400">{formatCOP(totals.total)}</span>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    disabled={saving}
+                    onClick={() => handleSaveQuote('cotizado')}
+                    className="py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {saving ? <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    Guardar Cotización
+                  </button>
+
+                  <button
+                    onClick={handleGeneratePdfAndOpenWhatsApp}
+                    className="py-2.5 px-4 bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    Generar PDF y WhatsApp
+                  </button>
+
+                  <button
+                    onClick={() => setIsDetailModalOpen(false)}
+                    className="py-2.5 px-4 bg-slate-850 hover:bg-slate-800 border border-slate-800 text-slate-300 font-bold rounded-xl text-xs cursor-pointer"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
