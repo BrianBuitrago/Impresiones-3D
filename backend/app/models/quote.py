@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, root_validator, validator
 from typing import List, Optional
 
 class ClienteInfo(BaseModel):
@@ -6,8 +6,11 @@ class ClienteInfo(BaseModel):
     nombre: str = Field(..., min_length=2, max_length=120, description="Nombre del cliente")
     telefono: str = Field(..., min_length=7, max_length=30, description="Telefono de contacto")
     email: EmailStr = Field(..., description="Correo electronico")
+    cedula: Optional[str] = Field("", max_length=30, description="Documento de identidad")
 
 class ProductoItem(BaseModel):
+    idProducto: Optional[str] = Field("", max_length=80)
+    descripcionLineal: Optional[str] = Field("", max_length=700)
     nombre: str = Field(..., min_length=2, max_length=120, description="Nombre de la pieza o diseño")
     tamanoHorizontal: float = Field(..., gt=0, le=10000, description="Tamaño horizontal en mm")
     tamanoVertical: float = Field(..., gt=0, le=10000, description="Tamaño vertical en mm")
@@ -15,11 +18,16 @@ class ProductoItem(BaseModel):
     accesorios: Optional[str] = Field("", max_length=500, description="Accesorios requeridos opcionales")
     personalizacion: List[str] = Field(default_factory=list, description="Tipos de personalización seleccionados")
     personalizacionOtraText: Optional[str] = Field("", max_length=300, description="Detalle si se seleccionó 'Otra'")
+    personalizacionComentarios: dict[str, str] = Field(default_factory=dict)
     empaque: str = Field(..., description="Tipo de empaque")
     empaqueOtraText: Optional[str] = Field("", max_length=300, description="Detalle si se seleccionó 'Otra'")
     imagenUrl: Optional[str] = Field("", max_length=1000, description="URL de la imagen de referencia")
 
-    # Campos de cálculo (opcionales al inicio, asignados por admin/colaborador)
+    tiempoHoras: Optional[float] = 0.0
+    tiempoMinutos: Optional[float] = 0.0
+    pesoGramos: Optional[float] = 0.0
+    costoDisenoUnitario: Optional[float] = 0.0
+    costoAccesoriosUnitario: Optional[float] = 0.0
     duracionImpresionUnidad: Optional[float] = 0.0
     filamentoUsadoUnidad: Optional[float] = 0.0
     valorEmpaqueUnitario: Optional[float] = 0.0
@@ -40,8 +48,42 @@ class ProductoItem(BaseModel):
     Valor_Ganancia_Total: Optional[float] = 0.0
     Precio_Total: Optional[float] = 0.0
     Subtotal_Fabricacion_Total: Optional[float] = 0.0
+    subtotalEnergia: Optional[float] = 0.0
+    subtotalMaterial: Optional[float] = 0.0
+    precioLinealTotal: Optional[float] = 0.0
 
-    @validator("nombre", "accesorios", "personalizacionOtraText", "empaqueOtraText", "imagenUrl", pre=True, always=True)
+    @root_validator(pre=True)
+    def normalize_product_aliases(cls, values):
+        if not isinstance(values, dict):
+            return values
+        aliases = {
+            "ID_Producto": "idProducto",
+            "Descripcion_Lineal": "descripcionLineal",
+            "Tiempo_Horas": "tiempoHoras",
+            "Tiempo_Minutos": "tiempoMinutos",
+            "Peso_Gramos": "pesoGramos",
+            "Cantidad_Piezas": "unidades",
+            "Costo_Diseno": "costoDisenoUnitario",
+            "Costo_Diseño": "costoDisenoUnitario",
+            "costoDiseno": "costoDisenoUnitario",
+            "Costo_Accesorios": "costoAccesoriosUnitario",
+            "costoAccesorios": "costoAccesoriosUnitario",
+            "Costo_Personalizado": "valorPersonalizacionUnitario",
+            "costoPersonalizado": "valorPersonalizacionUnitario",
+            "Costo_Empaque": "valorEmpaqueUnitario",
+            "costoEmpaque": "valorEmpaqueUnitario",
+            "Subtotal_Energia": "subtotalEnergia",
+            "Subtotal_Material": "subtotalMaterial",
+            "Subtotal_Fabricacion": "subtotalFabricacionTotal",
+            "Precio_Unitario_Con_Ganancia": "precioConGananciaUnitario",
+            "Precio_Lineal_Total": "precioLinealTotal",
+        }
+        for source, target in aliases.items():
+            if source in values and target not in values:
+                values[target] = values[source]
+        return values
+
+    @validator("idProducto", "descripcionLineal", "nombre", "accesorios", "personalizacionOtraText", "empaqueOtraText", "imagenUrl", pre=True, always=True)
     def strip_text(cls, value):
         if value is None:
             return ""
@@ -80,25 +122,14 @@ class ProductoItem(BaseModel):
         return value
 
     @validator(
-        "duracionImpresionUnidad",
-        "filamentoUsadoUnidad",
-        "valorEmpaqueUnitario",
-        "valorPersonalizacionUnitario",
-        "precioKwhHora",
-        "precioKwhMinuto",
-        "precioFilamentoKg",
-        "precioFilamentoGramo",
-        "costoFabricacionUnitario",
-        "precioUnitario",
-        "precioConGananciaUnitario",
-        "precioTotalUnitario",
-        "subtotalFabricacionTotal",
-        "gananciaTotal",
-        "precioTotal",
-        "Precio_Unitario",
-        "Valor_Ganancia_Total",
-        "Precio_Total",
-        "Subtotal_Fabricacion_Total",
+        "duracionImpresionUnidad", "filamentoUsadoUnidad", "valorEmpaqueUnitario",
+        "valorPersonalizacionUnitario", "tiempoHoras", "tiempoMinutos", "pesoGramos",
+        "costoDisenoUnitario", "costoAccesoriosUnitario", "precioKwhHora", "precioKwhMinuto",
+        "precioFilamentoKg", "precioFilamentoGramo", "costoFabricacionUnitario",
+        "precioUnitario", "precioConGananciaUnitario", "precioTotalUnitario",
+        "subtotalFabricacionTotal", "gananciaTotal", "precioTotal",
+        "Precio_Unitario", "Valor_Ganancia_Total", "Precio_Total", "Subtotal_Fabricacion_Total",
+        "subtotalEnergia", "subtotalMaterial", "precioLinealTotal",
         always=True,
     )
     def validate_non_negative_number(cls, value):
@@ -116,9 +147,46 @@ class ProductoItem(BaseModel):
             raise ValueError("El porcentaje de ganancia debe estar entre 0 y 1000.")
         return value
 
+    class Config:
+        extra = "allow"
+
+
 class QuoteCreate(BaseModel):
     productos: List[ProductoItem] = Field(..., min_items=1, max_items=5, description="Lista de productos a cotizar")
     cliente: Optional[ClienteInfo] = Field(None, description="Datos de contacto si es invitado")
+    notasCotizacion: Optional[str] = Field("", max_length=1000)
+    precioTotalCotizacion: Optional[float] = None
+    subtotalFabricacionTotal: Optional[float] = None
+    valorGananciaTotal: Optional[float] = None
+    porcentajeGanancia: Optional[float] = None
+    cantidadTotalPiezas: Optional[int] = None
+    Fecha: Optional[str] = None
+    ID_Cliente: Optional[str] = None
+    Porcentaje_Ganancia: Optional[float] = None
+    Valor_Ganancia_Total: Optional[float] = None
+    Precio_Total_Cotizacion: Optional[float] = None
+    Subtotal_Fabricacion_Total: Optional[float] = None
+    Cantidad_Total_Piezas: Optional[int] = None
+    Notas_Cotizacion: Optional[str] = None
+
+    @root_validator(pre=True)
+    def normalize_quote_create_aliases(cls, values):
+        if isinstance(values, dict):
+            aliases = {
+                "Notas_Cotizacion": "notasCotizacion",
+                "Precio_Total_Cotizacion": "precioTotalCotizacion",
+                "Subtotal_Fabricacion_Total": "subtotalFabricacionTotal",
+                "Valor_Ganancia_Total": "valorGananciaTotal",
+                "Porcentaje_Ganancia": "porcentajeGanancia",
+                "Cantidad_Total_Piezas": "cantidadTotalPiezas",
+                "ID_Cliente": "ID_Cliente",
+                "Fecha": "Fecha",
+            }
+            for source, target in aliases.items():
+                if source in values and target not in values:
+                    values[target] = values[source]
+        return values
+
 
 class QuoteUpdate(BaseModel):
     productos: List[ProductoItem] = Field(..., min_items=1, max_items=5, description="Lista de productos con cálculos actualizados")
@@ -128,6 +196,24 @@ class QuoteUpdate(BaseModel):
     subtotalFabricacionTotal: float = Field(0.0, ge=0, description="Subtotal de fabricación de todos los productos")
     valorGananciaTotal: float = Field(0.0, ge=0, description="Ganancia total acumulada")
     precioTotalCotizacion: float = Field(0.0, ge=0, description="Precio total final de la cotización")
+    porcentajeGanancia: Optional[float] = Field(30.0, ge=0, le=1000)
+    notasCotizacion: Optional[str] = Field("", max_length=1000)
+
+    @root_validator(pre=True)
+    def normalize_quote_update_aliases(cls, values):
+        if not isinstance(values, dict):
+            return values
+        aliases = {
+            "Porcentaje_Ganancia": "porcentajeGanancia",
+            "Notas_Cotizacion": "notasCotizacion",
+            "Subtotal_Fabricacion_Total": "subtotalFabricacionTotal",
+            "Valor_Ganancia_Total": "valorGananciaTotal",
+            "Precio_Total_Cotizacion": "precioTotalCotizacion",
+        }
+        for source, target in aliases.items():
+            if source in values and target not in values:
+                values[target] = values[source]
+        return values
 
     @validator("estado")
     def validate_estado(cls, value):
@@ -137,19 +223,45 @@ class QuoteUpdate(BaseModel):
             raise ValueError("Estado de cotizacion no permitido.")
         return normalized
 
+    class Config:
+        extra = "allow"
+
+
+# ─── FIX: QuoteResponse acepta DatetimeWithNanoseconds de Firestore ───────────
 class QuoteResponse(BaseModel):
     id: str = Field(..., description="ID del documento en Firestore")
     cliente: ClienteInfo
     productos: List[ProductoItem]
     estado: str = Field("pendiente", description="Estado de la cotización")
-    creadoEn: str
+    creadoEn: Optional[str] = None        # ← era `str`, ahora Optional[str]
     actualizadoEn: Optional[str] = None
     precioKwhHora: Optional[float] = None
     precioFilamentoKg: Optional[float] = None
+    porcentajeGanancia: Optional[float] = None
     subtotalFabricacionTotal: Optional[float] = None
     valorGananciaTotal: Optional[float] = None
+    precioTotal: Optional[float] = None
     precioTotalCotizacion: Optional[float] = None
-    # Compatibilidad con casing alternativo
+    cantidadTotalPiezas: Optional[int] = None
+    notasCotizacion: Optional[str] = None
     Subtotal_Fabricacion_Total: Optional[float] = None
     Valor_Ganancia_Total: Optional[float] = None
+    Precio_Total: Optional[float] = None
     Precio_Total_Cotizacion: Optional[float] = None
+    Fecha: Optional[str] = None
+    ID_Cliente: Optional[str] = None
+    Porcentaje_Ganancia: Optional[float] = None
+    Cantidad_Total_Piezas: Optional[int] = None
+    Notas_Cotizacion: Optional[str] = None
+
+    @validator("creadoEn", "actualizadoEn", pre=True, always=True)
+    def parse_datetime_field(cls, v):
+        """Convierte DatetimeWithNanoseconds de Firestore a string ISO 8601."""
+        if v is None:
+            return None
+        if hasattr(v, "isoformat"):   # DatetimeWithNanoseconds y datetime estándar
+            return v.isoformat()
+        return str(v)
+
+    class Config:
+        extra = "allow"

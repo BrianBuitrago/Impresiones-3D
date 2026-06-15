@@ -21,6 +21,7 @@ Dado el stack que has elegido, la mejor forma de abordar este proyecto es separa
 * **Responsabilidad:** Interfaz de usuario, renderizado de modelos 3D, gestión del estado del cliente, autenticación de usuarios y visualización de datos.
 * **Interacción:** Consumirá la API de FastAPI para operaciones complejas (reportes, Google Sheets, cálculos pesados de costos) y se conectará directamente a Firebase (Firestore/Auth) para lecturas rápidas de catálogos y autenticación.
 * **Three.js:** Se utilizará para visualizar los modelos 3D en el catálogo o cuando un cliente solicite una cotización y suba un archivo STL/OBJ.
+* **PDFs en cliente:** Se añade `jspdf` para generar el PDF de cotización desde el panel administrativo y permitir su descarga inmediata.
 
 ### Backend (Python, FastAPI, Uvicorn)
 * **Responsabilidad:** Lógica de negocio compleja, integración con APIs externas (Google Sheets API), generación de reportes quincenales, cálculos de costos precisos y control transaccional del inventario.
