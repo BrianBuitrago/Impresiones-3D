@@ -21,6 +21,7 @@ export interface UserProfile {
   telefono: string;
   email: string;
   creado_en?: string;
+  categorias?: string[];
 }
 
 interface AuthContextType {
