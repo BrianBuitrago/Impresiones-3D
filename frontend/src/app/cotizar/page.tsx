@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { db } from '@/services/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import {
   Plus,
   Trash2,
@@ -95,6 +93,7 @@ const EMPAQUE_OPTIONS = [
 ];
 
 const MAX_PRODUCTOS = 5;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 // Valores por defecto para evitar `undefined` en entornos donde faltan las env vars
 const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dobul5gbb';
 const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'impresiones3d_unsigned';
@@ -132,7 +131,7 @@ async function uploadToCloudinary(file: File): Promise<string> {
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function Cotizar() {
-  const { profile, user } = useAuth();
+  const { profile, token } = useAuth();
 
   // Datos de contacto
   const [nombre,   setNombre]   = useState('');
@@ -336,43 +335,38 @@ export default function Cotizar() {
         });
       }
 
-      // 2. Guardar en Firestore directamente
-      const fecha = new Date();
-      const cantidadTotalPiezas = productosFinales.reduce((acc, p) => acc + (p.unidades || 0), 0);
+      // 2. Enviar al backend para validar identidad y limpiar valores calculados
       const quoteData = {
-        cliente: {
-          nombre,
-          telefono,
-          email,
-          cedula,
-          uid: user?.uid || null,
-        },
         productos:  productosFinales,
-        estado:     'pendiente',
-        creadoEn:   serverTimestamp(),
-        actualizadoEn: serverTimestamp(),
-        Fecha: fecha.toISOString(),
-        ID_Cliente: user?.uid || null,
-        porcentajeGanancia: 30,
-        Porcentaje_Ganancia: 30,
-        // Campos para que el admin calcule luego
-        subtotalFabricacionTotal: 0,
-        valorGananciaTotal:       0,
-        precioTotal:              0,
-        precioTotalCotizacion:    0,
-        cantidadTotalPiezas,
         notasCotizacion,
-        Subtotal_Fabricacion_Total: 0,
-        Valor_Ganancia_Total:       0,
-        Precio_Total:               0,
-        Precio_Total_Cotizacion:    0,
-        Cantidad_Total_Piezas:      cantidadTotalPiezas,
-        Notas_Cotizacion:           notasCotizacion,
+        ...(token
+          ? {}
+          : {
+              cliente: {
+                nombre,
+                telefono,
+                email,
+                cedula,
+              },
+            }),
       };
 
-      const docRef = await addDoc(collection(db, 'quotes'), quoteData);
+      const response = await fetch(`${API_URL}/quotes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(quoteData),
+      });
 
-      setQuoteId(docRef.id);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || 'No se pudo registrar la cotización.');
+      }
+
+      const createdQuote = await response.json();
+      setQuoteId(createdQuote.id);
       setSuccess(true);
       setProductos([]);
       setProductoActual(newProduct());
