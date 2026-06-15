@@ -6,6 +6,7 @@ class ClienteInfo(BaseModel):
     nombre: str = Field(..., min_length=2, max_length=120, description="Nombre del cliente")
     telefono: str = Field(..., min_length=7, max_length=30, description="Telefono de contacto")
     email: EmailStr = Field(..., description="Correo electronico")
+    cedula: Optional[str] = Field("", max_length=30, description="Documento de identidad")
 
 class ProductoItem(BaseModel):
     idProducto: Optional[str] = Field("", max_length=80)
@@ -17,6 +18,7 @@ class ProductoItem(BaseModel):
     accesorios: Optional[str] = Field("", max_length=500, description="Accesorios requeridos opcionales")
     personalizacion: List[str] = Field(default_factory=list, description="Tipos de personalización seleccionados")
     personalizacionOtraText: Optional[str] = Field("", max_length=300, description="Detalle si se seleccionó 'Otra'")
+    personalizacionComentarios: dict[str, str] = Field(default_factory=dict)
     empaque: str = Field(..., description="Tipo de empaque")
     empaqueOtraText: Optional[str] = Field("", max_length=300, description="Detalle si se seleccionó 'Otra'")
     imagenUrl: Optional[str] = Field("", max_length=1000, description="URL de la imagen de referencia")

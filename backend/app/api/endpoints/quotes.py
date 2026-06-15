@@ -12,7 +12,7 @@ DEFAULT_PRECIO_FILAMENTO_KG = 87000.0
 
 CLIENT_PRODUCT_FIELDS = {
     "idProducto", "descripcionLineal", "nombre", "tamanoHorizontal", "tamanoVertical", "unidades",
-    "accesorios", "personalizacion", "personalizacionOtraText",
+    "accesorios", "personalizacion", "personalizacionOtraText", "personalizacionComentarios",
     "empaque", "empaqueOtraText", "imagenUrl",
     "tiempoHoras", "tiempoMinutos", "pesoGramos",
     "costoDiseno", "costoAccesorios", "costoPersonalizado", "costoEmpaque",
@@ -216,7 +216,8 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
             "uid": uid,
             "nombre": user_data.get("nombre", ""),
             "telefono": user_data.get("telefono", ""),
-            "email": user_data.get("email", "")
+            "email": user_data.get("email", ""),
+            "cedula": user_data.get("cedula", "")
         }
     else:
         if not quote_in.cliente:
@@ -229,7 +230,8 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
             "uid": None,
             "nombre": quote_in.cliente.nombre.strip(),
             "telefono": quote_in.cliente.telefono.strip(),
-            "email": quote_in.cliente.email.strip()
+            "email": quote_in.cliente.email.strip(),
+            "cedula": (quote_in.cliente.cedula or "").strip()
         }
 
     productos_dict = [
