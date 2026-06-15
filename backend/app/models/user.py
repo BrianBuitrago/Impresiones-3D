@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -9,6 +9,7 @@ class UserBase(BaseModel):
     fecha_nacimiento: str = Field(..., description="Fecha de nacimiento en formato YYYY-MM-DD")
     telefono: str = Field(..., description="Número telefónico de contacto")
     email: EmailStr = Field(..., description="Correo electrónico del usuario")
+    categorias: List[str] = Field(default_factory=list, description="Categorías de trabajo asignadas al colaborador")
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, description="Contraseña del usuario (mínimo 6 caracteres)")
@@ -19,6 +20,10 @@ class UserCreate(UserBase):
         if 'password' in values and v != values['password']:
             raise ValueError('Las contraseñas no coinciden')
         return v
+
+    @validator('categorias', each_item=True, pre=True)
+    def strip_categoria(cls, v):
+        return v.strip().lower() if isinstance(v, str) else v
 
 class UserResponse(UserBase):
     uid: str = Field(..., description="ID único de Firebase Auth")

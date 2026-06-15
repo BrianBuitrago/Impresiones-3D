@@ -53,6 +53,7 @@ def register_user(user_in: UserCreate):
             "telefono": user_in.telefono,
             "email": user_in.email,
             "rol": "cliente",  # Rol por defecto para registros públicos
+            "categorias": user_in.categorias or [],
             "creado_en": datetime.utcnow().isoformat()
         }
         
@@ -136,6 +137,7 @@ def sync_google_user(request: GoogleSyncRequest):
             "telefono": request.telefono or "",
             "email": email,
             "rol": rol_asignado,
+            "categorias": request.categorias or [],
             "creado_en": datetime.utcnow().isoformat()
         }
         
