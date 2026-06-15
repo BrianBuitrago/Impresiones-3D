@@ -86,7 +86,7 @@ export default function AdminPage() {
   const router = useRouter();
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'cotizaciones' | 'usuarios'>('cotizaciones');
+  const [activeTab, setActiveTab] = useState<'cotizaciones' | 'usuarios' | 'reportes'>('cotizaciones');
 
   // Usuarios
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
@@ -181,6 +181,68 @@ export default function AdminPage() {
   useEffect(() => {
     if (activeTab === 'usuarios' && profile?.rol === 'administrador') fetchUsers();
   }, [activeTab, profile, token]);
+
+  // ── Reportes: cargar lista cuando el admin vea la pestaña
+  const fetchReports = async () => {
+    if (!token || profile?.rol !== 'administrador') return;
+    setReportsFetching(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/reports`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('No se pudieron cargar los reportes.');
+      setReportsList(await res.json());
+    } catch (err: any) {
+      setError(err.message || 'Error al cargar reportes.');
+    } finally {
+      setReportsFetching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'reportes' && profile?.rol === 'administrador') fetchReports();
+  }, [activeTab, profile, token]);
+
+  const handleSelectReport = (r: any) => {
+    setSelectedReport(r);
+  };
+
+  const [showReportForm, setShowReportForm] = useState(false);
+
+  const handleReportFormChange = (field: keyof ReportForm, value: any) => {
+    setReportForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddReportItem = () => {
+    setReportForm(prev => ({ ...prev, items: [...prev.items, { quoteId: '', productoId: '', categoria: '', descripcion: '', actividad: '', cantidad: '1', valor: '0', notas: '' }] }));
+  };
+
+  const handleRemoveReportItem = (index: number) => {
+    setReportForm(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
+  };
+
+  const handleCreateReport = async () => {
+    if (!token) return setError('No autenticado');
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(reportForm),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'No se pudo crear el reporte.');
+      }
+      const created = await res.json();
+      setReportsList(prev => [created, ...prev]);
+      setShowReportForm(false);
+      setReportForm({ colaboradorUid: profile?.uid || '', colaboradorNombre: profile?.nombre || '', periodo: '', categorias: profile?.categorias || [], notas: '', items: [] });
+    } catch (err: any) {
+      setError(err.message || 'Error al crear reporte.');
+    }
+  };
 
   // ── Inicializar calcValues al seleccionar cotización ──────────────────────
 
@@ -700,6 +762,19 @@ export default function AdminPage() {
             >
               <Users className="w-4 h-4" />
               Usuarios
+            </button>
+          )}
+          {profile?.rol === 'administrador' && (
+            <button
+              onClick={() => { setActiveTab('reportes'); setError(null); }}
+              className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'reportes'
+                  ? 'border-cyan-500 text-cyan-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Reportes
             </button>
           )}
         </div>
@@ -1518,6 +1593,138 @@ export default function AdminPage() {
                     </table>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB: REPORTES
+          ══════════════════════════════════════════════════════════════════ */}
+          {activeTab === 'reportes' && (
+            <motion.div
+              key="reportes"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <div className="backdrop-blur-md bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-white">Reportes mensuales</h2>
+                  <p className="text-sm text-slate-400">Crea y revisa reportes por colaborador y periodo.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => { setShowReportForm(true); setError(null); setReportForm({ colaboradorUid: profile?.uid || '', colaboradorNombre: profile?.nombre || '', periodo: '', categorias: profile?.categorias || [], notas: '', items: [] }); }}
+                    className="py-2 px-4 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-lg text-sm"
+                  >
+                    Nuevo Reporte
+                  </button>
+                  <button
+                    onClick={fetchReports}
+                    className="py-2 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300"
+                    title="Recargar"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-4 bg-slate-900/40 border border-slate-800 rounded-3xl p-4 shadow-xl space-y-4">
+                  <h3 className="text-sm font-bold text-white">Lista de reportes</h3>
+                  {reportsFetching ? (
+                    <div className="py-6 text-center text-slate-500">Cargando...</div>
+                  ) : reportsList.length === 0 ? (
+                    <div className="py-6 text-center text-slate-500">No hay reportes registrados.</div>
+                  ) : (
+                    <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+                      {reportsList.map(r => (
+                        <button key={r.id} onClick={() => handleSelectReport(r)} className={`w-full text-left p-3 rounded-xl border transition-all ${selectedReport?.id === r.id ? 'bg-slate-800/40 border-cyan-500/50' : 'bg-slate-950/30 border-slate-800 hover:bg-slate-900/30'}`}>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-mono text-cyan-400 font-bold">{r.periodo}</span>
+                            <span className="text-xs text-slate-400">{r.colaboradorNombre}</span>
+                          </div>
+                          <div className="text-[12px] text-slate-300 mt-1">Total: {r.totalPago ? `$${Math.round(r.totalPago).toLocaleString('es-CO')}` : '$0'}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:col-span-8 space-y-6">
+                  {showReportForm ? (
+                    <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6">
+                      <h3 className="text-lg font-bold text-white mb-4">Crear Reporte</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-slate-400">Colaborador</label>
+                          <select value={reportForm.colaboradorUid} onChange={e => {
+                            const uid = e.target.value;
+                            const u = usersList.find(x => x.uid === uid);
+                            handleReportFormChange('colaboradorUid', uid);
+                            handleReportFormChange('colaboradorNombre', u?.nombre || '');
+                            handleReportFormChange('categorias', u?.categorias || []);
+                          }} className="w-full py-2 px-3 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200">
+                            <option value="">-- Seleccionar --</option>
+                            {usersList.filter(u=>u.rol==='colaborador').map(u=> (<option key={u.uid} value={u.uid}>{u.nombre}</option>))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-slate-400">Periodo</label>
+                          <input value={reportForm.periodo} onChange={e=>handleReportFormChange('periodo', e.target.value)} placeholder="Enero/26" className="w-full py-2 px-3 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200"/>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <label className="text-xs text-slate-400">Notas</label>
+                        <textarea value={reportForm.notas} onChange={e=>handleReportFormChange('notas', e.target.value)} className="w-full mt-2 p-3 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200" rows={3} />
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-semibold text-white">Items</h4>
+                          <button onClick={handleAddReportItem} className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm">Agregar Item</button>
+                        </div>
+                        <div className="space-y-2">
+                          {reportForm.items.map((it, idx) => (
+                            <div key={idx} className="p-3 bg-slate-950 border border-slate-800 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                              <input placeholder="Descripción" value={it.descripcion} onChange={e=>{
+                                const v=e.target.value; setReportForm(prev=>{ const copy={...prev}; copy.items[idx].descripcion=v; return copy; });
+                              }} className="col-span-2 py-2 px-2 bg-transparent border border-slate-800 rounded text-sm text-slate-200" />
+                              <input placeholder="Categoria" value={it.categoria} onChange={e=>{ const v=e.target.value; setReportForm(prev=>{ const copy={...prev}; copy.items[idx].categoria=v; return copy; }); }} className="py-2 px-2 bg-transparent border border-slate-800 rounded text-sm text-slate-200" />
+                              <div className="flex gap-2">
+                                <input placeholder="Cant" value={it.cantidad} onChange={e=>{ const v=e.target.value; setReportForm(prev=>{ const copy={...prev}; copy.items[idx].cantidad=v; return copy; }); }} className="w-16 py-2 px-2 bg-transparent border border-slate-800 rounded text-sm text-slate-200" />
+                                <input placeholder="Valor" value={it.valor} onChange={e=>{ const v=e.target.value; setReportForm(prev=>{ const copy={...prev}; copy.items[idx].valor=v; return copy; }); }} className="w-28 py-2 px-2 bg-transparent border border-slate-800 rounded text-sm text-slate-200" />
+                                <button onClick={()=>handleRemoveReportItem(idx)} className="py-1 px-2 bg-red-600 hover:bg-red-500 text-white rounded text-sm">X</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 mt-6">
+                        <button onClick={handleCreateReport} className="py-2 px-4 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-lg">Guardar Reporte</button>
+                        <button onClick={()=>setShowReportForm(false)} className="py-2 px-4 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg">Cancelar</button>
+                      </div>
+                    </div>
+                  ) : selectedReport ? (
+                    <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6">
+                      <h3 className="text-lg font-bold text-white">{selectedReport.periodo} — {selectedReport.colaboradorNombre}</h3>
+                      <p className="text-sm text-slate-400 mt-2">Total a pagar: {selectedReport.totalPago ? `$${Math.round(selectedReport.totalPago).toLocaleString('es-CO')}` : '$0'}</p>
+                      <div className="mt-4 space-y-2">
+                        {selectedReport.items?.map((it:any, i:number)=>(
+                          <div key={i} className="p-3 bg-slate-950 border border-slate-800 rounded">{it.categoria} — {it.descripcion} — {it.cantidad} — ${Math.round(it.valor)}</div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-900/10 border border-slate-800 border-dashed rounded-3xl p-20 text-center text-slate-500">
+                      <FileText className="w-14 h-14 mx-auto mb-4 text-slate-800" />
+                      <p className="text-base font-bold text-slate-400">Selecciona o crea un reporte</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
