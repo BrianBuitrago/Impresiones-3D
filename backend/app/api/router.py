@@ -19,7 +19,7 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-# Importar reports de forma segura
+# Importar reportes de forma segura
 try:
     from app.api.endpoints import reports
     api_router.include_router(reports.router, prefix="/reports", tags=["Reportes"])
