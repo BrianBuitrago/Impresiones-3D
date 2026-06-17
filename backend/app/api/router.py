@@ -18,3 +18,12 @@ except Exception as e:
     print(f"ERROR: No se pudo registrar router de quotes: {e}", file=sys.stderr)
     import traceback
     traceback.print_exc()
+
+# Importar reportes de forma segura
+try:
+    from app.api.endpoints import reports
+    api_router.include_router(reports.router, prefix="/reports", tags=["Reportes"])
+except Exception as e:
+    print(f"ERROR: No se pudo registrar router de reports: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc()

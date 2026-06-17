@@ -6,37 +6,71 @@ import { useRouter } from 'next/navigation';
 import {
   ShieldAlert, ArrowLeft, BarChart3, Users, Tag, DollarSign,
   Plus, X, Search, RefreshCw, ChevronDown, ChevronUp, Filter,
-  FileText, Calendar, Layers, TrendingUp, Eye, Edit3,
+  FileText, Calendar, Layers, TrendingUp, User, Phone, Weight,
+  Clock, Ruler, Box, Palette, Sparkles, Pen,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type {
-  Colaborador, MonthlyReport, MonthlyReportCreate,
-  ComparativaColaborador, CollaboratorContribution,
-} from '@/types/reportes';
-import {
-  fetchColaboradores, fetchReportes, crearReporte, actualizarReporte,
-} from '@/services/reporteService';
+import type { Colaborador, ReportData, ReportItem, ProductoDetalle } from '@/types/reportes';
+import { fetchColaboradores, fetchReportes, crearReporte } from '@/services/reporteService';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
-const formatCOP = (v: number) =>
-  `$${Math.round(v).toLocaleString('es-CO')} COP`;
+const formatCOP = (v: number) => `$${Math.round(v).toLocaleString('es-CO')} COP`;
 
-const inputClass =
-  'w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 transition-colors';
+const inputClass = 'w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 transition-colors';
+const selectClass = 'w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer transition-colors';
 
-const selectClass =
-  'w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer transition-colors';
+interface ProductForm {
+  tempId: string;
+  nombre: string;
+  descripcion: string;
+  categoria: string;
+  cantidad: number;
+  valorUnitario: number;
+  pesoGramos: number;
+  tiempoHoras: number;
+  tiempoMinutos: number;
+  filamentoUsado: number;
+  costoDiseno: number;
+  costoAccesorios: number;
+  costoEmpaque: number;
+  costoPersonalizacion: number;
+  tamanoHorizontal: number;
+  tamanoVertical: number;
+  colaboradorUid: string;
+  colaboradorNombre: string;
+}
+
+const emptyProduct = (cols: Colaborador[]): ProductForm => ({
+  tempId: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+  nombre: '',
+  descripcion: '',
+  categoria: 'cajas',
+  cantidad: 1,
+  valorUnitario: 0,
+  pesoGramos: 0,
+  tiempoHoras: 0,
+  tiempoMinutos: 0,
+  filamentoUsado: 0,
+  costoDiseno: 0,
+  costoAccesorios: 0,
+  costoEmpaque: 0,
+  costoPersonalizacion: 0,
+  tamanoHorizontal: 0,
+  tamanoVertical: 0,
+  colaboradorUid: cols[0]?.uid || '',
+  colaboradorNombre: cols[0]?.nombre || '',
+});
 
 export default function ReportesPage() {
   const { user, profile, token, loading } = useAuth();
   const router = useRouter();
 
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
-  const [reportes, setReportes] = useState<MonthlyReport[]>([]);
+  const [reportes, setReportes] = useState<ReportData[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,88 +107,89 @@ export default function ReportesPage() {
     if (!loading) loadData();
   }, [loading, loadData]);
 
-  const reportesFiltrados = useMemo(() => {
-    return reportes.filter(r => {
-      if (filtroPeriodo && r.periodo !== filtroPeriodo) return false;
-      return true;
-    });
-  }, [reportes, filtroPeriodo]);
+  const reportesFiltrados = useMemo(() =>
+    reportes.filter(r => !filtroPeriodo || r.periodo === filtroPeriodo),
+    [reportes, filtroPeriodo]
+  );
 
   const itemsAplanados = useMemo(() => {
     const items: Array<{
       reportId: string;
       periodo: string;
-      descripcion: string;
-      colaboradorUid: string;
       colaboradorNombre: string;
       categoria: string;
+      descripcion: string;
       cantidad: number;
-      valorUnitario: number;
-      valorTotal: number;
-      notas?: string;
+      valor: number;
+      clienteNombre?: string;
+      clienteTelefono?: string;
+      origen?: string;
+      productoDetalle?: ProductoDetalle;
     }> = [];
 
     for (const r of reportesFiltrados) {
-      for (const item of r.items) {
-        for (const c of item.contribuciones) {
-          if (filtroColaboradores.length > 0 && !filtroColaboradores.includes(c.colaboradorUid)) continue;
-          if (filtroCategoria && c.categoria !== filtroCategoria) continue;
-          items.push({
-            reportId: r.id,
-            periodo: r.periodo,
-            descripcion: item.descripcion,
-            colaboradorUid: c.colaboradorUid,
-            colaboradorNombre: c.colaboradorNombre,
-            categoria: c.categoria,
-            cantidad: c.cantidad,
-            valorUnitario: c.valorUnitario,
-            valorTotal: c.cantidad * c.valorUnitario,
-            notas: item.notas,
-          });
-        }
+      for (const it of r.items) {
+        if (filtroColaboradores.length > 0 && !filtroColaboradores.includes(r.colaboradorUid)) continue;
+        if (filtroCategoria && it.categoria !== filtroCategoria) continue;
+        items.push({
+          reportId: r.id,
+          periodo: r.periodo,
+          colaboradorNombre: r.colaboradorNombre,
+          categoria: it.categoria,
+          descripcion: it.descripcion,
+          cantidad: it.cantidad,
+          valor: it.valor,
+          clienteNombre: it.clienteNombre,
+          clienteTelefono: it.clienteTelefono,
+          origen: it.origen,
+          productoDetalle: it.productoDetalle,
+        });
       }
     }
     return items;
   }, [reportesFiltrados, filtroColaboradores, filtroCategoria]);
 
   const comparativa = useMemo(() => {
-    const mapa = new Map<string, ComparativaColaborador>();
-    for (const item of itemsAplanados) {
-      let c = mapa.get(item.colaboradorUid);
+    const mapa = new Map<string, {
+      uid: string; nombre: string; totalGanado: number;
+      totalItems: number; itemsPorCategoria: Record<string, number>;
+      valorPorCategoria: Record<string, number>;
+    }>();
+    for (const r of reportesFiltrados) {
+      let c = mapa.get(r.colaboradorUid);
       if (!c) {
-        c = {
-          uid: item.colaboradorUid,
-          nombre: item.colaboradorNombre,
-          totalGanado: 0,
-          totalItems: 0,
-          itemsPorCategoria: {},
-          valorPorCategoria: {},
-        };
-        mapa.set(item.colaboradorUid, c);
+        c = { uid: r.colaboradorUid, nombre: r.colaboradorNombre, totalGanado: 0, totalItems: 0, itemsPorCategoria: {}, valorPorCategoria: {} };
+        mapa.set(r.colaboradorUid, c);
       }
-      c.totalGanado += item.valorTotal;
-      c.totalItems += item.cantidad;
-      c.itemsPorCategoria[item.categoria] = (c.itemsPorCategoria[item.categoria] || 0) + item.cantidad;
-      c.valorPorCategoria[item.categoria] = (c.valorPorCategoria[item.categoria] || 0) + item.valorTotal;
+      for (const it of r.items) {
+        c.totalGanado += it.valor;
+        c.totalItems += it.cantidad;
+        c.itemsPorCategoria[it.categoria] = (c.itemsPorCategoria[it.categoria] || 0) + it.cantidad;
+        c.valorPorCategoria[it.categoria] = (c.valorPorCategoria[it.categoria] || 0) + it.valor;
+      }
     }
     return Array.from(mapa.values()).sort((a, b) => b.totalGanado - a.totalGanado);
-  }, [itemsAplanados]);
+  }, [reportesFiltrados]);
 
   const kpiTotales = useMemo(() => {
-    const totalGanado = itemsAplanados.reduce((s, i) => s + i.valorTotal, 0);
-    const totalItems = itemsAplanados.reduce((s, i) => s + i.cantidad, 0);
-    const colaboradoresUnicos = new Set(itemsAplanados.map(i => i.colaboradorUid)).size;
-    const categoriasUnicas = new Set(itemsAplanados.map(i => i.categoria)).size;
-    return { totalGanado, totalItems, colaboradoresUnicos, categoriasUnicas };
-  }, [itemsAplanados]);
+    let totalGanado = 0, totalItems = 0;
+    const cols = new Set<string>(), cats = new Set<string>();
+    for (const r of reportesFiltrados) {
+      cols.add(r.colaboradorUid);
+      for (const it of r.items) {
+        totalGanado += it.valor;
+        totalItems += it.cantidad;
+        cats.add(it.categoria);
+      }
+    }
+    return { totalGanado, totalItems, colaboradoresUnicos: cols.size, categoriasUnicas: cats.size };
+  }, [reportesFiltrados]);
 
   useEffect(() => {
     const cats = new Set(categoriasDisponibles);
     for (const r of reportes) {
-      for (const item of r.items) {
-        for (const c of item.contribuciones) {
-          if (c.categoria) cats.add(c.categoria);
-        }
+      for (const it of r.items) {
+        if (it.categoria) cats.add(it.categoria);
       }
     }
     for (const col of colaboradores) {
@@ -172,12 +207,6 @@ export default function ReportesPage() {
     setNuevaCategoria('');
   };
 
-  const toggleFiltroColab = (uid: string) => {
-    setFiltroColaboradores(prev =>
-      prev.includes(uid) ? prev.filter(u => u !== uid) : [...prev, uid]
-    );
-  };
-
   if (loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center bg-slate-950">
@@ -193,20 +222,13 @@ export default function ReportesPage() {
     return (
       <div className="min-h-[85vh] flex items-center justify-center bg-slate-950 px-4">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(239,68,68,0.08),transparent)]" />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative max-w-md w-full text-center p-8 backdrop-blur-xl bg-slate-900/40 border border-red-500/20 rounded-3xl shadow-2xl"
-        >
-          <div className="inline-flex p-4 bg-red-500/10 rounded-2xl text-red-500 mb-5">
-            <ShieldAlert className="w-10 h-10" />
-          </div>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          className="relative max-w-md w-full text-center p-8 backdrop-blur-xl bg-slate-900/40 border border-red-500/20 rounded-3xl shadow-2xl">
+          <div className="inline-flex p-4 bg-red-500/10 rounded-2xl text-red-500 mb-5"><ShieldAlert className="w-10 h-10" /></div>
           <h2 className="text-2xl font-extrabold text-white mb-2">Acceso Denegado</h2>
           <p className="text-slate-400 text-sm">Solo administradores pueden acceder a reportes.</p>
-          <button
-            onClick={() => router.push('/admin')}
-            className="mt-6 w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl cursor-pointer"
-          >
+          <button onClick={() => router.push('/admin')}
+            className="mt-6 w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl cursor-pointer">
             Volver al Panel
           </button>
         </motion.div>
@@ -220,149 +242,78 @@ export default function ReportesPage() {
 
       <div className="relative max-w-7xl mx-auto space-y-6">
 
-        {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-6">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push('/admin')}
+            <button onClick={() => router.push('/admin')}
               className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all cursor-pointer"
-              title="Volver al panel"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
+              title="Volver al panel"><ArrowLeft className="w-5 h-5" /></button>
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2 font-outfit">
                 <BarChart3 className="w-8 h-8 text-cyan-400" />
                 Reportes Mensuales
               </h1>
-              <p className="text-slate-400 text-sm mt-1">
-                Comparativa de ganancias, rendimiento por colaborador y resumen de compras.
-              </p>
+              <p className="text-slate-400 text-sm mt-1">Comparativa de ganancias, rendimiento por colaborador y resumen de compras.</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1.5 rounded-full text-xs font-bold capitalize bg-slate-900 border border-slate-800 text-cyan-400">
-              {profile?.nombre}
-            </span>
-          </div>
+          <span className="px-3 py-1.5 rounded-full text-xs font-bold capitalize bg-slate-900 border border-slate-800 text-cyan-400">{profile?.nombre}</span>
         </div>
 
-        {/* ── Error ── */}
         {error && (
           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-300 hover:text-white cursor-pointer">
-              <X className="w-4 h-4" />
-            </button>
+            <button onClick={() => setError(null)} className="text-red-300 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
           </div>
         )}
 
-        {/* ── Filtros ── */}
         <div className="backdrop-blur-md bg-slate-900/40 border border-slate-800 rounded-3xl p-5 shadow-xl">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
               <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">
                 <Calendar className="w-3 h-3 inline mr-1" /> Periodo
               </label>
-              <select
-                value={filtroPeriodo}
-                onChange={e => setFiltroPeriodo(e.target.value)}
-                className={selectClass}
-              >
+              <select value={filtroPeriodo} onChange={e => setFiltroPeriodo(e.target.value)} className={selectClass}>
                 {Array.from(new Set(reportes.map(r => r.periodo))).sort().map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
-                {reportes.length === 0 && (
-                  <option value={filtroPeriodo}>{filtroPeriodo}</option>
-                )}
+                {reportes.length === 0 && <option value={filtroPeriodo}>{filtroPeriodo}</option>}
               </select>
             </div>
-
             <div>
               <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">
-                <Users className="w-3 h-3 inline mr-1" /> Colaboradores
+                <Users className="w-3 h-3 inline mr-1" /> Colaborador
               </label>
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    const sel = document.getElementById('colab-dropdown');
-                    if (sel) sel.classList.toggle('hidden');
-                  }}
-                  className={`${selectClass} text-left flex items-center justify-between`}
-                >
-                  <span className="truncate">
-                    {filtroColaboradores.length === 0
-                      ? 'Todos'
-                      : `${filtroColaboradores.length} seleccionado${filtroColaboradores.length > 1 ? 's' : ''}`}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-                </button>
-                <div
-                  id="colab-dropdown"
-                  className="hidden absolute z-20 mt-1 w-full bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-48 overflow-y-auto"
-                >
-                  <button
-                    onClick={() => setFiltroColaboradores([])}
-                    className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800 cursor-pointer"
-                  >
-                    Todos
-                  </button>
-                  {colaboradores.map(col => (
-                    <label
-                      key={col.uid}
-                      className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filtroColaboradores.includes(col.uid)}
-                        onChange={() => toggleFiltroColab(col.uid)}
-                        className="rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500"
-                      />
-                      {col.nombre}
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <select
+                value={filtroColaboradores[0] || ''}
+                onChange={e => setFiltroColaboradores(e.target.value ? [e.target.value] : [])}
+                className={selectClass}
+              >
+                <option value="">Todos</option>
+                {colaboradores.map(col => (
+                  <option key={col.uid} value={col.uid}>{col.nombre}</option>
+                ))}
+              </select>
             </div>
-
             <div>
               <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">
                 <Tag className="w-3 h-3 inline mr-1" /> Categoría
               </label>
-              <select
-                value={filtroCategoria}
-                onChange={e => setFiltroCategoria(e.target.value)}
-                className={selectClass}
-              >
+              <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} className={selectClass}>
                 <option value="">Todas</option>
-                {categoriasDisponibles.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
+                {categoriasDisponibles.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
               </select>
             </div>
-
             <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setFiltroColaboradores([]);
-                  setFiltroCategoria('');
-                }}
-                className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs text-slate-300 font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1"
-              >
+              <button onClick={() => { setFiltroColaboradores([]); setFiltroCategoria(''); }}
+                className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs text-slate-300 font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1">
                 <Filter className="w-3.5 h-3.5" /> Limpiar
               </button>
-              <button
-                onClick={loadData}
+              <button onClick={loadData}
                 className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-white cursor-pointer transition-colors"
-                title="Recargar"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
+                title="Recargar"><RefreshCw className="w-4 h-4" /></button>
             </div>
           </div>
         </div>
 
-        {/* ── KPIs ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total Ganado', value: formatCOP(kpiTotales.totalGanado), icon: DollarSign, color: 'text-emerald-400' },
@@ -382,24 +333,16 @@ export default function ReportesPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          {/* ═══ Columna izquierda: Comparativa + Detalle ═══ */}
           <div className="lg:col-span-8 space-y-6">
-
-            {/* ── Comparativa por Colaborador ── */}
             <div className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
               <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-cyan-400" />
-                  <h3 className="text-base font-bold text-white">Comparativa por Colaborador</h3>
-                </div>
+                <div className="flex items-center gap-2"><TrendingUp className="w-5 h-5 text-cyan-400" /><h3 className="text-base font-bold text-white">Comparativa por Colaborador</h3></div>
                 <span className="text-xs text-slate-500">{comparativa.length} colaboradores</span>
               </div>
-
               {comparativa.length === 0 ? (
                 <div className="p-12 text-center text-slate-500">
                   <Users className="w-12 h-12 mx-auto mb-3 text-slate-700" />
                   <p className="text-base font-medium">Sin datos para el periodo seleccionado</p>
-                  <p className="text-xs text-slate-600 mt-1">Crea un reporte o registra compras manualmente</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -416,40 +359,23 @@ export default function ReportesPage() {
                     <tbody className="divide-y divide-slate-800/60">
                       {comparativa.map((col, idx) => {
                         const cats = Object.keys(col.valorPorCategoria);
-                        const valorPorItem = col.totalItems > 0 ? col.totalGanado / col.totalItems : 0;
+                        const valPorItem = col.totalItems > 0 ? col.totalGanado / col.totalItems : 0;
                         return (
                           <tr key={col.uid} className="hover:bg-slate-800/10 transition-colors">
                             <td className="py-3.5 px-5">
                               <div className="flex items-center gap-3">
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
-                                  idx === 0 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' :
-                                  idx === 1 ? 'bg-slate-500/15 text-slate-300 border border-slate-500/30' :
-                                  idx === 2 ? 'bg-amber-700/15 text-amber-600 border border-amber-700/30' :
-                                  'bg-slate-800 text-slate-400 border border-slate-700'
-                                }`}>
-                                  {idx + 1}
-                                </div>
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : idx === 1 ? 'bg-slate-500/15 text-slate-300 border border-slate-500/30' : idx === 2 ? 'bg-amber-700/15 text-amber-600 border border-amber-700/30' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>{idx + 1}</div>
                                 <span className="text-sm font-semibold text-white">{col.nombre}</span>
                               </div>
                             </td>
-                            <td className="py-3.5 px-5 text-right">
-                              <span className="text-sm font-bold text-cyan-400">{col.totalItems}</span>
-                            </td>
+                            <td className="py-3.5 px-5 text-right"><span className="text-sm font-bold text-cyan-400">{col.totalItems}</span></td>
                             <td className="py-3.5 px-5">
                               <div className="flex flex-wrap gap-1">
-                                {cats.map(cat => (
-                                  <span key={cat} className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 capitalize">
-                                    {cat}
-                                  </span>
-                                ))}
+                                {cats.map(cat => (<span key={cat} className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 capitalize">{cat}</span>))}
                               </div>
                             </td>
-                            <td className="py-3.5 px-5 text-right">
-                              <span className="text-xs text-slate-300">{formatCOP(valorPorItem)}</span>
-                            </td>
-                            <td className="py-3.5 px-5 text-right">
-                              <span className="text-sm font-extrabold text-emerald-400">{formatCOP(col.totalGanado)}</span>
-                            </td>
+                            <td className="py-3.5 px-5 text-right"><span className="text-xs text-slate-300">{formatCOP(valPorItem)}</span></td>
+                            <td className="py-3.5 px-5 text-right"><span className="text-sm font-extrabold text-emerald-400">{formatCOP(col.totalGanado)}</span></td>
                           </tr>
                         );
                       })}
@@ -459,62 +385,47 @@ export default function ReportesPage() {
               )}
             </div>
 
-            {/* ── Items / Compras del Mes ── */}
             <div className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
               <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-cyan-400" />
-                  <h3 className="text-base font-bold text-white">Resumen de Compras e Items del Mes</h3>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowManualForm(true)}
-                    className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Registrar Compra Manual
-                  </button>
-                </div>
+                <div className="flex items-center gap-2"><FileText className="w-5 h-5 text-cyan-400" /><h3 className="text-base font-bold text-white">Resumen de Compras e Items del Mes</h3></div>
+                <button onClick={() => setShowManualForm(true)}
+                  className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-colors">
+                  <Plus className="w-3.5 h-3.5" /> Registrar Compra Manual
+                </button>
               </div>
-
               {itemsAplanados.length === 0 ? (
                 <div className="p-10 text-center text-slate-500">
                   <FileText className="w-10 h-10 mx-auto mb-2 text-slate-700" />
                   <p className="text-sm">No hay compras registradas en este periodo</p>
-                  <button
-                    onClick={() => setShowManualForm(true)}
-                    className="mt-3 text-xs text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
-                  >
-                    Registrar primera compra manual
-                  </button>
+                  <button onClick={() => setShowManualForm(true)} className="mt-3 text-xs text-cyan-400 hover:text-cyan-300 underline cursor-pointer">Registrar primera compra manual</button>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-950/60 text-slate-400 text-[10px] font-bold uppercase tracking-wider border-b border-slate-800">
-                        <th className="py-3 px-4">Descripción</th>
+                        <th className="py-3 px-4">Cliente / Descripción</th>
                         <th className="py-3 px-4">Colaborador</th>
                         <th className="py-3 px-4">Categoría</th>
-                        <th className="py-3 px-4 text-right">Cantidad</th>
-                        <th className="py-3 px-4 text-right">Valor Unit.</th>
-                        <th className="py-3 px-4 text-right">Total</th>
+                        <th className="py-3 px-4 text-right">Cant</th>
+                        <th className="py-3 px-4 text-right">Valor</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
                       {itemsAplanados.map((item, i) => (
                         <tr key={`${item.reportId}-${i}`} className="hover:bg-slate-800/10 transition-colors">
                           <td className="py-3 px-4">
-                            <span className="text-sm text-slate-200 font-medium">{item.descripcion}</span>
+                            <div className="text-sm text-slate-200 font-medium">{item.descripcion}</div>
+                            {(item.clienteNombre) && (
+                              <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                <User className="w-3 h-3" /> {item.clienteNombre}{item.clienteTelefono ? ` - ${item.clienteTelefono}` : ''}
+                              </div>
+                            )}
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs text-slate-300">{item.colaboradorNombre}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded capitalize">{item.categoria}</span>
-                          </td>
+                          <td className="py-3 px-4 text-xs text-slate-300">{item.colaboradorNombre}</td>
+                          <td className="py-3 px-4"><span className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded capitalize">{item.categoria}</span></td>
                           <td className="py-3 px-4 text-right text-sm text-slate-300">{item.cantidad}</td>
-                          <td className="py-3 px-4 text-right text-sm text-slate-300">{formatCOP(item.valorUnitario)}</td>
-                          <td className="py-3 px-4 text-right text-sm font-bold text-emerald-400">{formatCOP(item.valorTotal)}</td>
+                          <td className="py-3 px-4 text-right text-sm font-bold text-emerald-400">{formatCOP(item.valor)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -524,19 +435,12 @@ export default function ReportesPage() {
             </div>
           </div>
 
-          {/* ═══ Columna derecha: Gestión ═══ */}
           <div className="lg:col-span-4 space-y-6">
-
-            {/* ── Reportes Existentes ── */}
             <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-5 shadow-xl">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-cyan-400" />
-                  Reportes Guardados
-                </h3>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2"><FileText className="w-4 h-4 text-cyan-400" /> Reportes Guardados</h3>
                 <span className="text-xs text-slate-500">{reportesFiltrados.length}</span>
               </div>
-
               {fetching ? (
                 <div className="py-6 text-center text-slate-500 text-xs">Cargando...</div>
               ) : reportesFiltrados.length === 0 ? (
@@ -544,106 +448,63 @@ export default function ReportesPage() {
               ) : (
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                   {reportesFiltrados.map(r => (
-                    <div
-                      key={r.id}
-                      className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl hover:border-slate-700 transition-all"
-                    >
+                    <div key={r.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl hover:border-slate-700 transition-all">
                       <div className="flex justify-between items-start mb-1">
                         <span className="text-xs font-mono text-cyan-400 font-bold">{r.periodo}</span>
                         <span className="text-[10px] text-slate-500">{r.items?.length || 0} items</span>
                       </div>
-                      <div className="text-xs text-emerald-400 font-bold">
-                        Total: {formatCOP(r.totalGeneral || 0)}
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {Object.entries(r.totalesPorCategoria || {}).map(([cat, val]) => (
-                          <span key={cat} className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded capitalize">
-                            {cat}: {formatCOP(val)}
-                          </span>
-                        ))}
-                      </div>
+                      <div className="text-[11px] text-slate-400">{r.colaboradorNombre}</div>
+                      <div className="text-xs text-emerald-400 font-bold mt-1">Total: {formatCOP(r.totalAPagar || 0)}</div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* ── Categorías ── */}
             <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-5 shadow-xl">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-cyan-400" />
-                  Categorías
-                </h3>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2"><Tag className="w-4 h-4 text-cyan-400" /> Categorías</h3>
               </div>
-
               <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  placeholder="Nueva categoría..."
-                  value={nuevaCategoria}
-                  onChange={e => setNuevaCategoria(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleAgregarCategoria(); }}
-                  className={inputClass}
-                />
-                <button
-                  onClick={handleAgregarCategoria}
-                  disabled={!nuevaCategoria.trim()}
-                  className="p-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl cursor-pointer disabled:cursor-not-allowed transition-colors"
-                >
+                <input type="text" placeholder="Nueva categoría..." value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAgregarCategoria(); }} className={inputClass} />
+                <button onClick={handleAgregarCategoria} disabled={!nuevaCategoria.trim()}
+                  className="p-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl cursor-pointer disabled:cursor-not-allowed transition-colors">
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
-
               <div className="flex flex-wrap gap-1.5">
                 {categoriasDisponibles.map(cat => (
-                  <span
-                    key={cat}
-                    className={`text-xs px-2.5 py-1 rounded-lg capitalize border cursor-pointer transition-all ${
-                      filtroCategoria === cat
-                        ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
-                        : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
-                    }`}
-                    onClick={() => setFiltroCategoria(filtroCategoria === cat ? '' : cat)}
-                  >
+                  <span key={cat}
+                    className={`text-xs px-2.5 py-1 rounded-lg capitalize border cursor-pointer transition-all ${filtroCategoria === cat ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
+                    onClick={() => setFiltroCategoria(filtroCategoria === cat ? '' : cat)}>
                     {cat}
                   </span>
                 ))}
               </div>
             </div>
 
-            {/* ── Distribución ── */}
             <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-5 shadow-xl">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
-                <Layers className="w-4 h-4 text-cyan-400" />
-                Distribución por Categoría
-              </h3>
-              {Object.keys(kpiTotales).length > 0 && itemsAplanados.length > 0 ? (
+              <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4"><Layers className="w-4 h-4 text-cyan-400" /> Distribución por Categoría</h3>
+              {itemsAplanados.length > 0 ? (
                 <div className="space-y-3">
-                  {Object.entries(
-                    itemsAplanados.reduce((acc, item) => {
-                      acc[item.categoria] = (acc[item.categoria] || 0) + item.valorTotal;
-                      return acc;
-                    }, {} as Record<string, number>)
-                  )
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([cat, val]) => {
-                      const pct = kpiTotales.totalGanado > 0 ? (val / kpiTotales.totalGanado) * 100 : 0;
-                      return (
-                        <div key={cat}>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="capitalize text-slate-300">{cat}</span>
-                            <span className="text-slate-400">{formatCOP(val)}</span>
-                          </div>
-                          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
+                  {Object.entries(itemsAplanados.reduce((acc, item) => {
+                    acc[item.categoria] = (acc[item.categoria] || 0) + item.valor;
+                    return acc;
+                  }, {} as Record<string, number>)).sort(([, a], [, b]) => b - a).map(([cat, val]) => {
+                    const pct = kpiTotales.totalGanado > 0 ? (val / kpiTotales.totalGanado) * 100 : 0;
+                    return (
+                      <div key={cat}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="capitalize text-slate-300">{cat}</span>
+                          <span className="text-slate-400">{formatCOP(val)}</span>
                         </div>
-                      );
-                    })}
+                        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-xs text-slate-500 text-center py-4">Sin datos para mostrar</p>
@@ -653,9 +514,6 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      {/* ════════════════════════════════════════════════
-          MODAL: Registro Manual de Compra/Item
-      ════════════════════════════════════════════════ */}
       <AnimatePresence>
         {showManualForm && (
           <ManualPurchaseForm
@@ -663,10 +521,7 @@ export default function ReportesPage() {
             categorias={categoriasDisponibles}
             periodo={filtroPeriodo}
             token={token!}
-            onSave={() => {
-              setShowManualForm(false);
-              loadData();
-            }}
+            onSave={() => { setShowManualForm(false); loadData(); }}
             onClose={() => setShowManualForm(false)}
           />
         )}
@@ -675,90 +530,89 @@ export default function ReportesPage() {
   );
 }
 
-/* ═══════════════════════════════════════════════════
-   COMPONENTE: Formulario Manual de Compra
-═══════════════════════════════════════════════════ */
 function ManualPurchaseForm({
-  colaboradores,
-  categorias,
-  periodo,
-  token,
-  onSave,
-  onClose,
+  colaboradores, categorias, periodo, token, onSave, onClose,
 }: {
-  colaboradores: Colaborador[];
-  categorias: string[];
-  periodo: string;
-  token: string;
-  onSave: () => void;
-  onClose: () => void;
+  colaboradores: Colaborador[]; categorias: string[]; periodo: string;
+  token: string; onSave: () => void; onClose: () => void;
 }) {
-  const [descripcion, setDescripcion] = useState('');
-  const [contribuciones, setContribuciones] = useState<CollaboratorContribution[]>([]);
+  const [clienteNombre, setClienteNombre] = useState('');
+  const [clienteTelefono, setClienteTelefono] = useState('');
+  const [productos, setProductos] = useState<ProductForm[]>([emptyProduct(colaboradores)]);
   const [notas, setNotas] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAddContrib = () => {
-    setContribuciones(prev => [
-      ...prev,
-      {
-        colaboradorUid: colaboradores[0]?.uid || '',
-        colaboradorNombre: colaboradores[0]?.nombre || '',
-        categoria: categorias[0] || '',
-        cantidad: 1,
-        valorUnitario: 0,
-      },
-    ]);
+  const updateProducto = (tempId: string, field: keyof ProductForm, value: any) => {
+    setProductos(prev => prev.map(p => p.tempId === tempId ? { ...p, [field]: value } : p));
   };
 
-  const handleRemoveContrib = (idx: number) => {
-    setContribuciones(prev => prev.filter((_, i) => i !== idx));
+  const handleColaboradorChange = (tempId: string, uid: string) => {
+    const col = colaboradores.find(c => c.uid === uid);
+    setProductos(prev => prev.map(p => p.tempId === tempId ? { ...p, colaboradorUid: uid, colaboradorNombre: col?.nombre || '' } : p));
   };
 
-  const handleContribChange = (idx: number, field: keyof CollaboratorContribution, value: any) => {
-    setContribuciones(prev => {
-      const copy = [...prev];
-      copy[idx] = { ...copy[idx], [field]: value };
-      if (field === 'colaboradorUid') {
-        const col = colaboradores.find(c => c.uid === value);
-        if (col) copy[idx].colaboradorNombre = col.nombre;
-      }
-      return copy;
-    });
-  };
+  const handleAddProducto = () => setProductos(prev => [...prev, emptyProduct(colaboradores)]);
+  const handleRemoveProducto = (tempId: string) => setProductos(prev => prev.filter(p => p.tempId !== tempId));
 
   const handleSubmit = async () => {
-    if (!descripcion.trim()) {
-      setError('La descripción es obligatoria');
-      return;
-    }
-    if (contribuciones.length === 0) {
-      setError('Agrega al menos un colaborador');
-      return;
-    }
-    for (const c of contribuciones) {
-      if (!c.categoria) { setError('Todas las contribuciones deben tener categoría'); return; }
-      if (c.cantidad < 1) { setError('La cantidad debe ser mayor a 0'); return; }
-      if (c.valorUnitario < 0) { setError('El valor unitario no puede ser negativo'); return; }
+    if (!clienteNombre.trim()) { setError('El nombre del cliente es obligatorio'); return; }
+    if (!clienteTelefono.trim()) { setError('El teléfono del cliente es obligatorio'); return; }
+    if (productos.length === 0) { setError('Agrega al menos un producto'); return; }
+    for (const p of productos) {
+      if (!p.nombre.trim()) { setError('Todos los productos deben tener nombre'); return; }
+      if (!p.colaboradorUid) { setError(`El producto "${p.nombre}" debe tener un colaborador asignado`); return; }
+      if (p.cantidad < 1) { setError(`El producto "${p.nombre}" debe tener cantidad mayor a 0`); return; }
     }
 
     setSaving(true);
     setError(null);
     try {
-      await crearReporte(token, {
-        periodo,
-        items: [{
-          descripcion: descripcion.trim(),
-          contribuciones: contribuciones.map(c => ({
-            ...c,
-            cantidad: Math.round(c.cantidad),
-            valorUnitario: Math.round(c.valorUnitario * 100) / 100,
-          })),
-          notas: notas.trim() || undefined,
-        }],
-        notas: undefined,
-      });
+      const itemsPorColaborador = new Map<string, ReportItem[]>();
+      for (const p of productos) {
+        const detalle: ProductoDetalle = {
+          nombre: p.nombre,
+          descripcion: p.descripcion,
+          pesoGramos: p.pesoGramos,
+          tiempoHoras: p.tiempoHoras,
+          tiempoMinutos: p.tiempoMinutos,
+          filamentoUsado: p.filamentoUsado,
+          costoDiseno: p.costoDiseno,
+          costoAccesorios: p.costoAccesorios,
+          costoEmpaque: p.costoEmpaque,
+          costoPersonalizacion: p.costoPersonalizacion,
+          valorUnitario: p.valorUnitario,
+          tamanoHorizontal: p.tamanoHorizontal,
+          tamanoVertical: p.tamanoVertical,
+        };
+        const item: ReportItem = {
+          categoria: p.categoria,
+          descripcion: p.descripcion || p.nombre,
+          cantidad: p.cantidad,
+          valor: p.cantidad * p.valorUnitario,
+          actividad: `Trabajo en ${p.categoria}`,
+          notas: notas || undefined,
+          clienteNombre: clienteNombre.trim(),
+          clienteTelefono: clienteTelefono.trim(),
+          origen: 'manual',
+          productoDetalle: detalle,
+        };
+        const colUid = p.colaboradorUid;
+        if (!itemsPorColaborador.has(colUid)) itemsPorColaborador.set(colUid, []);
+        itemsPorColaborador.get(colUid)!.push(item);
+      }
+
+      for (const [colUid, items] of itemsPorColaborador) {
+        const col = colaboradores.find(c => c.uid === colUid);
+        await crearReporte(token, {
+          colaboradorUid: colUid,
+          colaboradorNombre: col?.nombre || '',
+          periodo,
+          categorias: col?.categorias || [],
+          items,
+          notas: notas || undefined,
+        });
+      }
       onSave();
     } catch (err: any) {
       setError(err.message);
@@ -768,166 +622,166 @@ function ManualPurchaseForm({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
-      >
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Plus className="w-5 h-5 text-emerald-400" />
-            Registrar Compra Manual
-          </h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer">
-            <X className="w-5 h-5" />
-          </button>
+          <h2 className="text-lg font-bold text-white flex items-center gap-2"><Plus className="w-5 h-5 text-emerald-400" /> Registrar Compra Manual</h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-6 py-5 space-y-6">
+          {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs">{error}</div>}
 
-          {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs">{error}</div>
-          )}
-
-          <div>
-            <label className="block text-xs text-slate-400 font-bold mb-1.5">Descripción del trabajo</label>
-            <input
-              type="text"
-              value={descripcion}
-              onChange={e => setDescripcion(e.target.value)}
-              placeholder="Ej: Impresión de 10 cajas personalizadas"
-              className={inputClass}
-            />
+          {/* ── Datos del Cliente ── */}
+          <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2"><User className="w-4 h-4 text-cyan-400" /> Datos del Cliente</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">Nombre del Cliente *</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <input type="text" value={clienteNombre} onChange={e => setClienteNombre(e.target.value)}
+                    placeholder="Nombre completo" className={`${inputClass} pl-10`} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">Teléfono *</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <input type="text" value={clienteTelefono} onChange={e => setClienteTelefono(e.target.value)}
+                    placeholder="300 123 4567" className={`${inputClass} pl-10`} />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs text-slate-400 font-bold">Colaboradores que participaron</label>
-              <button
-                onClick={handleAddContrib}
-                className="py-1 px-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 transition-colors"
-              >
-                <Plus className="w-3 h-3" /> Agregar
+          {/* ── Productos ── */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2"><Box className="w-4 h-4 text-cyan-400" /> Productos ({productos.length})</h3>
+              <button onClick={handleAddProducto}
+                className="py-1.5 px-3 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 transition-colors">
+                <Plus className="w-3.5 h-3.5" /> Agregar Producto
               </button>
             </div>
 
-            <div className="space-y-3">
-              {contribuciones.length === 0 && (
-                <p className="text-xs text-slate-500 text-center py-4">
-                  No hay colaboradores agregados. Haz clic en "Agregar".
-                </p>
-              )}
+            {productos.map((prod, idx) => (
+              <div key={prod.tempId} className="bg-slate-950/40 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Producto #{idx + 1}</span>
+                  {productos.length > 1 && (
+                    <button onClick={() => handleRemoveProducto(prod.tempId)}
+                      className="p-1 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                  )}
+                </div>
 
-              {contribuciones.map((contrib, idx) => (
-                <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                      Colaborador #{idx + 1}
-                    </span>
-                    <button
-                      onClick={() => handleRemoveContrib(idx)}
-                      className="p-1 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] text-slate-500 mb-1">Nombre del producto</label>
+                    <input type="text" value={prod.nombre} onChange={e => updateProducto(prod.tempId, 'nombre', e.target.value)}
+                      placeholder="Ej: Caja personalizada" className={inputClass} />
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] text-slate-500 mb-1">Colaborador</label>
-                      <select
-                        value={contrib.colaboradorUid}
-                        onChange={e => handleContribChange(idx, 'colaboradorUid', e.target.value)}
-                        className={selectClass}
-                      >
-                        {colaboradores.map(col => (
-                          <option key={col.uid} value={col.uid}>{col.nombre}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] text-slate-500 mb-1">Categoría</label>
-                      <select
-                        value={contrib.categoria}
-                        onChange={e => handleContribChange(idx, 'categoria', e.target.value)}
-                        className={selectClass}
-                      >
-                        {categorias.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] text-slate-500 mb-1">Cantidad</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={contrib.cantidad}
-                        onChange={e => handleContribChange(idx, 'cantidad', parseInt(e.target.value) || 0)}
-                        className={inputClass}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] text-slate-500 mb-1">Valor Unitario (COP)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={contrib.valorUnitario}
-                        onChange={e => handleContribChange(idx, 'valorUnitario', parseFloat(e.target.value) || 0)}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-emerald-400 font-bold text-right">
-                    Total: {formatCOP(contrib.cantidad * contrib.valorUnitario)}
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1">Categoría</label>
+                    <select value={prod.categoria} onChange={e => updateProducto(prod.tempId, 'categoria', e.target.value)} className={selectClass}>
+                      {categorias.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+                    </select>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-1">Descripción</label>
+                  <input type="text" value={prod.descripcion} onChange={e => updateProducto(prod.tempId, 'descripcion', e.target.value)}
+                    placeholder="Detalles del trabajo realizado" className={inputClass} />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Ruler className="w-3 h-3 inline mr-0.5" /> Ancho (mm)</label>
+                    <input type="number" min="0" value={prod.tamanoHorizontal || ''} onChange={e => updateProducto(prod.tempId, 'tamanoHorizontal', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Ruler className="w-3 h-3 inline mr-0.5" /> Alto (mm)</label>
+                    <input type="number" min="0" value={prod.tamanoVertical || ''} onChange={e => updateProducto(prod.tempId, 'tamanoVertical', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Weight className="w-3 h-3 inline mr-0.5" /> Peso (g)</label>
+                    <input type="number" min="0" value={prod.pesoGramos || ''} onChange={e => updateProducto(prod.tempId, 'pesoGramos', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Box className="w-3 h-3 inline mr-0.5" /> Cantidad</label>
+                    <input type="number" min="1" value={prod.cantidad} onChange={e => updateProducto(prod.tempId, 'cantidad', parseInt(e.target.value) || 1)} className={inputClass} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Clock className="w-3 h-3 inline mr-0.5" /> Horas</label>
+                    <input type="number" min="0" step="0.5" value={prod.tiempoHoras || ''} onChange={e => updateProducto(prod.tempId, 'tiempoHoras', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Clock className="w-3 h-3 inline mr-0.5" /> Minutos</label>
+                    <input type="number" min="0" value={prod.tiempoMinutos || ''} onChange={e => updateProducto(prod.tempId, 'tiempoMinutos', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Weight className="w-3 h-3 inline mr-0.5" /> Filamento (g)</label>
+                    <input type="number" min="0" value={prod.filamentoUsado || ''} onChange={e => updateProducto(prod.tempId, 'filamentoUsado', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><DollarSign className="w-3 h-3 inline mr-0.5" /> Valor Unit.</label>
+                    <input type="number" min="0" value={prod.valorUnitario || ''} onChange={e => updateProducto(prod.tempId, 'valorUnitario', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Pen className="w-3 h-3 inline mr-0.5" /> Diseño ($)</label>
+                    <input type="number" min="0" value={prod.costoDiseno || ''} onChange={e => updateProducto(prod.tempId, 'costoDiseno', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Box className="w-3 h-3 inline mr-0.5" /> Accesorios ($)</label>
+                    <input type="number" min="0" value={prod.costoAccesorios || ''} onChange={e => updateProducto(prod.tempId, 'costoAccesorios', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Palette className="w-3 h-3 inline mr-0.5" /> Personaliz. ($)</label>
+                    <input type="number" min="0" value={prod.costoPersonalizacion || ''} onChange={e => updateProducto(prod.tempId, 'costoPersonalizacion', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Sparkles className="w-3 h-3 inline mr-0.5" /> Empaque ($)</label>
+                    <input type="number" min="0" value={prod.costoEmpaque || ''} onChange={e => updateProducto(prod.tempId, 'costoEmpaque', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-1"><Users className="w-3 h-3 inline mr-0.5" /> Colaborador que realizó el trabajo *</label>
+                  <select value={prod.colaboradorUid} onChange={e => handleColaboradorChange(prod.tempId, e.target.value)} className={selectClass}>
+                    <option value="">Seleccionar colaborador</option>
+                    {colaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
+                  </select>
+                </div>
+
+                <div className="text-xs text-emerald-400 font-bold text-right pt-2 border-t border-slate-800">
+                  Total producto: {formatCOP(prod.cantidad * prod.valorUnitario)}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div>
             <label className="block text-xs text-slate-400 font-bold mb-1.5">Notas (opcional)</label>
-            <textarea
-              value={notas}
-              onChange={e => setNotas(e.target.value)}
-              className={`${inputClass} resize-none`}
-              rows={2}
-              placeholder="Notas adicionales sobre este trabajo..."
-            />
+            <textarea value={notas} onChange={e => setNotas(e.target.value)} className={`${inputClass} resize-none`} rows={2} placeholder="Notas adicionales sobre esta compra..." />
           </div>
 
           <div className="flex gap-3 pt-2 border-t border-slate-800">
-            <button
-              onClick={handleSubmit}
-              disabled={saving}
-              className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-xl text-sm cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-            >
-              {saving ? (
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-              ) : (
-                <FileText className="w-4 h-4" />
-              )}
-              Guardar Reporte
+            <button onClick={handleSubmit} disabled={saving}
+              className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-xl text-sm cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+              {saving ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <FileText className="w-4 h-4" />}
+              {saving ? 'Guardando...' : `Guardar ${productos.length > 0 ? `${productos.length} producto${productos.length > 1 ? 's' : ''}` : ''}`}
             </button>
-            <button
-              onClick={onClose}
-              className="py-3 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium rounded-xl text-sm cursor-pointer transition-colors"
-            >
-              Cancelar
-            </button>
+            <button onClick={onClose} className="py-3 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium rounded-xl text-sm cursor-pointer transition-colors">Cancelar</button>
           </div>
         </div>
       </motion.div>
