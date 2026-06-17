@@ -332,10 +332,17 @@ export default function ReportesPage() {
                 <Calendar className="w-3 h-3 inline mr-1" /> Periodo
               </label>
               <select value={filtroPeriodo} onChange={e => setFiltroPeriodo(e.target.value)} className={selectClass}>
-                {Array.from(new Set(reportes.map(r => r.periodo))).sort().map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-                {reportes.length === 0 && <option value={filtroPeriodo}>{filtroPeriodo}</option>}
+                {(() => {
+                  const periods = new Set(reportes.map(r => r.periodo));
+                  const start = new Date(2026, 0, 1);
+                  const now = new Date();
+                  const d = new Date(start);
+                  while (d <= now) {
+                    periods.add(`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(-2)}`);
+                    d.setMonth(d.getMonth() + 1);
+                  }
+                  return Array.from(periods).sort().map(p => (<option key={p} value={p}>{p}</option>));
+                })()}
               </select>
             </div>
             <div>
@@ -668,9 +675,23 @@ function ManualPurchaseForm({
   const [clienteNombre, setClienteNombre] = useState('');
   const [clienteTelefono, setClienteTelefono] = useState('');
   const [productos, setProductos] = useState<ProductForm[]>([emptyProduct(colaboradores)]);
+  const [selectedPeriodo, setSelectedPeriodo] = useState(periodo);
   const [notas, setNotas] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Generate period options from Jan 2026 to current month
+  const periodosDisponibles = useMemo(() => {
+    const opts: string[] = [];
+    const start = new Date(2026, 0, 1);
+    const now = new Date();
+    const d = new Date(start);
+    while (d <= now) {
+      opts.push(`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(-2)}`);
+      d.setMonth(d.getMonth() + 1);
+    }
+    return opts;
+  }, []);
 
   const updateProducto = (tempId: string, field: keyof ProductForm, value: any) => {
     setProductos(prev => prev.map(p => p.tempId === tempId ? { ...p, [field]: value } : p));
@@ -773,7 +794,7 @@ function ManualPurchaseForm({
         await crearReporte(token, {
           colaboradorUid: colUid,
           colaboradorNombre: col?.nombre || 'Sin Asignar',
-          periodo,
+          periodo: selectedPeriodo,
           categorias: col?.categorias || [],
           items,
           notas: notas || undefined,
@@ -794,7 +815,13 @@ function ManualPurchaseForm({
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2"><Plus className="w-5 h-5 text-emerald-400" /> Registrar Compra Manual</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2"><Plus className="w-5 h-5 text-emerald-400" /> Registrar Compra Manual</h2>
+            <select value={selectedPeriodo} onChange={e => setSelectedPeriodo(e.target.value)}
+              className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-xs font-bold outline-none focus:border-cyan-500/50 cursor-pointer">
+              {periodosDisponibles.map(p => (<option key={p} value={p}>{p}</option>))}
+            </select>
+          </div>
           <button onClick={onClose} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
         </div>
 
