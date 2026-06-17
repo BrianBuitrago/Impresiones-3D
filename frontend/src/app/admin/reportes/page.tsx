@@ -182,10 +182,11 @@ export default function ReportesPage() {
       valorPorCategoria: Record<string, number>;
     }>();
     for (const r of reportesFiltrados) {
-      let c = mapa.get(r.colaboradorUid);
+      const uid = r.colaboradorUid || '__sin_asignar__';
+      let c = mapa.get(uid);
       if (!c) {
-        c = { uid: r.colaboradorUid, nombre: r.colaboradorNombre, totalGanado: 0, totalItems: 0, itemsPorCategoria: {}, valorPorCategoria: {} };
-        mapa.set(r.colaboradorUid, c);
+        c = { uid, nombre: r.colaboradorNombre || 'Sin Asignar', totalGanado: 0, totalItems: 0, itemsPorCategoria: {}, valorPorCategoria: {} };
+        mapa.set(uid, c);
       }
       for (const it of r.items) {
         c.totalGanado += it.valor;
@@ -709,7 +710,6 @@ function ManualPurchaseForm({
     if (productos.length === 0) { setError('Agrega al menos un producto'); return; }
     for (const p of productos) {
       if (!p.nombre.trim()) { setError('Todos los productos deben tener nombre'); return; }
-      if (!p.colaboradorUid) { setError(`El producto "${p.nombre}" debe tener un colaborador asignado`); return; }
       if (p.cantidad < 1) { setError(`El producto "${p.nombre}" debe tener cantidad mayor a 0`); return; }
     }
 
@@ -745,7 +745,7 @@ function ManualPurchaseForm({
           origen: 'manual',
           productoDetalle: detalle,
         };
-        const colUid = p.colaboradorUid;
+        const colUid = p.colaboradorUid || '__sin_asignar__';
         if (!itemsPorColaborador.has(colUid)) itemsPorColaborador.set(colUid, []);
         itemsPorColaborador.get(colUid)!.push(item);
 
@@ -769,10 +769,10 @@ function ManualPurchaseForm({
       }
 
       for (const [colUid, items] of itemsPorColaborador) {
-        const col = colaboradores.find(c => c.uid === colUid);
+        const col = colUid === '__sin_asignar__' ? null : colaboradores.find(c => c.uid === colUid);
         await crearReporte(token, {
           colaboradorUid: colUid,
-          colaboradorNombre: col?.nombre || '',
+          colaboradorNombre: col?.nombre || 'Sin Asignar',
           periodo,
           categorias: col?.categorias || [],
           items,

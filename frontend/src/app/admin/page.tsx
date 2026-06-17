@@ -528,8 +528,8 @@ export default function AdminPage() {
 
       // Build assignments: either all to one, or per item
       for (let idx = 0; idx < selectedQuote.productos.length; idx++) {
-        const uid = assignMode === 'all' ? assignAllUid : (perItemAssignments[idx] || '');
-        if (!uid) continue;
+        const rawUid = assignMode === 'all' ? assignAllUid : (perItemAssignments[idx] || '');
+        const uid = rawUid || '__sin_asignar__';
         const p = selectedQuote.productos[idx];
         const c = calcProduct(idx, p.unidades);
         const col = colsDisponibles.find(x => x.uid === uid);
@@ -671,10 +671,10 @@ export default function AdminPage() {
       // Create report entries for assigned products
       const periodo = new Date().toISOString().slice(0, 7);
       for (const [colUid, items] of itemsPorColaborador) {
-        const col = colsDisponibles.find(c => c.uid === colUid);
+        const col = colUid === '__sin_asignar__' ? null : colsDisponibles.find(c => c.uid === colUid);
         await crearReporte(token, {
           colaboradorUid: colUid,
-          colaboradorNombre: col?.nombre || '',
+          colaboradorNombre: col?.nombre || 'Sin Asignar',
           periodo,
           categorias: col?.categorias || [],
           items,
@@ -1874,7 +1874,7 @@ export default function AdminPage() {
                           <>
                             <select value={perItemAssignments[idx] || ''} onChange={e => setPerItemAssignments(prev => ({ ...prev, [idx]: e.target.value }))}
                               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer mb-2">
-                              <option value="">Asignar producto completo (colaborador principal)</option>
+                              <option value="">Sin Asignar (aparecerá como ingreso sin colaborador)</option>
                               {assignColaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
                             </select>
 
