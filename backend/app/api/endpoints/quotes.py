@@ -280,19 +280,31 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
 
 @router.get("", response_model=List[QuoteResponse])
 def get_all_quotes(
+    estado: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
     current_user: dict = Depends(RoleChecker(["administrador", "colaborador"]))
 ):
     if db is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="Servicio de base de datos no disponible.")
     try:
-        quotes_ref = db.collection("quotes").order_by("creadoEn", direction="DESCENDING")
-        docs = quotes_ref.stream()
+        query = db.collection("quotes")
+        if estado:
+            query = query.where("estado", "==", estado.strip().lower())
+        query = query.order_by("creadoEn", direction="DESCENDING")
+        docs = query.stream()
         quotes_list = []
         for doc in docs:
             q_data = doc.to_dict()
             q_data["id"] = doc.id
-            quotes_list.append(serialize_doc(q_data))  # ← FIX
+            serialized = serialize_doc(q_data)
+            fecha_val = serialized.get("Fecha") or serialized.get("creadoEn") or ""
+            if fecha_desde and fecha_val < fecha_desde:
+                continue
+            if fecha_hasta and fecha_val > fecha_hasta:
+                continue
+            quotes_list.append(serialized)
         return quotes_list
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

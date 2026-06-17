@@ -228,27 +228,27 @@ def update_user_role(
 
 @router.get("/users", response_model=list[UserResponse])
 def list_all_users(
+    rol: str | None = None,
     admin_user: dict = Depends(RoleChecker(["administrador"]))
 ):
     """
-    Retorna la lista de todos los usuarios registrados en Firestore.
-    Únicamente accesible para administradores.
+    Retorna la lista de usuarios registrados en Firestore.
+    Opcionalmente filtra por rol (administrador, colaborador, cliente).
     """
     if db is None:
         raise HTTPException(status_code=503, detail="Base de datos no disponible")
         
     try:
-        users_ref = db.collection("users")
-        docs = users_ref.stream()
+        query = db.collection("users")
+        if rol:
+            query = query.where("rol", "==", rol.strip().lower())
+        docs = query.stream()
         
         users_list = []
         for doc in docs:
             user_data = doc.to_dict()
             user_data["uid"] = doc.id
-            
-            # CORRECCIÓN: Limpiar fechas antes de retornar
             user_data = clean_firestore_data(user_data)
-            
             users_list.append(user_data)
             
         return users_list
