@@ -17,10 +17,9 @@ async function handleRes<T>(res: Response): Promise<T> {
 }
 
 export async function fetchColaboradores(token: string): Promise<Colaborador[]> {
-  const users: Colaborador[] = await handleRes(
-    await fetch(`${API_URL}/auth/users`, { headers: headers(token) })
+  return handleRes(
+    await fetch(`${API_URL}/auth/users?rol=colaborador`, { headers: headers(token) })
   );
-  return users.filter(u => u.rol === 'colaborador');
 }
 
 export async function fetchReportes(token: string): Promise<ReportData[]> {
