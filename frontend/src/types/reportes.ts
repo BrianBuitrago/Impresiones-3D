@@ -8,36 +8,60 @@ export interface Colaborador {
   rol: string;
 }
 
-export interface CollaboratorContribution {
+export interface ProductoDetalle {
+  nombre?: string;
+  descripcion?: string;
+  pesoGramos?: number;
+  tiempoHoras?: number;
+  tiempoMinutos?: number;
+  filamentoUsado?: number;
+  costoDiseno?: number;
+  costoAccesorios?: number;
+  costoEmpaque?: number;
+  costoPersonalizacion?: number;
+  valorUnitario?: number;
+  tamanoHorizontal?: number;
+  tamanoVertical?: number;
+}
+
+export interface ReportItem {
+  quote_id?: string;
+  producto_id?: string;
+  categoria: string;
+  descripcion: string;
+  actividad?: string;
+  cantidad: number;
+  valor: number;
+  notas?: string;
+  clienteNombre?: string;
+  clienteTelefono?: string;
+  origen?: string;
+  productoDetalle?: ProductoDetalle;
+}
+
+export interface ReportData {
+  id: string;
   colaboradorUid: string;
   colaboradorNombre: string;
-  categoria: string;
-  cantidad: number;
-  valorUnitario: number;
-}
-
-export interface ReportLineItem {
-  descripcion: string;
-  contribuciones: CollaboratorContribution[];
-  notas?: string;
-}
-
-export interface MonthlyReport {
-  id: string;
   periodo: string;
-  items: ReportLineItem[];
+  categorias: string[];
+  items: ReportItem[];
   notas?: string;
-  totalesPorColaborador: Record<string, number>;
+  estado?: string;
   totalesPorCategoria: Record<string, number>;
-  totalGeneral: number;
+  totalAPagar: number;
   creadoEn?: string;
   actualizadoEn?: string;
 }
 
-export interface MonthlyReportCreate {
+export interface ReportCreate {
+  colaboradorUid: string;
+  colaboradorNombre: string;
   periodo: string;
-  items: ReportLineItem[];
+  categorias: string[];
+  items: ReportItem[];
   notas?: string;
+  estado?: string;
 }
 
 export interface ComparativaColaborador {
