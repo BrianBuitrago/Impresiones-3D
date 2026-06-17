@@ -26,9 +26,14 @@ import {
   RefreshCw,
   Percent,
   BarChart3,
+  Box,
+  User,
+  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
+import { Colaborador, ReportItem } from '@/types/reportes';
+import { fetchColaboradores, crearReporte } from '@/services/reporteService';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -132,6 +137,14 @@ export default function AdminPage() {
 
   // Guardando cotización
   const [saving, setSaving] = useState(false);
+
+  // Asignación de colaborador al aceptar cotización
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [assignColaboradores, setAssignColaboradores] = useState<Colaborador[]>([]);
+  const [assignMode, setAssignMode] = useState<'all' | 'perItem'>('perItem');
+  const [assignAllUid, setAssignAllUid] = useState('');
+  const [perItemAssignments, setPerItemAssignments] = useState<Record<number, string>>({});
+  const [assignSaving, setAssignSaving] = useState(false);
 
   // ── Cargar cotizaciones desde backend seguro ─────────────────────
 
@@ -388,6 +401,22 @@ export default function AdminPage() {
 
   const handleSaveQuote = async (newStatus: string) => {
     if (!selectedQuote || !token) return;
+
+    // Si es aceptado, primero mostrar diálogo de asignación de colaborador
+    if (newStatus === 'aceptado') {
+      try {
+        const cols = await fetchColaboradores(token);
+        setAssignColaboradores(cols);
+        setAssignMode('perItem');
+        setAssignAllUid('');
+        const init: Record<number, string> = {};
+        selectedQuote.productos.forEach((_: any, idx: number) => { init[idx] = ''; });
+        setPerItemAssignments(init);
+        setShowAssignDialog(true);
+      } catch { /* si falla carga, proceder sin asignación */ }
+      return;
+    }
+
     setSaving(true);
     try {
       const updatedProductos = selectedQuote.productos.map((p: any, idx: number) => {
@@ -483,6 +512,159 @@ export default function AdminPage() {
       alert('Error al guardar: ' + err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleConfirmAssign = async () => {
+    if (!selectedQuote || !token) return;
+    setAssignSaving(true);
+    try {
+      const colsDisponibles = assignColaboradores;
+      const itemsPorColaborador = new Map<string, ReportItem[]>();
+
+      // Build assignments: either all to one, or per item
+      for (let idx = 0; idx < selectedQuote.productos.length; idx++) {
+        const uid = assignMode === 'all' ? assignAllUid : (perItemAssignments[idx] || '');
+        if (!uid) continue;
+        const p = selectedQuote.productos[idx];
+        const c = calcProduct(idx, p.unidades);
+        const col = colsDisponibles.find(x => x.uid === uid);
+        const item: ReportItem = {
+          categoria: p.categoria || 'cotización-web',
+          descripcion: p.descripcionLineal || p.Descripcion_Lineal || p.nombre || 'Producto',
+          cantidad: p.unidades || 1,
+          valor: c.precioTotalProducto,
+          actividad: 'Cotización web aceptada',
+          clienteNombre: selectedQuote.cliente?.nombre || '',
+          clienteTelefono: selectedQuote.cliente?.telefono || '',
+          origen: 'web',
+          productoDetalle: {
+            nombre: p.nombre,
+            pesoGramos: c.filamento,
+            tiempoHoras: c.tiempoHoras,
+            tiempoMinutos: c.tiempoMinutos,
+            costoDiseno: c.costoDiseno,
+            costoAccesorios: c.costoAccesorios,
+            costoEmpaque: c.valorEmpaque,
+            costoPersonalizacion: c.valorPersonalizacion,
+            filamentoUsado: c.filamento,
+            valorUnitario: c.precioTotalUnitario,
+          },
+        };
+        if (!itemsPorColaborador.has(uid)) itemsPorColaborador.set(uid, []);
+        itemsPorColaborador.get(uid)!.push(item);
+      }
+
+      // Save quote as aceptado
+      const updatedProductos = selectedQuote.productos.map((p: any, idx: number) => {
+        const c = calcProduct(idx, p.unidades);
+        return {
+          ...p,
+          idProducto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
+          descripcionLineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
+          tiempoHoras: c.tiempoHoras,
+          tiempoMinutos: c.tiempoMinutos,
+          pesoGramos: c.filamento,
+          costoDisenoUnitario: c.costoDiseno,
+          costoAccesoriosUnitario: c.costoAccesorios,
+          duracionImpresionUnidad: c.duracion,
+          filamentoUsadoUnidad: c.filamento,
+          valorEmpaqueUnitario: c.valorEmpaque,
+          valorPersonalizacionUnitario: c.valorPersonalizacion,
+          porcentajeGanancia: c.ganancia,
+          precioKwhHora,
+          precioKwhMinuto: Math.round(c.precioKwhMinuto * 100) / 100,
+          precioFilamentoKg,
+          precioFilamentoGramo: Math.round((precioFilamentoKg / 1000) * 100) / 100,
+          costoFabricacionUnitario: Math.round(c.costoFabricacionUnitario * 100) / 100,
+          precioUnitario: Math.round(c.precioUnitario * 100) / 100,
+          precioConGananciaUnitario: Math.round(c.precioConGananciaUnitario * 100) / 100,
+          precioTotalUnitario: Math.round(c.precioTotalUnitario * 100) / 100,
+          subtotalFabricacionTotal: Math.round(c.subtotalFabricacionTotal * 100) / 100,
+          gananciaTotal: Math.round(c.gananciaTotal * 100) / 100,
+          precioTotal: Math.round(c.precioTotalProducto * 100) / 100,
+          Precio_Unitario: Math.round(c.precioUnitario * 100) / 100,
+          Valor_Ganancia_Total: Math.round(c.gananciaTotal * 100) / 100,
+          Precio_Total: Math.round(c.precioTotalProducto * 100) / 100,
+          Subtotal_Fabricacion_Total: Math.round(c.subtotalFabricacionTotal * 100) / 100,
+          subtotalEnergia: Math.round(c.subtotalEnergia * 100) / 100,
+          subtotalMaterial: Math.round(c.subtotalMaterial * 100) / 100,
+          precioLinealTotal: Math.round(c.precioTotalProducto * 100) / 100,
+          ID_Producto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
+          Descripcion_Lineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
+          Tiempo_Horas: Math.round(c.tiempoHoras * 100) / 100,
+          Tiempo_Minutos: Math.round(c.tiempoMinutos * 100) / 100,
+          Peso_Gramos: Math.round(c.filamento * 100) / 100,
+          Cantidad_Piezas: p.unidades,
+          'Costo_Diseño': Math.round(c.costoDiseno * 100) / 100,
+          Costo_Accesorios: Math.round(c.costoAccesorios * 100) / 100,
+          Costo_Personalizado: Math.round(c.valorPersonalizacion * 100) / 100,
+          Costo_Empaque: Math.round(c.valorEmpaque * 100) / 100,
+          Subtotal_Energia: Math.round(c.subtotalEnergia * 100) / 100,
+          Subtotal_Material: Math.round(c.subtotalMaterial * 100) / 100,
+          Subtotal_Fabricacion: Math.round(c.subtotalFabricacionTotal * 100) / 100,
+          Precio_Unitario_Con_Ganancia: Math.round(c.precioUnitario * 100) / 100,
+          Precio_Lineal_Total: Math.round(c.precioTotalProducto * 100) / 100,
+        };
+      });
+
+      const { subtotalFabricacion, ganancia, total } = getQuoteTotals();
+
+      const response = await fetch(`${API_URL}/quotes/${selectedQuote.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productos: updatedProductos,
+          estado: 'aceptado',
+          precioKwhHora,
+          precioFilamentoKg,
+          subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
+          valorGananciaTotal: Math.round(ganancia * 100) / 100,
+          precioTotalCotizacion: Math.round(total * 100) / 100,
+          porcentajeGanancia: updatedProductos.length > 0
+            ? Math.round((updatedProductos.reduce((acc: number, p: any) => acc + (p.porcentajeGanancia || 0), 0) / updatedProductos.length) * 100) / 100
+            : 30,
+          notasCotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
+          Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
+          Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
+          Precio_Total: Math.round(total * 100) / 100,
+          Precio_Total_Cotizacion: Math.round(total * 100) / 100,
+          Cantidad_Total_Piezas: updatedProductos.reduce((acc: number, p: any) => acc + (p.unidades || 0), 0),
+          Notas_Cotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || 'No se pudo guardar la cotización.');
+      }
+
+      const updatedQuote = await response.json();
+      setSelectedQuote(updatedQuote);
+      setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
+
+      // Create report entries for assigned products
+      const periodo = new Date().toISOString().slice(0, 7);
+      for (const [colUid, items] of itemsPorColaborador) {
+        const col = colsDisponibles.find(c => c.uid === colUid);
+        await crearReporte(token, {
+          colaboradorUid: colUid,
+          colaboradorNombre: col?.nombre || '',
+          periodo,
+          categorias: col?.categorias || [],
+          items,
+          notas: `Cotización #${selectedQuote.id} aceptada`,
+        });
+      }
+
+      setShowAssignDialog(false);
+    } catch (err: any) {
+      alert('Error al guardar: ' + err.message);
+    } finally {
+      setAssignSaving(false);
     }
   };
 
@@ -1618,9 +1800,79 @@ export default function AdminPage() {
               </div>
             </motion.div>
           )}
-
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {showAssignDialog && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={e => { if (e.target === e.currentTarget) setShowAssignDialog(false); }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between z-10">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-400" /> Asignar Colaborador(es)</h2>
+                <button onClick={() => setShowAssignDialog(false)} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
+              </div>
+
+              <div className="px-6 py-5 space-y-5">
+                <p className="text-xs text-slate-400">Asigna quién realizó el trabajo para que aparezca en los reportes mensuales. Los productos sin colaborador no se sumarán a ningún reporte.</p>
+
+                <div className="flex gap-3">
+                  <button onClick={() => setAssignMode('perItem')}
+                    className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-all cursor-pointer ${assignMode === 'perItem' ? 'bg-cyan-600/20 border-cyan-500/40 text-cyan-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    Asignar por producto
+                  </button>
+                  <button onClick={() => setAssignMode('all')}
+                    className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-all cursor-pointer ${assignMode === 'all' ? 'bg-cyan-600/20 border-cyan-500/40 text-cyan-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    Asignar a toda la compra
+                  </button>
+                </div>
+
+                {assignMode === 'all' && (
+                  <div>
+                    <label className="block text-xs text-slate-400 font-bold mb-1.5">Colaborador para todos los productos</label>
+                    <select value={assignAllUid} onChange={e => setAssignAllUid(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer">
+                      <option value="">Seleccionar colaborador</option>
+                      {assignColaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {selectedQuote?.productos.map((p: any, idx: number) => {
+                    const nombre = p.descripcionLineal || p.Descripcion_Lineal || p.nombre || `Producto #${idx + 1}`;
+                    return (
+                      <div key={idx} className="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-white">{nombre}</span>
+                          <span className="text-xs text-slate-400">{p.unidades || 1} uds · {formatCOP(calcProduct(idx, p.unidades).precioTotalProducto)}</span>
+                        </div>
+                        {assignMode === 'perItem' && (
+                          <select value={perItemAssignments[idx] || ''} onChange={e => setPerItemAssignments(prev => ({ ...prev, [idx]: e.target.value }))}
+                            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer">
+                            <option value="">Sin asignar (no aparecerá en reportes)</option>
+                            {assignColaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
+                          </select>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-3 pt-2 border-t border-slate-800">
+                  <button onClick={handleConfirmAssign} disabled={assignSaving}
+                    className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-xl text-sm cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+                    {assignSaving ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    {assignSaving ? 'Guardando...' : 'Aceptar y asignar'}
+                  </button>
+                  <button onClick={() => setShowAssignDialog(false)} className="py-3 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium rounded-xl text-sm cursor-pointer transition-colors">Cancelar</button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

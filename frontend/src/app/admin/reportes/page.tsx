@@ -458,7 +458,7 @@ export default function ReportesPage() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-950/60 text-slate-400 text-[10px] font-bold uppercase tracking-wider border-b border-slate-800">
                           <th className="py-3 px-4">Cliente / Descripción</th>
@@ -466,6 +466,7 @@ export default function ReportesPage() {
                           <th className="py-3 px-4">Categoría</th>
                           <th className="py-3 px-4 text-right">Cant</th>
                           <th className="py-3 px-4 text-right">Valor</th>
+                          <th className="py-3 px-4">Origen</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/60">
@@ -483,6 +484,17 @@ export default function ReportesPage() {
                             <td className="py-3 px-4"><span className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded capitalize">{item.categoria}</span></td>
                             <td className="py-3 px-4 text-right text-sm text-slate-300">{item.cantidad}</td>
                             <td className="py-3 px-4 text-right text-sm font-bold text-emerald-400">{formatCOP(item.valor)}</td>
+                            <td className="py-3 px-4">
+                              {item.origen === 'web' ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-400">
+                                  <Globe className="w-3 h-3" /> Web
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
+                                  <ShoppingCart className="w-3 h-3" /> Manual
+                                </span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
