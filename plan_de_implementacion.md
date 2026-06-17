@@ -89,16 +89,102 @@ Impresiones 3D/
 ---
 
 ## Plan de Ejecución
-1. Inicializar el entorno de desarrollo (Next.js en `/frontend` y FastAPI en `/backend`).
-2. Configurar Firebase y conectar el Frontend.
-3. Crear la estructura base y los componentes principales del UI usando Tailwind.
-4. Desarrollar la visualización 3D para el catálogo.
-5. Desarrollar los endpoints de FastAPI y la integración con Google Sheets.
-6. Probar el flujo completo de cotización -> inventario -> reporte en Google Sheets.
+1. ✅ Inicializar el entorno de desarrollo (Next.js en `/frontend` y FastAPI en `/backend`).
+2. ✅ Configurar Firebase y conectar el Frontend.
+3. ✅ Crear la estructura base y los componentes principales del UI usando Tailwind.
+4. ✅ Desarrollar la visualización 3D para el catálogo.
+5. ✅ Desarrollar los endpoints de FastAPI (auth, quotes, reports).
+6. ✅ Implementar Panel de Reportes Mensuales con comparativa de colaboradores.
+7. ⬜ Integración con Google Sheets para respaldos automáticos.
+8. ⬜ Probar el flujo completo de cotización -> inventario -> reporte en Google Sheets.
 
 ---
 
-## 4. Diseño de Autenticación, Roles y Flujo Git (Backend)
+## 5. Funcionalidades Implementadas
+
+### 5.1 Panel de Reportes Mensuales (`/admin/reportes`)
+- **Frontend:** `frontend/src/app/admin/reportes/page.tsx`
+- **KPIs:** Total ganado, items vendidos, colaboradores activos, categorías activas
+- **Comparativa por Colaborador:** Ranking con items, categorías, valor por item, total ganado
+- **Filtros:** Período (mes), colaborador, categoría
+- **Distribución por Categoría:** Gráfico de barras mostrando items por categoría
+- **Pestañas de Compras:** "Compras Manuales" y "Compras Web" con indicadores de carga y badges de estado
+
+### 5.2 Registro de Compras Manuales
+- **Frontend:** `frontend/src/app/admin/reportes/page.tsx` (sección de formulario)
+- **Datos de Cliente:** nombre y teléfono
+- **Múltiples Productos por Compra:** dimensiones, peso, tiempo de impresión, filamento usado, costos unitarios (diseño, accesorios, empaque, personalización)
+- **Asignación por Colaborador:** cada producto se asigna a un colaborador específico
+- **Guardado Automático:** al guardar, se divide en reportes individuales por colaborador en la colección `reports`
+
+### 5.3 Visualización de Compras Web (Cotizaciones Aceptadas)
+- **Frontend:** `frontend/src/app/admin/reportes/page.tsx` (pestaña "Compras Web")
+- Obtiene cotizaciones desde `GET /api/v1/quotes`
+- Filtra localmente por `estado === 'aceptado'`
+- Muestra cliente, producto, cantidad, valor y badge de estado "Aceptada" (verde)
+- Sin colaborador asignado → no aparece en comparativa por colaborador
+
+### 5.4 Backend de Reportes
+- **Modelo:** `backend/app/models/report.py` — `ReportItem` con `clienteNombre`, `clienteTelefono`, `origen` ("manual"/"web"), `ProductoDetalle` (dimensiones, costos, filamento, tiempo, accesorios, personalización, empaque, colaboradorUid)
+- **Endpoints:** `backend/app/api/endpoints/reports.py`
+  - `GET /reports`: Lista con filtros por período (`fecha_desde`/`fecha_hasta`), `colaboradorUid`, `estado`
+  - `POST /reports`: Crear uno o múltiples reportes (detecta si es array)
+  - `DELETE /reports/{id}`: Eliminar un reporte
+- **Serialización:** `serialize_doc()` que convierte `DocumentSnapshot` a dict con conversión automática de timestamps
+
+### 5.5 Filtros y Endpoints API
+- **Quotes:** `backend/app/api/endpoints/quotes.py` — filtros `estado`, `fecha_desde`, `fecha_hasta` en GET
+- **Auth:** `backend/app/api/endpoints/auth.py` — filtro `rol` en GET /users
+- **Router:** `backend/app/api/router.py` — incluye router de reports
+
+### 5.6 Seguridad (Firestore Rules)
+- **Archivo:** `backend/firestore.rules`
+- Corregido `isStaff()`: verificaba campo `role` (inexistente) → ahora verifica `rol`
+- Agregadas reglas para colección `reports`: solo staff (admin/colaborador) puede leer/escribir
+
+### Archivos Clave Implementados
+| Archivo | Propósito |
+|---------|-----------|
+| `frontend/src/app/admin/reportes/page.tsx` | Panel completo de reportes (KPIs, comparativa, tabs, formulario) |
+| `frontend/src/app/admin/page.tsx` | Manejo de aceptación de cotizaciones (handleSaveQuote) |
+| `frontend/src/types/reportes.ts` | Interfaces TypeScript (ReportItem, ReportCreate, ReportData, ProductoDetalle) |
+| `frontend/src/services/reporteService.ts` | Servicio API para reportes y colaboradores |
+| `backend/app/models/report.py` | Modelo Pydantic ReportItem con datos de cliente y producto |
+| `backend/app/api/endpoints/reports.py` | CRUD de reportes con filtros |
+| `backend/app/api/endpoints/quotes.py` | Filtros de estado y fechas en cotizaciones |
+| `backend/app/api/endpoints/auth.py` | Filtro de rol en usuarios |
+| `backend/firestore.rules` | Reglas de seguridad con isStaff() corregido |
+
+### 5.7 Asignación de Colaborador al Aceptar Cotización
+- Al hacer clic en "Aceptada" en `/admin`, se abre un **modal de asignación**
+- **Dos modos de asignación:**
+  - **Por producto:** seleccionar un colaborador distinto para cada producto de la cotización
+  - **A toda la compra:** asignar el mismo colaborador a todos los productos
+- Los productos sin colaborador se aceptan pero **no generan reporte** (no aparecen en ganancias)
+- Al confirmar: se guarda la cotización como `aceptado` Y se crean **reportes en la colección `reports`** con los items asignados
+
+### 5.8 Badge de Origen en Reportes
+- En la tabla de "Compras Manuales", cada item muestra un badge:
+  - 🟦 **Web** (origen = 'web') — items provenientes de cotizaciones aceptadas con colaborador asignado
+  - ⬜ **Manual** (origen = 'manual') — items registrados manualmente
+- Las ganancias de items con origen 'web' se suman automáticamente a la **comparativa por colaborador**
+
+### Flujo de Datos: Cotización Aceptada → Reportes
+1. Admin hace clic en "Aceptada" en `/admin` → se abre modal de asignación
+2. Admin elige modo (por producto o toda la compra) y selecciona colaborador(es)
+3. Se confirma → `PUT /api/v1/quotes/{id}` con `estado: "aceptado"` + `POST /api/v1/reports` por cada colaborador
+4. En reportes: pestaña "Compras Web" muestra la cotización, "Compras Manuales" muestra el item con badge "Web"
+5. La comparativa por colaborador incluye automáticamente las ganancias web asignadas
+
+### Archivos Clave (adicionales)
+| Archivo | Propósito |
+|---------|-----------|
+| `frontend/src/types/reportes.ts` | Tipos `Colaborador`, `ReportItem`, `ReportCreate`, `ProductoDetalle` |
+| `frontend/src/services/reporteService.ts` | `fetchColaboradores`, `crearReporte` usados desde admin page |
+
+---
+
+## 6. Diseño de Autenticación, Roles y Flujo Git (Backend)
 
 ### Requerimientos de Usuario y Registro
 *   **Roles Disponibles:**
