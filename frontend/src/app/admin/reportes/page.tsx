@@ -7,11 +7,14 @@ import {
   ShieldAlert, ArrowLeft, BarChart3, Users, Tag, DollarSign,
   Plus, X, Search, RefreshCw, ChevronDown, ChevronUp, Filter,
   FileText, Calendar, Layers, TrendingUp, User, Phone, Weight,
-  Clock, Ruler, Box, Palette, Sparkles, Pen,
+  Clock, Ruler, Box, Palette, Sparkles, Pen, Globe, ShoppingCart,
+  CheckCircle2, XCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Colaborador, ReportData, ReportItem, ProductoDetalle } from '@/types/reportes';
 import { fetchColaboradores, fetchReportes, crearReporte } from '@/services/reporteService';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -84,18 +87,23 @@ export default function ReportesPage() {
   const [showManualForm, setShowManualForm] = useState(false);
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState<string[]>(['cajas', 'pintura']);
+  const [purchaseTab, setPurchaseTab] = useState<'manual' | 'web'>('manual');
+  const [quotes, setQuotes] = useState<any[]>([]);
+  const [quotesFetching, setQuotesFetching] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!token || profile?.rol !== 'administrador') return;
     setFetching(true);
     setError(null);
     try {
-      const [cols, reps] = await Promise.all([
+      const [cols, reps, qs] = await Promise.all([
         fetchColaboradores(token),
         fetchReportes(token),
+        fetch(`${API_URL}/quotes`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []),
       ]);
       setColaboradores(cols);
       setReportes(reps);
+      setQuotes(Array.isArray(qs) ? qs : []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -170,6 +178,39 @@ export default function ReportesPage() {
     }
     return Array.from(mapa.values()).sort((a, b) => b.totalGanado - a.totalGanado);
   }, [reportesFiltrados]);
+
+  const webPurchases = useMemo(() => {
+    const items: Array<{
+      quoteId: string;
+      clienteNombre: string;
+      clienteTelefono: string;
+      productoNombre: string;
+      categoria: string;
+      cantidad: number;
+      valor: number;
+      estado: string;
+      fecha?: string;
+    }> = [];
+    for (const q of quotes) {
+      if (q.estado !== 'aceptado') continue;
+      const productos = Array.isArray(q.productos) ? q.productos : [];
+      for (const p of productos) {
+        if (filtroColaboradores.length > 0) continue;
+        items.push({
+          quoteId: q.id,
+          clienteNombre: q.cliente?.nombre || 'N/A',
+          clienteTelefono: q.cliente?.telefono || '',
+          productoNombre: p.nombre || p.descripcionLineal || 'Producto',
+          categoria: 'cotización-web',
+          cantidad: p.unidades || 1,
+          valor: p.precioTotal || p.Precio_Total || p.precioLinealTotal || 0,
+          estado: q.estado,
+          fecha: q.Fecha || q.creadoEn || '',
+        });
+      }
+    }
+    return items;
+  }, [quotes, filtroColaboradores]);
 
   const kpiTotales = useMemo(() => {
     let totalGanado = 0, totalItems = 0;
@@ -386,51 +427,108 @@ export default function ReportesPage() {
             </div>
 
             <div className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
-              <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-2"><FileText className="w-5 h-5 text-cyan-400" /><h3 className="text-base font-bold text-white">Resumen de Compras e Items del Mes</h3></div>
-                <button onClick={() => setShowManualForm(true)}
-                  className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-colors">
-                  <Plus className="w-3.5 h-3.5" /> Registrar Compra Manual
-                </button>
+              <div className="px-6 py-4 border-b border-slate-800">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2"><FileText className="w-5 h-5 text-cyan-400" /><h3 className="text-base font-bold text-white">Compras del Mes</h3></div>
+                  {purchaseTab === 'manual' && (
+                    <button onClick={() => setShowManualForm(true)}
+                      className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-colors">
+                      <Plus className="w-3.5 h-3.5" /> Registrar Compra Manual
+                    </button>
+                  )}
+                </div>
+                <div className="flex border-b border-slate-800 pb-0">
+                  <button onClick={() => setPurchaseTab('manual')}
+                    className={`py-2 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${purchaseTab === 'manual' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+                    <ShoppingCart className="w-3.5 h-3.5" /> Compras Manuales {itemsAplanados.length > 0 && <span className="text-[10px] text-slate-500 ml-1">({itemsAplanados.length})</span>}
+                  </button>
+                  <button onClick={() => setPurchaseTab('web')}
+                    className={`py-2 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${purchaseTab === 'web' ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+                    <Globe className="w-3.5 h-3.5" /> Compras Web {webPurchases.length > 0 && <span className="text-[10px] text-slate-500 ml-1">({webPurchases.length})</span>}
+                  </button>
+                </div>
               </div>
-              {itemsAplanados.length === 0 ? (
-                <div className="p-10 text-center text-slate-500">
-                  <FileText className="w-10 h-10 mx-auto mb-2 text-slate-700" />
-                  <p className="text-sm">No hay compras registradas en este periodo</p>
-                  <button onClick={() => setShowManualForm(true)} className="mt-3 text-xs text-cyan-400 hover:text-cyan-300 underline cursor-pointer">Registrar primera compra manual</button>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-950/60 text-slate-400 text-[10px] font-bold uppercase tracking-wider border-b border-slate-800">
-                        <th className="py-3 px-4">Cliente / Descripción</th>
-                        <th className="py-3 px-4">Colaborador</th>
-                        <th className="py-3 px-4">Categoría</th>
-                        <th className="py-3 px-4 text-right">Cant</th>
-                        <th className="py-3 px-4 text-right">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {itemsAplanados.map((item, i) => (
-                        <tr key={`${item.reportId}-${i}`} className="hover:bg-slate-800/10 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="text-sm text-slate-200 font-medium">{item.descripcion}</div>
-                            {(item.clienteNombre) && (
-                              <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                                <User className="w-3 h-3" /> {item.clienteNombre}{item.clienteTelefono ? ` - ${item.clienteTelefono}` : ''}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-xs text-slate-300">{item.colaboradorNombre}</td>
-                          <td className="py-3 px-4"><span className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded capitalize">{item.categoria}</span></td>
-                          <td className="py-3 px-4 text-right text-sm text-slate-300">{item.cantidad}</td>
-                          <td className="py-3 px-4 text-right text-sm font-bold text-emerald-400">{formatCOP(item.valor)}</td>
+
+              {purchaseTab === 'manual' ? (
+                itemsAplanados.length === 0 ? (
+                  <div className="p-10 text-center text-slate-500">
+                    <ShoppingCart className="w-10 h-10 mx-auto mb-2 text-slate-700" />
+                    <p className="text-sm">No hay compras manuales registradas</p>
+                    <button onClick={() => setShowManualForm(true)} className="mt-3 text-xs text-cyan-400 hover:text-cyan-300 underline cursor-pointer">Registrar primera compra manual</button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-950/60 text-slate-400 text-[10px] font-bold uppercase tracking-wider border-b border-slate-800">
+                          <th className="py-3 px-4">Cliente / Descripción</th>
+                          <th className="py-3 px-4">Colaborador</th>
+                          <th className="py-3 px-4">Categoría</th>
+                          <th className="py-3 px-4 text-right">Cant</th>
+                          <th className="py-3 px-4 text-right">Valor</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {itemsAplanados.map((item, i) => (
+                          <tr key={`manual-${item.reportId}-${i}`} className="hover:bg-slate-800/10 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="text-sm text-slate-200 font-medium">{item.descripcion}</div>
+                              {(item.clienteNombre) && (
+                                <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                  <User className="w-3 h-3" /> {item.clienteNombre}{item.clienteTelefono ? ` - ${item.clienteTelefono}` : ''}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-xs text-slate-300">{item.colaboradorNombre}</td>
+                            <td className="py-3 px-4"><span className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded capitalize">{item.categoria}</span></td>
+                            <td className="py-3 px-4 text-right text-sm text-slate-300">{item.cantidad}</td>
+                            <td className="py-3 px-4 text-right text-sm font-bold text-emerald-400">{formatCOP(item.valor)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              ) : (
+                webPurchases.length === 0 ? (
+                  <div className="p-10 text-center text-slate-500">
+                    <Globe className="w-10 h-10 mx-auto mb-2 text-slate-700" />
+                    <p className="text-sm">No hay compras web (cotizaciones aceptadas) en este periodo</p>
+                    <p className="text-xs text-slate-600 mt-1">Las cotizaciones aceptadas por clientes aparecerán aquí automáticamente.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-950/60 text-slate-400 text-[10px] font-bold uppercase tracking-wider border-b border-slate-800">
+                          <th className="py-3 px-4">Cliente</th>
+                          <th className="py-3 px-4">Producto</th>
+                          <th className="py-3 px-4 text-right">Cant</th>
+                          <th className="py-3 px-4 text-right">Valor</th>
+                          <th className="py-3 px-4">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {webPurchases.map((item, i) => (
+                          <tr key={`web-${item.quoteId}-${i}`} className="hover:bg-slate-800/10 transition-colors">
+                            <td className="py-3 px-4">
+                              <span className="text-sm text-slate-200 font-medium">{item.clienteNombre}</span>
+                              {item.clienteTelefono && <div className="text-[10px] text-slate-400">{item.clienteTelefono}</div>}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-slate-300">{item.productoNombre}</td>
+                            <td className="py-3 px-4 text-right text-sm text-slate-300">{item.cantidad}</td>
+                            <td className="py-3 px-4 text-right text-sm font-bold text-emerald-400">{formatCOP(item.valor)}</td>
+                            <td className="py-3 px-4">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400">
+                                <CheckCircle2 className="w-3 h-3" /> Aceptada
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
               )}
             </div>
           </div>
