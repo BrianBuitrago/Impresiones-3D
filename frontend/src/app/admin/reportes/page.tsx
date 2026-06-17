@@ -26,6 +26,14 @@ const formatCOP = (v: number) => `$${Math.round(v).toLocaleString('es-CO')} COP`
 const inputClass = 'w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 transition-colors';
 const selectClass = 'w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer transition-colors';
 
+interface TrabajoForm {
+  tempId: string;
+  descripcion: string;
+  valor: number;
+  colaboradorUid: string;
+  colaboradorNombre: string;
+}
+
 interface ProductForm {
   tempId: string;
   nombre: string;
@@ -45,6 +53,7 @@ interface ProductForm {
   tamanoVertical: number;
   colaboradorUid: string;
   colaboradorNombre: string;
+  trabajos: TrabajoForm[];
 }
 
 const emptyProduct = (cols: Colaborador[]): ProductForm => ({
@@ -64,6 +73,15 @@ const emptyProduct = (cols: Colaborador[]): ProductForm => ({
   costoPersonalizacion: 0,
   tamanoHorizontal: 0,
   tamanoVertical: 0,
+  colaboradorUid: cols[0]?.uid || '',
+  colaboradorNombre: cols[0]?.nombre || '',
+  trabajos: [],
+});
+
+const emptyTrabajo = (cols: Colaborador[]): TrabajoForm => ({
+  tempId: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+  descripcion: '',
+  valor: 0,
   colaboradorUid: cols[0]?.uid || '',
   colaboradorNombre: cols[0]?.nombre || '',
 });
@@ -665,6 +683,26 @@ function ManualPurchaseForm({
   const handleAddProducto = () => setProductos(prev => [...prev, emptyProduct(colaboradores)]);
   const handleRemoveProducto = (tempId: string) => setProductos(prev => prev.filter(p => p.tempId !== tempId));
 
+  const handleAddTrabajo = (prodTempId: string) => {
+    setProductos(prev => prev.map(p => p.tempId === prodTempId ? { ...p, trabajos: [...p.trabajos, emptyTrabajo(colaboradores)] } : p));
+  };
+  const handleRemoveTrabajo = (prodTempId: string, trabTempId: string) => {
+    setProductos(prev => prev.map(p => p.tempId === prodTempId ? { ...p, trabajos: p.trabajos.filter(t => t.tempId !== trabTempId) } : p));
+  };
+  const handleTrabajoChange = (prodTempId: string, trabTempId: string, field: keyof TrabajoForm, value: any) => {
+    setProductos(prev => prev.map(p => p.tempId === prodTempId ? {
+      ...p,
+      trabajos: p.trabajos.map(t => t.tempId === trabTempId ? { ...t, [field]: value } : t),
+    } : p));
+  };
+  const handleTrabajoColaborador = (prodTempId: string, trabTempId: string, uid: string) => {
+    const col = colaboradores.find(c => c.uid === uid);
+    setProductos(prev => prev.map(p => p.tempId === prodTempId ? {
+      ...p,
+      trabajos: p.trabajos.map(t => t.tempId === trabTempId ? { ...t, colaboradorUid: uid, colaboradorNombre: col?.nombre || '' } : t),
+    } : p));
+  };
+
   const handleSubmit = async () => {
     if (!clienteNombre.trim()) { setError('El nombre del cliente es obligatorio'); return; }
     if (!clienteTelefono.trim()) { setError('El teléfono del cliente es obligatorio'); return; }
@@ -710,6 +748,24 @@ function ManualPurchaseForm({
         const colUid = p.colaboradorUid;
         if (!itemsPorColaborador.has(colUid)) itemsPorColaborador.set(colUid, []);
         itemsPorColaborador.get(colUid)!.push(item);
+
+        // Sub-items (trabajos) con colaboradores distintos
+        for (const t of p.trabajos) {
+          if (!t.colaboradorUid || !t.descripcion.trim() || t.valor <= 0) continue;
+          const trabajoItem: ReportItem = {
+            categoria: p.categoria,
+            descripcion: `${p.descripcion || p.nombre} - ${t.descripcion}`,
+            cantidad: 1,
+            valor: t.valor,
+            actividad: t.descripcion,
+            notas: notas || undefined,
+            clienteNombre: clienteNombre.trim(),
+            clienteTelefono: clienteTelefono.trim(),
+            origen: 'manual',
+          };
+          if (!itemsPorColaborador.has(t.colaboradorUid)) itemsPorColaborador.set(t.colaboradorUid, []);
+          itemsPorColaborador.get(t.colaboradorUid)!.push(trabajoItem);
+        }
       }
 
       for (const [colUid, items] of itemsPorColaborador) {
@@ -873,8 +929,54 @@ function ManualPurchaseForm({
                   </select>
                 </div>
 
+                {/* ── Trabajos (sub-items) ── */}
+                <div className="border-t border-slate-800 pt-3 mt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Trabajos adicionales (caja, pintura, etc.)</span>
+                    <button onClick={() => handleAddTrabajo(prod.tempId)}
+                      className="py-1 px-2 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold rounded-lg cursor-pointer flex items-center gap-1 transition-colors">
+                      <Plus className="w-3 h-3" /> Agregar trabajo
+                    </button>
+                  </div>
+                  {prod.trabajos.length === 0 && (
+                    <p className="text-[10px] text-slate-600 italic">Sin trabajos adicionales. El valor total va al colaborador principal.</p>
+                  )}
+                  {prod.trabajos.map((trab, tidx) => (
+                    <div key={trab.tempId} className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 mb-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Trabajo #{tidx + 1}</span>
+                        <button onClick={() => handleRemoveTrabajo(prod.tempId, trab.tempId)}
+                          className="p-0.5 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300 cursor-pointer"><X className="w-3 h-3" /></button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[9px] text-slate-500 mb-0.5">Descripción</label>
+                          <input type="text" value={trab.descripcion} onChange={e => handleTrabajoChange(prod.tempId, trab.tempId, 'descripcion', e.target.value)}
+                            placeholder="Ej: Pintura, empaque..." className={inputClass} />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] text-slate-500 mb-0.5">Valor ($)</label>
+                          <input type="number" min="0" value={trab.valor || ''} onChange={e => handleTrabajoChange(prod.tempId, trab.tempId, 'valor', parseFloat(e.target.value) || 0)} className={inputClass} />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] text-slate-500 mb-0.5">Colaborador</label>
+                          <select value={trab.colaboradorUid} onChange={e => handleTrabajoColaborador(prod.tempId, trab.tempId, e.target.value)} className={selectClass}>
+                            <option value="">Seleccionar</option>
+                            {colaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="text-xs text-emerald-400 font-bold text-right pt-2 border-t border-slate-800">
                   Total producto: {formatCOP(prod.cantidad * prod.valorUnitario)}
+                  {prod.trabajos.filter(t => t.descripcion.trim() && t.valor > 0).length > 0 && (
+                    <span className="text-[10px] text-slate-400 font-normal ml-2">
+                      (+ {formatCOP(prod.trabajos.filter(t => t.descripcion.trim() && t.valor > 0).reduce((s, t) => s + t.valor, 0))} en trabajos)
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

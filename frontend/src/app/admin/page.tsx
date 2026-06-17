@@ -29,6 +29,7 @@ import {
   Box,
   User,
   X,
+  Plus,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
@@ -144,6 +145,7 @@ export default function AdminPage() {
   const [assignMode, setAssignMode] = useState<'all' | 'perItem'>('perItem');
   const [assignAllUid, setAssignAllUid] = useState('');
   const [perItemAssignments, setPerItemAssignments] = useState<Record<number, string>>({});
+  const [perItemTrabajos, setPerItemTrabajos] = useState<Record<number, Array<{ tempId: string; descripcion: string; valor: number; colaboradorUid: string }>>>({});
   const [assignSaving, setAssignSaving] = useState(false);
 
   // ── Cargar cotizaciones desde backend seguro ─────────────────────
@@ -410,8 +412,10 @@ export default function AdminPage() {
         setAssignMode('perItem');
         setAssignAllUid('');
         const init: Record<number, string> = {};
-        selectedQuote.productos.forEach((_: any, idx: number) => { init[idx] = ''; });
+        const initTrab: Record<number, Array<{ tempId: string; descripcion: string; valor: number; colaboradorUid: string }>> = {};
+        selectedQuote.productos.forEach((_: any, idx: number) => { init[idx] = ''; initTrab[idx] = []; });
         setPerItemAssignments(init);
+        setPerItemTrabajos(initTrab);
         setShowAssignDialog(true);
       } catch { /* si falla carga, proceder sin asignación */ }
       return;
@@ -553,6 +557,24 @@ export default function AdminPage() {
         };
         if (!itemsPorColaborador.has(uid)) itemsPorColaborador.set(uid, []);
         itemsPorColaborador.get(uid)!.push(item);
+
+        // Trabajos (sub-items) for this product
+        const trabajos = perItemTrabajos[idx] || [];
+        for (const t of trabajos) {
+          if (!t.colaboradorUid || !t.descripcion.trim() || t.valor <= 0) continue;
+          const trabajoItem: ReportItem = {
+            categoria: p.categoria || 'cotización-web',
+            descripcion: `${p.descripcionLineal || p.Descripcion_Lineal || p.nombre || 'Producto'} - ${t.descripcion}`,
+            cantidad: 1,
+            valor: t.valor,
+            actividad: t.descripcion,
+            clienteNombre: selectedQuote.cliente?.nombre || '',
+            clienteTelefono: selectedQuote.cliente?.telefono || '',
+            origen: 'web',
+          };
+          if (!itemsPorColaborador.has(t.colaboradorUid)) itemsPorColaborador.set(t.colaboradorUid, []);
+          itemsPorColaborador.get(t.colaboradorUid)!.push(trabajoItem);
+        }
       }
 
       // Save quote as aceptado
@@ -1849,11 +1871,51 @@ export default function AdminPage() {
                           <span className="text-xs text-slate-400">{p.unidades || 1} uds · {formatCOP(calcProduct(idx, p.unidades).precioTotalProducto)}</span>
                         </div>
                         {assignMode === 'perItem' && (
-                          <select value={perItemAssignments[idx] || ''} onChange={e => setPerItemAssignments(prev => ({ ...prev, [idx]: e.target.value }))}
-                            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer">
-                            <option value="">Sin asignar (no aparecerá en reportes)</option>
-                            {assignColaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
-                          </select>
+                          <>
+                            <select value={perItemAssignments[idx] || ''} onChange={e => setPerItemAssignments(prev => ({ ...prev, [idx]: e.target.value }))}
+                              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer mb-2">
+                              <option value="">Asignar producto completo (colaborador principal)</option>
+                              {assignColaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
+                            </select>
+
+                            <div className="border-t border-slate-800 pt-2 mt-2">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Trabajos adicionales</span>
+                                <button onClick={() => setPerItemTrabajos(prev => ({
+                                  ...prev,
+                                  [idx]: [...(prev[idx] || []), { tempId: Math.random().toString(36).slice(2), descripcion: '', valor: 0, colaboradorUid: '' }]
+                                }))}
+                                  className="py-0.5 px-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[9px] font-bold rounded-lg cursor-pointer flex items-center gap-0.5 transition-colors">
+                                  <Plus className="w-2.5 h-2.5" /> Agregar
+                                </button>
+                              </div>
+                              {(perItemTrabajos[idx] || []).map((t, tidx) => (
+                                <div key={t.tempId} className="bg-slate-950/60 border border-slate-800 rounded-lg p-2 mb-1.5">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[9px] font-bold text-cyan-400 uppercase">Trabajo #{tidx + 1}</span>
+                                    <button onClick={() => setPerItemTrabajos(prev => ({
+                                      ...prev, [idx]: (prev[idx] || []).filter(x => x.tempId !== t.tempId)
+                                    }))}
+                                      className="p-0.5 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300 cursor-pointer"><X className="w-2.5 h-2.5" /></button>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-1.5">
+                                    <input type="text" value={t.descripcion} onChange={e => setPerItemTrabajos(prev => ({
+                                      ...prev, [idx]: (prev[idx] || []).map(x => x.tempId === t.tempId ? { ...x, descripcion: e.target.value } : x)
+                                    }))} placeholder="Ej: Pintura" className="px-2 py-1 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 text-[10px] outline-none focus:border-cyan-500/50" />
+                                    <input type="number" min="0" value={t.valor || ''} onChange={e => setPerItemTrabajos(prev => ({
+                                      ...prev, [idx]: (prev[idx] || []).map(x => x.tempId === t.tempId ? { ...x, valor: parseFloat(e.target.value) || 0 } : x)
+                                    }))} placeholder="Valor $" className="px-2 py-1 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 text-[10px] outline-none focus:border-cyan-500/50" />
+                                    <select value={t.colaboradorUid} onChange={e => setPerItemTrabajos(prev => ({
+                                      ...prev, [idx]: (prev[idx] || []).map(x => x.tempId === t.tempId ? { ...x, colaboradorUid: e.target.value } : x)
+                                    }))} className="px-2 py-1 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 text-[10px] outline-none focus:border-cyan-500/50 cursor-pointer">
+                                      <option value="">Colaborador</option>
+                                      {assignColaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
+                                    </select>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
                         )}
                       </div>
                     );
