@@ -10,7 +10,7 @@ service cloud.firestore {
     // Función para verificar si el usuario es ADMIN o COLABORADOR
     function isStaff() {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      return userDoc.role in ['administrador', 'colaborador'];
+      return userDoc.rol in ['administrador', 'colaborador'];
     }
 
     // Función para verificar si el usuario es el dueño del documento
@@ -42,6 +42,12 @@ service cloud.firestore {
     match /products/{productId} {
       allow read: if true; // Público
       allow create, update, delete: if isStaff(); // Solo staff
+    }
+
+    // --- COLECCIÓN: reports ---
+    match /reports/{reportId} {
+      allow read: if isAuthenticated() && isStaff();
+      allow create, update, delete: if isAuthenticated() && isStaff();
     }
 
     // --- COLECCIÓN: settings ---
