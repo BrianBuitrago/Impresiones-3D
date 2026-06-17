@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Colaborador, ReportData, ReportItem, ProductoDetalle } from '@/types/reportes';
-import { fetchColaboradores, fetchReportes, crearReporte } from '@/services/reporteService';
+import { fetchColaboradores, fetchReportes, crearReporte, updateReporte, deleteReporte } from '@/services/reporteService';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -103,6 +103,8 @@ export default function ReportesPage() {
   const [filtroCategoria, setFiltroCategoria] = useState('');
 
   const [showManualForm, setShowManualForm] = useState(false);
+  const [editingReport, setEditingReport] = useState<ReportData | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState<string[]>(['cajas', 'pintura']);
   const [purchaseTab, setPurchaseTab] = useState<'manual' | 'web'>('manual');
@@ -128,6 +130,24 @@ export default function ReportesPage() {
       setFetching(false);
     }
   }, [token, profile]);
+
+  const handleEditReport = (r: ReportData) => {
+    setEditingReport(r);
+    setShowManualForm(true);
+  };
+
+  const handleDeleteReport = async (id: string) => {
+    if (!token) return;
+    setDeletingId(id);
+    try {
+      await deleteReporte(token, id);
+      setReportes(prev => prev.filter(r => r.id !== id));
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!loading) loadData();
@@ -584,13 +604,23 @@ export default function ReportesPage() {
               ) : (
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                   {reportesFiltrados.map(r => (
-                    <div key={r.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl hover:border-slate-700 transition-all">
+                    <div key={r.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl hover:border-slate-700 transition-all group">
                       <div className="flex justify-between items-start mb-1">
                         <span className="text-xs font-mono text-cyan-400 font-bold">{r.periodo}</span>
                         <span className="text-[10px] text-slate-500">{r.items?.length || 0} items</span>
                       </div>
                       <div className="text-[11px] text-slate-400">{r.colaboradorNombre}</div>
                       <div className="text-xs text-emerald-400 font-bold mt-1">Total: {formatCOP(r.totalAPagar || 0)}</div>
+                      <div className="flex gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEditReport(r)}
+                          className="text-[9px] px-2 py-0.5 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 text-cyan-400 rounded-lg cursor-pointer transition-colors">
+                          Editar
+                        </button>
+                        <button onClick={() => handleDeleteReport(r.id)} disabled={deletingId === r.id}
+                          className="text-[9px] px-2 py-0.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 rounded-lg cursor-pointer disabled:opacity-50 transition-colors">
+                          {deletingId === r.id ? '...' : 'Eliminar'}
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -657,8 +687,9 @@ export default function ReportesPage() {
             categorias={categoriasDisponibles}
             periodo={filtroPeriodo}
             token={token!}
-            onSave={() => { setShowManualForm(false); loadData(); }}
-            onClose={() => setShowManualForm(false)}
+            reporteEdit={editingReport}
+            onSave={() => { setShowManualForm(false); setEditingReport(null); loadData(); }}
+            onClose={() => { setShowManualForm(false); setEditingReport(null); }}
           />
         )}
       </AnimatePresence>
@@ -667,16 +698,52 @@ export default function ReportesPage() {
 }
 
 function ManualPurchaseForm({
-  colaboradores, categorias, periodo, token, onSave, onClose,
+  colaboradores, categorias, periodo, token, reporteEdit, onSave, onClose,
 }: {
   colaboradores: Colaborador[]; categorias: string[]; periodo: string;
-  token: string; onSave: () => void; onClose: () => void;
+  token: string; reporteEdit?: ReportData | null; onSave: () => void; onClose: () => void;
 }) {
-  const [clienteNombre, setClienteNombre] = useState('');
-  const [clienteTelefono, setClienteTelefono] = useState('');
-  const [productos, setProductos] = useState<ProductForm[]>([emptyProduct(colaboradores)]);
-  const [selectedPeriodo, setSelectedPeriodo] = useState(periodo);
-  const [notas, setNotas] = useState('');
+  const isEditing = !!reporteEdit;
+  const [clienteNombre, setClienteNombre] = useState(() => {
+    if (reporteEdit) return reporteEdit.items[0]?.clienteNombre || '';
+    return '';
+  });
+  const [clienteTelefono, setClienteTelefono] = useState(() => {
+    if (reporteEdit) return reporteEdit.items[0]?.clienteTelefono || '';
+    return '';
+  });
+  const [productos, setProductos] = useState<ProductForm[]>(() => {
+    if (reporteEdit) {
+      return reporteEdit.items.map(item => {
+        const d = item.productoDetalle;
+        const col = colaboradores.find(c => c.uid === reporteEdit.colaboradorUid);
+        return {
+          tempId: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+          nombre: item.descripcion,
+          descripcion: d?.descripcion || '',
+          categoria: item.categoria,
+          cantidad: item.cantidad,
+          valorUnitario: d?.valorUnitario || (item.cantidad > 0 ? item.valor / item.cantidad : item.valor),
+          pesoGramos: d?.pesoGramos || 0,
+          tiempoHoras: d?.tiempoHoras || 0,
+          tiempoMinutos: d?.tiempoMinutos || 0,
+          filamentoUsado: d?.filamentoUsado || 0,
+          costoDiseno: d?.costoDiseno || 0,
+          costoAccesorios: d?.costoAccesorios || 0,
+          costoEmpaque: d?.costoEmpaque || 0,
+          costoPersonalizacion: d?.costoPersonalizacion || 0,
+          tamanoHorizontal: d?.tamanoHorizontal || 0,
+          tamanoVertical: d?.tamanoVertical || 0,
+          colaboradorUid: reporteEdit.colaboradorUid,
+          colaboradorNombre: reporteEdit.colaboradorNombre,
+          trabajos: [],
+        };
+      });
+    }
+    return [emptyProduct(colaboradores)];
+  });
+  const [selectedPeriodo, setSelectedPeriodo] = useState(reporteEdit?.periodo || periodo);
+  const [notas, setNotas] = useState(reporteEdit?.notas || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -789,16 +856,30 @@ function ManualPurchaseForm({
         }
       }
 
-      for (const [colUid, items] of itemsPorColaborador) {
-        const col = colUid === '__sin_asignar__' ? null : colaboradores.find(c => c.uid === colUid);
-        await crearReporte(token, {
-          colaboradorUid: colUid,
-          colaboradorNombre: col?.nombre || 'Sin Asignar',
+      if (isEditing && reporteEdit) {
+        // Update existing report
+        const allItems: ReportItem[] = [];
+        for (const [, items] of itemsPorColaborador) {
+          allItems.push(...items);
+        }
+        await updateReporte(token, reporteEdit.id, {
           periodo: selectedPeriodo,
-          categorias: col?.categorias || [],
-          items,
+          categorias: [],
+          items: allItems,
           notas: notas || undefined,
         });
+      } else {
+        for (const [colUid, items] of itemsPorColaborador) {
+          const col = colUid === '__sin_asignar__' ? null : colaboradores.find(c => c.uid === colUid);
+          await crearReporte(token, {
+            colaboradorUid: colUid,
+            colaboradorNombre: col?.nombre || 'Sin Asignar',
+            periodo: selectedPeriodo,
+            categorias: col?.categorias || [],
+            items,
+            notas: notas || undefined,
+          });
+        }
       }
       onSave();
     } catch (err: any) {
@@ -816,7 +897,7 @@ function ManualPurchaseForm({
         className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2"><Plus className="w-5 h-5 text-emerald-400" /> Registrar Compra Manual</h2>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">{isEditing ? <FileText className="w-5 h-5 text-cyan-400" /> : <Plus className="w-5 h-5 text-emerald-400" />} {isEditing ? 'Editar Reporte' : 'Registrar Compra Manual'}</h2>
             <select value={selectedPeriodo} onChange={e => setSelectedPeriodo(e.target.value)}
               className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-xs font-bold outline-none focus:border-cyan-500/50 cursor-pointer">
               {periodosDisponibles.map(p => (<option key={p} value={p}>{p}</option>))}
@@ -1018,7 +1099,7 @@ function ManualPurchaseForm({
             <button onClick={handleSubmit} disabled={saving}
               className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-xl text-sm cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-2">
               {saving ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <FileText className="w-4 h-4" />}
-              {saving ? 'Guardando...' : `Guardar ${productos.length > 0 ? `${productos.length} producto${productos.length > 1 ? 's' : ''}` : ''}`}
+               {saving ? 'Guardando...' : isEditing ? 'Guardar Cambios' : `Guardar ${productos.length > 0 ? `${productos.length} producto${productos.length > 1 ? 's' : ''}` : ''}`}
             </button>
             <button onClick={onClose} className="py-3 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium rounded-xl text-sm cursor-pointer transition-colors">Cancelar</button>
           </div>

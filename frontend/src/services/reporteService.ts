@@ -43,3 +43,24 @@ export async function crearReporte(token: string, data: ReportCreate): Promise<R
     })
   );
 }
+
+export async function updateReporte(token: string, id: string, data: Partial<ReportCreate>): Promise<ReportData> {
+  return handleRes(
+    await fetch(`${API_URL}/reports/${id}`, {
+      method: 'PUT',
+      headers: headers(token),
+      body: JSON.stringify(data),
+    })
+  );
+}
+
+export async function deleteReporte(token: string, id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/reports/${id}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || `Error ${res.status}`);
+  }
+}
