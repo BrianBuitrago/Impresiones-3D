@@ -96,13 +96,8 @@ export default function CatalogoDestacado() {
                         </div>
                       </div>
                       <div className="p-4 sm:p-5">
-                        <h3 className="font-bold text-white text-base sm:text-lg mb-1.5 truncate">{prod.nombre}</h3>
-                        <p className="text-slate-400 text-xs sm:text-sm line-clamp-2 mb-3 leading-relaxed">{prod.descripcion}</p>
-                        <Link href="/cotizar"
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
-                        >
-                          Solicitar Cotización <ArrowRight className="w-3 h-3" />
-                        </Link>
+                        <h3 className="font-bold text-white text-base sm:text-lg mb-1 truncate">{prod.nombre}</h3>
+                        <p className="text-slate-400 text-xs sm:text-sm line-clamp-2 leading-relaxed">{prod.descripcion}</p>
                       </div>
                     </div>
                   </div>
