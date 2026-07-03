@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Box, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Product } from '@/types/productos';
@@ -9,7 +9,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v
 
 export default function CatalogoDestacado() {
   const [productos, setProductos] = useState<Product[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [current, setCurrent] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     fetch(`${API_BASE}/products?destacado=true`)
@@ -18,82 +20,121 @@ export default function CatalogoDestacado() {
       .catch(() => {});
   }, []);
 
+  const next = useCallback(() => {
+    setCurrent(prev => (prev + 1) % productos.length);
+  }, [productos.length]);
+
+  const prev = useCallback(() => {
+    setCurrent(prev => (prev - 1 + productos.length) % productos.length);
+  }, [productos.length]);
+
+  useEffect(() => {
+    if (productos.length <= 1 || isPaused) {
+      clearInterval(intervalRef.current);
+      return;
+    }
+    intervalRef.current = setInterval(next, 4000);
+    return () => clearInterval(intervalRef.current);
+  }, [productos.length, isPaused, next]);
+
   if (productos.length === 0) return null;
 
-  const handlePrev = () => setCurrentIndex(prev => Math.max(0, prev - 1));
-  const handleNext = () => setCurrentIndex(prev => Math.min(productos.length - 1, prev + 1));
+  const getIndex = (offset: number) => (current + offset + productos.length) % productos.length;
 
   return (
-    <section className="py-24 bg-slate-950 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-end mb-12">
+    <section className="py-20 sm:py-28 bg-slate-950 relative overflow-hidden">
+      {/* Fondo decorativo */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.08),transparent)]" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="flex justify-between items-end mb-10 sm:mb-16">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-4">Catálogo Destacado</h2>
-            <p className="text-slate-400">Descubre nuestros modelos más populares listos para imprimir.</p>
+            <span className="text-xs uppercase tracking-widest text-cyan-400 font-semibold mb-2 block">Colección</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3 font-outfit">Catálogo Destacado</h2>
+            <p className="text-slate-400 text-sm sm:text-base">Modelos seleccionados con la mejor calidad de impresión.</p>
           </div>
-          <Link href="/catalogo" className="text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 flex-shrink-0">
-            Ver todos <ArrowRight className="w-4 h-4" />
+          <Link href="/catalogo" className="hidden sm:flex text-cyan-400 hover:text-cyan-300 font-medium items-center gap-1.5 text-sm transition-colors flex-shrink-0">
+            Explorar todo <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
-        <div className="relative px-0 sm:px-12">
-          <div className="overflow-hidden rounded-3xl">
-            <div
-              className="flex transition-transform duration-500 ease-out"
-              style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        <div
+          className="relative -mx-2 sm:-mx-4"
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+        >
+          <div className="overflow-hidden py-4">
+            <div className="flex items-stretch transition-transform duration-700 ease-out"
+              style={{ transform: `translateX(calc(-${current * (100 / 3)}% + ${100 / 6}%))` }}
             >
-              {productos.map((prod) => (
-                <div key={prod.id} className="min-w-full px-2 sm:px-4">
-                  <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-                    <div className="grid grid-cols-1 md:grid-cols-2">
-                      <div className="aspect-square bg-slate-800/80 relative flex items-center justify-center overflow-hidden">
+              {productos.map((prod, idx) => {
+                const offset = idx - current;
+                const isCenter = offset === 0;
+                const isSide = Math.abs(offset) === 1 || (productos.length > 2 && Math.abs(offset) === productos.length - 1);
+                const scale = isCenter ? 1 : 0.85;
+                const opacity = isCenter ? 1 : 0.4;
+
+                return (
+                  <div key={prod.id}
+                    className="flex-shrink-0 px-2 sm:px-3 transition-all duration-700"
+                    style={{ width: `${100 / 3}%`, scale, opacity }}
+                  >
+                    <div className={`bg-slate-900/70 backdrop-blur-sm border rounded-2xl overflow-hidden shadow-xl h-full transition-all duration-700 ${isCenter ? 'border-cyan-500/30 shadow-cyan-500/10' : 'border-slate-800/50'}`}>
+                      <div className="aspect-[4/3] bg-slate-800/60 relative overflow-hidden">
                         {prod.imagenUrl ? (
-                          <img src={prod.imagenUrl} alt={prod.nombre} className="w-full h-full object-cover" />
+                          <img src={prod.imagenUrl} alt={prod.nombre} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                         ) : (
-                          <Box className="w-24 h-24 text-slate-600" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Box className="w-16 h-16 text-slate-700" />
+                          </div>
                         )}
-                      </div>
-                      <div className="p-6 sm:p-8 flex flex-col justify-center">
-                        <h3 className="text-2xl sm:text-3xl font-extrabold text-white mb-3 font-outfit">{prod.nombre}</h3>
-                        <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-4">{prod.descripcion}</p>
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          <span className="text-xs bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 px-3 py-1 rounded-full font-medium">{prod.material}</span>
-                          <span className="text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full capitalize">{prod.categoria}</span>
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                        <div className="absolute bottom-3 left-3 right-3">
+                          <span className="text-xs bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 px-2.5 py-0.5 rounded-full font-medium backdrop-blur-sm">
+                            {prod.material}
+                          </span>
                         </div>
-                        <Link
-                          href="/cotizar"
-                          className="w-full sm:w-auto py-3 px-8 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2"
+                      </div>
+                      <div className="p-4 sm:p-5">
+                        <h3 className="font-bold text-white text-base sm:text-lg mb-1.5 truncate">{prod.nombre}</h3>
+                        <p className="text-slate-400 text-xs sm:text-sm line-clamp-2 mb-3 leading-relaxed">{prod.descripcion}</p>
+                        <Link href="/cotizar"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
                         >
-                          Solicitar Cotización <ArrowRight className="w-4 h-4" />
+                          Solicitar Cotización <ArrowRight className="w-3 h-3" />
                         </Link>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           {productos.length > 1 && (
             <>
-              <button onClick={handlePrev} disabled={currentIndex === 0}
-                className="absolute left-0 top-1/2 -translate-y-1/2 p-2 sm:p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-full text-slate-300 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed backdrop-blur-sm transition-all z-10 ml-1">
-                <ChevronLeft className="w-5 h-5" />
+              <button onClick={prev}
+                className="absolute left-1 top-1/2 -translate-y-1/2 p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/50 rounded-full text-slate-300 hover:text-white cursor-pointer backdrop-blur-md transition-all z-20 shadow-lg">
+                <ChevronLeft className="w-4 h-4" />
               </button>
-              <button onClick={handleNext} disabled={currentIndex >= productos.length - 1}
-                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 sm:p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-full text-slate-300 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed backdrop-blur-sm transition-all z-10 mr-1">
-                <ChevronRight className="w-5 h-5" />
+              <button onClick={next}
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/50 rounded-full text-slate-300 hover:text-white cursor-pointer backdrop-blur-md transition-all z-20 shadow-lg">
+                <ChevronRight className="w-4 h-4" />
               </button>
             </>
           )}
         </div>
 
-        <div className="flex items-center justify-center gap-2 mt-6">
+        <div className="flex items-center justify-center gap-2.5 mt-8">
           {productos.map((_, idx) => (
-            <button key={idx} onClick={() => setCurrentIndex(idx)}
-              className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${idx === currentIndex ? 'bg-cyan-400 w-6' : 'bg-slate-700 hover:bg-slate-500'}`} />
+            <button key={idx} onClick={() => setCurrent(idx)}
+              className={`rounded-full transition-all duration-500 cursor-pointer ${idx === current ? 'bg-cyan-400 w-7 h-2' : 'bg-slate-700 hover:bg-slate-500 w-2 h-2'}`} />
           ))}
         </div>
+
+        <Link href="/catalogo" className="sm:hidden flex justify-center mt-6 text-cyan-400 hover:text-cyan-300 font-medium items-center gap-1.5 text-sm transition-colors">
+          Explorar todo <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
     </section>
   );
