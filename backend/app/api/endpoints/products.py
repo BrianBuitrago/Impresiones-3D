@@ -4,7 +4,7 @@ from app.api.deps import get_current_user
 
 router = APIRouter()
 
-@router.post("/products", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_product(data: dict, current_user: dict = Depends(get_current_user)):
     role = current_user.get("rol", "")
     if role not in ("administrador", "colaborador"):
@@ -15,7 +15,7 @@ def create_product(data: dict, current_user: dict = Depends(get_current_user)):
     ref = db.collection("products").add(data)
     return {"id": ref[1].id}
 
-@router.put("/products/{product_id}")
+@router.put("/{product_id}")
 def update_product(product_id: str, data: dict, current_user: dict = Depends(get_current_user)):
     role = current_user.get("rol", "")
     if role not in ("administrador", "colaborador"):
@@ -29,7 +29,7 @@ def update_product(product_id: str, data: dict, current_user: dict = Depends(get
     doc_ref.update(data)
     return {"id": product_id}
 
-@router.delete("/products/{product_id}")
+@router.delete("/{product_id}")
 def delete_product(product_id: str, current_user: dict = Depends(get_current_user)):
     role = current_user.get("rol", "")
     if role not in ("administrador", "colaborador"):

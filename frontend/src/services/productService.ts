@@ -48,7 +48,7 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<any> {
 }
 
 export async function crearProducto(data: ProductFormData, token: string): Promise<string> {
-  const result = await apiFetch('/products/', {
+  const result = await apiFetch('/products', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` },
     body: JSON.stringify(cleanData(data as unknown as Record<string, unknown>)),
