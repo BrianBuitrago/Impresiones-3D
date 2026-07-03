@@ -1,14 +1,27 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
-  Box, ChevronLeft, ChevronRight, Pencil, X, Check, ImageIcon,
+  Box, ChevronLeft, ChevronRight, Pencil, X, Check,
   ShieldAlert, RefreshCw, Upload,
 } from 'lucide-react';
-import { fetchProductos, seedProductos, actualizarProducto, crearProducto, eliminarProducto } from '@/services/productService';
+import { fetchProductos, actualizarProducto, eliminarProducto } from '@/services/productService';
 import type { Product, ProductFormData } from '@/types/productos';
+
+const DEFAULT_PRODUCTOS: Product[] = [
+  { id: 'default-1', nombre: 'Figura Articulada Dragón', descripcion: 'Figura de dragón con articulaciones móviles, ideal para coleccionistas.', material: 'Resina ABS-like', imagenUrl: '', categoria: 'figuras', destacado: true, orden: 1, activo: true },
+  { id: 'default-2', nombre: 'Soporte para Laptop', descripcion: 'Soporte ergonómico plegable para laptop de hasta 15 pulgadas.', material: 'PLA+', imagenUrl: '', categoria: 'tecnologia', destacado: true, orden: 2, activo: true },
+  { id: 'default-3', nombre: 'Maceta Geométrica', descripcion: 'Maceta con diseño geométrico moderno, incluye drenaje.', material: 'PETG', imagenUrl: '', categoria: 'hogar', destacado: true, orden: 3, activo: true },
+  { id: 'default-4', nombre: 'Organizador de Escritorio', descripcion: 'Organizador multinivel para lápices, clips y notas.', material: 'PLA+', imagenUrl: '', categoria: 'organizacion', destacado: true, orden: 4, activo: true },
+  { id: 'default-5', nombre: 'Base para Celular', descripcion: 'Base ajustable para celular con carga inalámbrica compatible.', material: 'PLA+', imagenUrl: '', categoria: 'tecnologia', destacado: true, orden: 5, activo: true },
+  { id: 'default-6', nombre: 'Jarrón Decorativo', descripcion: 'Jarrón con textura espiral, ideal para flores secas.', material: 'PLA+', imagenUrl: '', categoria: 'hogar', destacado: true, orden: 6, activo: true },
+  { id: 'default-7', nombre: 'Soporte para Audífonos', descripcion: 'Soporte de escritorio para audífonos over-ear.', material: 'PLA+', imagenUrl: '', categoria: 'tecnologia', destacado: true, orden: 7, activo: true },
+  { id: 'default-8', nombre: 'Repisa Flotante', descripcion: 'Repisa decorativa con soporte oculto, soporta hasta 3kg.', material: 'PETG', imagenUrl: '', categoria: 'hogar', destacado: true, orden: 8, activo: true },
+  { id: 'default-9', nombre: 'Caja para Joyas', descripcion: 'Caja con compartimentos para anillos, collares y aretes.', material: 'PLA', imagenUrl: '', categoria: 'cajas', destacado: false, orden: 9, activo: true },
+  { id: 'default-10', nombre: 'Llavero Personalizado', descripcion: 'Llavero con diseño personalizable, resistente y ligero.', material: 'PLA', imagenUrl: '', categoria: 'accesorios', destacado: false, orden: 10, activo: true },
+];
 
 const uploadToCloudinary = async (file: File): Promise<string> => {
   const form = new FormData();
@@ -23,11 +36,11 @@ const uploadToCloudinary = async (file: File): Promise<string> => {
 };
 
 export default function Catalogo() {
-  const { user, profile, token } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
   const isAdmin = profile?.rol === 'administrador';
 
-  const [productos, setProductos] = useState<Product[]>([]);
+  const [productos, setProductos] = useState<Product[]>(DEFAULT_PRODUCTOS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -35,24 +48,18 @@ export default function Catalogo() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<ProductFormData | null>(null);
   const [uploadingImg, setUploadingImg] = useState(false);
-  const [seedDone, setSeedDone] = useState(false);
 
   const loadProductos = useCallback(async () => {
     setLoading(true);
     try {
-      let prods = await fetchProductos();
-      if (prods.length === 0 && !seedDone) {
-        await seedProductos();
-        setSeedDone(true);
-        prods = await fetchProductos();
-      }
-      setProductos(prods);
-    } catch (err: any) {
-      setError(err.message);
+      const prods = await fetchProductos();
+      if (prods.length > 0) setProductos(prods);
+    } catch {
+      // Fallback to defaults
     } finally {
       setLoading(false);
     }
-  }, [seedDone]);
+  }, []);
 
   useEffect(() => { loadProductos(); }, [loadProductos]);
 
@@ -62,21 +69,13 @@ export default function Catalogo() {
   const startEdit = (p: Product) => {
     setEditingId(p.id);
     setEditForm({
-      nombre: p.nombre,
-      descripcion: p.descripcion,
-      material: p.material,
-      imagenUrl: p.imagenUrl,
-      categoria: p.categoria,
-      destacado: p.destacado,
-      orden: p.orden,
-      activo: p.activo,
+      nombre: p.nombre, descripcion: p.descripcion, material: p.material,
+      imagenUrl: p.imagenUrl, categoria: p.categoria,
+      destacado: p.destacado, orden: p.orden, activo: p.activo,
     });
   };
 
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditForm(null);
-  };
+  const cancelEdit = () => { setEditingId(null); setEditForm(null); };
 
   const saveEdit = async () => {
     if (!editingId || !editForm) return;
@@ -107,7 +106,7 @@ export default function Catalogo() {
     try {
       const url = await uploadToCloudinary(file);
       setEditForm(prev => prev ? { ...prev, imagenUrl: url } : prev);
-    } catch (err: any) {
+    } catch {
       setError('Error al subir imagen');
     } finally {
       setUploadingImg(false);
@@ -154,7 +153,6 @@ export default function Catalogo() {
           <div className="text-center py-20 text-slate-500">
             <Box className="w-16 h-16 mx-auto mb-4 text-slate-700" />
             <p className="text-lg font-medium">Catálogo vacío</p>
-            <p className="text-sm text-slate-600 mt-1">Los productos aparecerán aquí cuando se agreguen.</p>
           </div>
         ) : (
           <>

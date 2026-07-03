@@ -12,14 +12,14 @@ export async function fetchProductos(): Promise<Product[]> {
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() } as Product))
     .filter(p => p.activo)
-    .sort((a, b) => a.orden - b.orden);
+    .sort((a, b) => (a.orden || 99) - (b.orden || 99));
 }
 
 export async function fetchAllProductos(): Promise<Product[]> {
   const snap = await getDocs(collection(db, COLLECTION));
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() } as Product))
-    .sort((a, b) => a.orden - b.orden);
+    .sort((a, b) => (a.orden || 99) - (b.orden || 99));
 }
 
 export async function fetchProducto(id: string): Promise<Product | null> {
@@ -44,13 +44,4 @@ export async function actualizarProducto(id: string, data: Partial<ProductFormDa
 
 export async function eliminarProducto(id: string): Promise<void> {
   await deleteDoc(doc(db, COLLECTION, id));
-}
-
-export async function seedProductos(): Promise<void> {
-  const { SEED_PRODUCTS } = await import('@/types/productos');
-  const existing = await getDocs(collection(db, COLLECTION));
-  if (existing.size > 0) return;
-  for (const p of SEED_PRODUCTS) {
-    await crearProducto(p);
-  }
 }
