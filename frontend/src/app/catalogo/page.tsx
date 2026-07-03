@@ -7,7 +7,7 @@ import {
   Box, ChevronLeft, ChevronRight, Pencil, X, Check,
   ShieldAlert, RefreshCw, Upload,
 } from 'lucide-react';
-import { fetchProductos, actualizarProducto, eliminarProducto } from '@/services/productService';
+import { fetchProductos, actualizarProducto, crearProducto, eliminarProducto } from '@/services/productService';
 import type { Product, ProductFormData } from '@/types/productos';
 
 const DEFAULT_PRODUCTOS: Product[] = [
@@ -50,7 +50,7 @@ export default function Catalogo() {
   const [uploadingImg, setUploadingImg] = useState(false);
 
   const loadProductos = useCallback(async () => {
-    setLoading(true);
+    if (!isAdmin) { setLoading(false); return; }
     try {
       const prods = await fetchProductos();
       if (prods.length > 0) setProductos(prods);
@@ -59,9 +59,12 @@ export default function Catalogo() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
-  useEffect(() => { loadProductos(); }, [loadProductos]);
+  useEffect(() => {
+    if (!isAdmin) setLoading(false);
+    else loadProductos();
+  }, [isAdmin, loadProductos]);
 
   const handlePrev = () => setCurrentIndex(prev => Math.max(0, prev - 1));
   const handleNext = () => setCurrentIndex(prev => Math.min(productos.length - 1, prev + 1));
@@ -80,8 +83,13 @@ export default function Catalogo() {
   const saveEdit = async () => {
     if (!editingId || !editForm) return;
     try {
-      await actualizarProducto(editingId, editForm);
-      setProductos(prev => prev.map(p => p.id === editingId ? { ...p, ...editForm } : p));
+      if (editingId.startsWith('default-')) {
+        const newId = await crearProducto(editForm);
+        setProductos(prev => prev.map(p => p.id === editingId ? { ...p, id: newId, ...editForm } : p));
+      } else {
+        await actualizarProducto(editingId, editForm);
+        setProductos(prev => prev.map(p => p.id === editingId ? { ...p, ...editForm } : p));
+      }
       cancelEdit();
     } catch (err: any) {
       setError(err.message);
@@ -90,6 +98,11 @@ export default function Catalogo() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar este producto?')) return;
+    if (id.startsWith('default-')) {
+      setProductos(prev => prev.filter(p => p.id !== id));
+      if (currentIndex >= productos.length - 1) setCurrentIndex(prev => Math.max(0, prev - 1));
+      return;
+    }
     try {
       await eliminarProducto(id);
       setProductos(prev => prev.filter(p => p.id !== id));
