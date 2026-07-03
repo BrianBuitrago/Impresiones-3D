@@ -1,7 +1,7 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore } from "firebase/firestore";
+import { getAuth, Auth } from "firebase/auth";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,12 +12,12 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase only if it hasn't been initialized already (important for Next.js)
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const isBrowser = typeof window !== 'undefined';
 
-// Initialize Firebase services
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-export const storage = getStorage(app);
+const app: FirebaseApp = isBrowser ? (!getApps().length ? initializeApp(firebaseConfig) : getApp()) : ({} as FirebaseApp);
+const db: Firestore = isBrowser ? getFirestore(app) : ({} as Firestore);
+const auth: Auth = isBrowser ? getAuth(app) : ({} as Auth);
+const storage: FirebaseStorage = isBrowser ? getStorage(app) : ({} as FirebaseStorage);
 
+export { app, db, auth, storage };
 export default app;
