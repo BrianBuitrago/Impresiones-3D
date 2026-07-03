@@ -1,6 +1,6 @@
 import { db } from './firebase';
 import {
-  collection, query, where, orderBy, getDocs, doc, getDoc,
+  collection, getDocs, doc, getDoc,
   addDoc, updateDoc, deleteDoc, Timestamp,
 } from 'firebase/firestore';
 import type { Product, ProductFormData } from '@/types/productos';
@@ -8,19 +8,18 @@ import type { Product, ProductFormData } from '@/types/productos';
 const COLLECTION = 'products';
 
 export async function fetchProductos(): Promise<Product[]> {
-  const q = query(
-    collection(db, COLLECTION),
-    where('activo', '==', true),
-    orderBy('orden', 'asc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+  const snap = await getDocs(collection(db, COLLECTION));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as Product))
+    .filter(p => p.activo)
+    .sort((a, b) => a.orden - b.orden);
 }
 
 export async function fetchAllProductos(): Promise<Product[]> {
-  const q = query(collection(db, COLLECTION), orderBy('orden', 'asc'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+  const snap = await getDocs(collection(db, COLLECTION));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as Product))
+    .sort((a, b) => a.orden - b.orden);
 }
 
 export async function fetchProducto(id: string): Promise<Product | null> {
@@ -49,7 +48,7 @@ export async function eliminarProducto(id: string): Promise<void> {
 
 export async function seedProductos(): Promise<void> {
   const { SEED_PRODUCTS } = await import('@/types/productos');
-  const existing = await getDocs(query(collection(db, COLLECTION), where('activo', '==', true)));
+  const existing = await getDocs(collection(db, COLLECTION));
   if (existing.size > 0) return;
   for (const p of SEED_PRODUCTS) {
     await crearProducto(p);
