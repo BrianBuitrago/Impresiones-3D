@@ -1,7 +1,7 @@
-import type { FirebaseApp } from "firebase/app";
-import type { Firestore } from "firebase/firestore";
-import type { Auth } from "firebase/auth";
-import type { FirebaseStorage } from "firebase/storage";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,29 +12,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const isBrowser = typeof window !== 'undefined';
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-let _app: FirebaseApp = undefined as unknown as FirebaseApp;
-let _db: Firestore = undefined as unknown as Firestore;
-let _auth: Auth = undefined as unknown as Auth;
-let _storage: FirebaseStorage = undefined as unknown as FirebaseStorage;
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
 
-if (isBrowser) {
-  // Dynamic imports ensure Firebase SDK is NOT loaded on the server
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { initializeApp, getApps, getApp } = require("firebase/app");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getFirestore } = require("firebase/firestore");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getAuth } = require("firebase/auth");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getStorage } = require("firebase/storage");
-
-  _app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  _db = getFirestore(_app);
-  _auth = getAuth(_app);
-  _storage = getStorage(_app);
-}
-
-export { _app as app, _db as db, _auth as auth, _storage as storage };
-export default _app;
+export default app;
