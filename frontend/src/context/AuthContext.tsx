@@ -9,7 +9,8 @@ import {
   onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
-import { auth } from '@/services/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/services/firebase';
 
 export interface UserProfile {
   uid: string;
@@ -58,6 +59,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.ok) {
         const data = await response.json();
         setProfile(data);
+        // Sincronizar perfil en Firestore para permisos de staff
+        try {
+          await setDoc(doc(db!, 'users', firebaseUser.uid), {
+            nombre: data.nombre,
+            email: data.email,
+            rol: data.rol,
+          }, { merge: true });
+        } catch { /* si no es admin/staff, no puede escribir en Firestore */ }
       } else {
         console.warn('No se pudo obtener el perfil de Firestore local.');
         setProfile(null);
