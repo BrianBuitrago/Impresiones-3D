@@ -1,8 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from app.core.firebase import db
 from app.api.deps import get_current_user
 
 router = APIRouter()
+
+@router.get("")
+def list_products(destacado: Optional[bool] = Query(None)):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+    query = db.collection("products")
+    if destacado is not None:
+        query = query.where("destacado", "==", destacado)
+    docs = query.stream()
+    results = []
+    for d in docs:
+        item = d.to_dict() or {}
+        item["id"] = d.id
+        results.append(item)
+    return results
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_product(data: dict, current_user: dict = Depends(get_current_user)):
