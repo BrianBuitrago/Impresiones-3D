@@ -36,7 +36,7 @@ export default function Home() {
                   Cotizar Diseño <ArrowRight className="w-5 h-5" />
                 </Link>
                 <Link 
-                  href="#catalogo" 
+                  href="/catalogo" 
                   className="bg-slate-800/80 hover:bg-slate-700 text-white px-8 py-4 rounded-full font-medium transition-all border border-slate-700 backdrop-blur-sm"
                 >
                   Ver Catálogo
@@ -86,95 +86,51 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Catálogo Section (Placeholder) */}
-      <section id="catalogo" className="py-24 bg-slate-950">
+      {/* Catálogo Destacado */}
+      <section className="py-24 bg-slate-950 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-end mb-12">
             <div>
               <h2 className="text-3xl font-bold text-white mb-4">Catálogo Destacado</h2>
               <p className="text-slate-400">Descubre nuestros modelos más populares listos para imprimir.</p>
             </div>
-            <Link href="/catalogo" className="text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1">
+            <Link href="/catalogo" className="text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 flex-shrink-0">
               Ver todos <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Tarjeta de Producto 1 */}
-            <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 group cursor-pointer hover:border-cyan-500/50 transition-colors">
-              <div className="aspect-square bg-slate-800 relative">
-                {/* Imagen/3D Placeholder */}
-                <div className="absolute inset-0 flex items-center justify-center text-slate-600">
-                  <Box className="w-12 h-12" />
+          <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+            <div className="flex gap-6 flex-shrink-0">
+              {[
+                { nombre: "Figura Articulada", material: "Resina ABS-like" },
+                { nombre: "Soporte Laptop", material: "PLA+" },
+                { nombre: "Maceta Geométrica", material: "PETG" },
+                { nombre: "Llavero Personalizado", material: "PLA" },
+                { nombre: "Caja Organizadora", material: "PLA+" },
+                { nombre: "Miniatura Dragón", material: "Resina Estándar" },
+                { nombre: "Portalápices", material: "PETG" },
+                { nombre: "Máscara Decorativa", material: "PLA" },
+                { nombre: "Base Monitor", material: "PLA+" },
+                { nombre: "Lámpara LED", material: "PETG" },
+              ].map((producto, i) => (
+                <div key={i} className="w-64 flex-shrink-0 snap-start bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 group cursor-pointer hover:border-cyan-500/50 transition-colors">
+                  <div className="aspect-square bg-slate-800 relative">
+                    <div className="absolute inset-0 flex items-center justify-center text-slate-600">
+                      <Box className="w-12 h-12" />
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors mb-2">{producto.nombre}</h3>
+                    <p className="text-sm text-slate-400 mb-4">Material: {producto.material}</p>
+                    <Link
+                      href="/cotizar"
+                      className="block w-full text-center bg-slate-800 hover:bg-cyan-600 text-white py-2 rounded-lg font-medium transition-colors text-sm"
+                    >
+                      Solicitar Cotización
+                    </Link>
+                  </div>
                 </div>
-              </div>
-              <div className="p-5">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors">Figura Articulada</h3>
-                  <span className="text-orange-400 font-bold">$25</span>
-                </div>
-                <p className="text-sm text-slate-400 mb-4">Material: Resina ABS-like</p>
-                <button className="w-full bg-slate-800 hover:bg-cyan-600 text-white py-2 rounded-lg font-medium transition-colors">
-                  Añadir al Carrito
-                </button>
-              </div>
-            </div>
-            
-            {/* Tarjeta de Producto 2 */}
-            <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 group cursor-pointer hover:border-cyan-500/50 transition-colors">
-              <div className="aspect-square bg-slate-800 relative">
-                <div className="absolute inset-0 flex items-center justify-center text-slate-600">
-                  <Box className="w-12 h-12" />
-                </div>
-              </div>
-              <div className="p-5">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors">Soporte Laptop</h3>
-                  <span className="text-orange-400 font-bold">$15</span>
-                </div>
-                <p className="text-sm text-slate-400 mb-4">Material: PLA+</p>
-                <button className="w-full bg-slate-800 hover:bg-cyan-600 text-white py-2 rounded-lg font-medium transition-colors">
-                  Añadir al Carrito
-                </button>
-              </div>
-            </div>
-
-            {/* Tarjeta de Producto 3 */}
-            <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 group cursor-pointer hover:border-cyan-500/50 transition-colors">
-              <div className="aspect-square bg-slate-800 relative">
-                <div className="absolute inset-0 flex items-center justify-center text-slate-600">
-                  <Box className="w-12 h-12" />
-                </div>
-              </div>
-              <div className="p-5">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors">Maceta Geométrica</h3>
-                  <span className="text-orange-400 font-bold">$30</span>
-                </div>
-                <p className="text-sm text-slate-400 mb-4">Material: PETG</p>
-                <button className="w-full bg-slate-800 hover:bg-cyan-600 text-white py-2 rounded-lg font-medium transition-colors">
-                  Añadir al Carrito
-                </button>
-              </div>
-            </div>
-
-            {/* Tarjeta de Producto 4 */}
-            <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 group cursor-pointer hover:border-cyan-500/50 transition-colors">
-              <div className="aspect-square bg-slate-800 relative">
-                <div className="absolute inset-0 flex items-center justify-center text-slate-600">
-                  <Box className="w-12 h-12" />
-                </div>
-              </div>
-              <div className="p-5">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors">Llavero Personalizado</h3>
-                  <span className="text-orange-400 font-bold">$5</span>
-                </div>
-                <p className="text-sm text-slate-400 mb-4">Material: PLA</p>
-                <button className="w-full bg-slate-800 hover:bg-cyan-600 text-white py-2 rounded-lg font-medium transition-colors">
-                  Añadir al Carrito
-                </button>
-              </div>
+              ))}
             </div>
           </div>
         </div>

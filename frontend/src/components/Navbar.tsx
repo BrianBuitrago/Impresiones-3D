@@ -28,7 +28,7 @@ export default function Navbar() {
 
           {/* Links Principales */}
           <div className="hidden md:flex space-x-8">
-            <Link href="/" className="text-slate-300 hover:text-cyan-400 transition-colors font-medium text-sm">Catálogo</Link>
+            <Link href="/catalogo" className="text-slate-300 hover:text-cyan-400 transition-colors font-medium text-sm">Catálogo</Link>
             <Link href="/cotizar" className="text-slate-300 hover:text-cyan-400 transition-colors font-medium text-sm">Cotizar Diseño</Link>
             <Link href="/nosotros" className="text-slate-300 hover:text-cyan-400 transition-colors font-medium text-sm">Nosotros</Link>
             {(profile?.rol === 'administrador' || profile?.rol === 'colaborador') && (

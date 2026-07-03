@@ -22,7 +22,7 @@ export default function Footer() {
           <div>
             <h3 className="text-slate-200 font-semibold mb-4">Enlaces Rápidos</h3>
             <ul className="space-y-2">
-              <li><Link href="/" className="text-slate-400 hover:text-cyan-400 text-sm transition-colors">Catálogo</Link></li>
+              <li><Link href="/catalogo" className="text-slate-400 hover:text-cyan-400 text-sm transition-colors">Catálogo</Link></li>
               <li><Link href="/cotizar" className="text-slate-400 hover:text-cyan-400 text-sm transition-colors">Cotizar Modelo</Link></li>
               <li><Link href="/materiales" className="text-slate-400 hover:text-cyan-400 text-sm transition-colors">Materiales</Link></li>
             </ul>
