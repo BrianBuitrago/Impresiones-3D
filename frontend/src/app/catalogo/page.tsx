@@ -150,12 +150,32 @@ export default function Catalogo() {
             <p className="text-slate-400 mt-1 max-w-xl">Explora nuestra galería de modelos listos para imprimir.</p>
           </div>
           <div className="flex items-center gap-2">
-            {isAdmin && (
+            {isAdmin && (<>
               <button onClick={() => { setEditMode(!editMode); cancelEdit(); }}
                 className={`py-2 px-4 rounded-xl text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5 ${editMode ? 'bg-cyan-600/20 border border-cyan-500/40 text-cyan-300' : 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700'}`}>
                 <Pencil className="w-3.5 h-3.5" /> {editMode ? 'Ver Catálogo' : 'Modificar Catálogo'}
               </button>
-            )}
+              {editMode && (
+                <button onClick={() => {
+                  const newId = `default-new-${Date.now()}`;
+                  const nuevo: Product = {
+                    id: newId, nombre: '', descripcion: '', material: '',
+                    imagenUrl: '', categoria: '', destacado: false, orden: productos.length + 1, activo: true,
+                  };
+                  setProductos(prev => [...prev, nuevo]);
+                  setCurrentIndex(productos.length);
+                  setEditForm({
+                    nombre: '', descripcion: '', material: '',
+                    imagenUrl: '', categoria: '', destacado: false, orden: productos.length + 1, activo: true,
+                  });
+                  setEditingId(newId);
+                }}
+                  className="py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5"
+                >
+                  + Nuevo Producto
+                </button>
+              )}
+            </>)}
             <button onClick={loadProductos} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-white cursor-pointer transition-colors" title="Recargar">
               <RefreshCw className="w-4 h-4" />
             </button>
