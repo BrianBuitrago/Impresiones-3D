@@ -59,14 +59,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.ok) {
         const data = await response.json();
         setProfile(data);
-        // Sincronizar perfil en Firestore para permisos de staff
+        // Sincronizar perfil en Firestore para permisos de staff en reglas de seguridad
         try {
-          await setDoc(doc(db!, 'users', firebaseUser.uid), {
-            nombre: data.nombre,
-            email: data.email,
-            rol: data.rol,
+          const userRef = doc(db!, 'users', firebaseUser.uid);
+          await setDoc(userRef, {
+            nombre: data.nombre || firebaseUser.displayName || '',
+            email: data.email || firebaseUser.email || '',
+            rol: data.rol || 'cliente',
           }, { merge: true });
-        } catch { /* si no es admin/staff, no puede escribir en Firestore */ }
+        } catch (e) {
+          console.error('Error al sincronizar perfil a Firestore:', e);
+        }
       } else {
         console.warn('No se pudo obtener el perfil de Firestore local.');
         setProfile(null);
