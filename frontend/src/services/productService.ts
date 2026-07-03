@@ -27,9 +27,17 @@ export async function fetchProducto(id: string): Promise<Product | null> {
   return d.exists() ? { id: d.id, ...d.data() } as Product : null;
 }
 
+function cleanData(obj: Record<string, unknown>): Record<string, unknown> {
+  const clean: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) clean[k] = v;
+  }
+  return clean;
+}
+
 export async function crearProducto(data: ProductFormData): Promise<string> {
   const ref = await addDoc(collection(db, COLLECTION), {
-    ...data,
+    ...cleanData(data as unknown as Record<string, unknown>),
     creadoEn: Timestamp.now(),
   });
   return ref.id;
@@ -37,7 +45,7 @@ export async function crearProducto(data: ProductFormData): Promise<string> {
 
 export async function actualizarProducto(id: string, data: Partial<ProductFormData>): Promise<void> {
   await updateDoc(doc(db, COLLECTION, id), {
-    ...data,
+    ...cleanData(data as unknown as Record<string, unknown>),
     actualizadoEn: Timestamp.now(),
   });
 }
