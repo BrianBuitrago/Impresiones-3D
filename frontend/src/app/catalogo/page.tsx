@@ -36,7 +36,7 @@ const uploadToCloudinary = async (file: File): Promise<string> => {
 };
 
 export default function Catalogo() {
-  const { user, profile } = useAuth();
+  const { user, profile, token } = useAuth();
   const router = useRouter();
   const isAdmin = profile?.rol === 'administrador';
 
@@ -84,10 +84,10 @@ export default function Catalogo() {
     if (!editingId || !editForm) return;
     try {
       if (editingId.startsWith('default-')) {
-        const newId = await crearProducto(editForm);
+        const newId = await crearProducto(editForm, token!);
         setProductos(prev => prev.map(p => p.id === editingId ? { ...p, id: newId, ...editForm } : p));
       } else {
-        await actualizarProducto(editingId, editForm);
+        await actualizarProducto(editingId, editForm, token!);
         setProductos(prev => prev.map(p => p.id === editingId ? { ...p, ...editForm } : p));
       }
       cancelEdit();
@@ -104,7 +104,7 @@ export default function Catalogo() {
       return;
     }
     try {
-      await eliminarProducto(id);
+      await eliminarProducto(id, token!);
       setProductos(prev => prev.filter(p => p.id !== id));
       if (currentIndex >= productos.length - 1) setCurrentIndex(prev => Math.max(0, prev - 1));
     } catch (err: any) {

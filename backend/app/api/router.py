@@ -27,3 +27,12 @@ except Exception as e:
     print(f"ERROR: No se pudo registrar router de reports: {e}", file=sys.stderr)
     import traceback
     traceback.print_exc()
+
+# Importar productos de forma segura
+try:
+    from app.api.endpoints import products
+    api_router.include_router(products.router, prefix="/products", tags=["Productos"])
+except Exception as e:
+    print(f"ERROR: No se pudo registrar router de products: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc()

@@ -1,11 +1,11 @@
 import { db } from './firebase';
 import {
   collection, getDocs, doc, getDoc,
-  addDoc, updateDoc, deleteDoc, Timestamp,
 } from 'firebase/firestore';
 import type { Product, ProductFormData } from '@/types/productos';
 
 const COLLECTION = 'products';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export async function fetchProductos(): Promise<Product[]> {
   const snap = await getDocs(collection(db, COLLECTION));
@@ -35,21 +35,38 @@ function cleanData(obj: Record<string, unknown>): Record<string, unknown> {
   return clean;
 }
 
-export async function crearProducto(data: ProductFormData): Promise<string> {
-  const ref = await addDoc(collection(db, COLLECTION), {
-    ...cleanData(data as unknown as Record<string, unknown>),
-    creadoEn: Timestamp.now(),
+async function apiFetch(path: string, options: RequestInit = {}): Promise<any> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...options.headers as Record<string, string> },
   });
-  return ref.id;
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(body || `Error ${res.status}`);
+  }
+  return res.json();
 }
 
-export async function actualizarProducto(id: string, data: Partial<ProductFormData>): Promise<void> {
-  await updateDoc(doc(db, COLLECTION, id), {
-    ...cleanData(data as unknown as Record<string, unknown>),
-    actualizadoEn: Timestamp.now(),
+export async function crearProducto(data: ProductFormData, token: string): Promise<string> {
+  const result = await apiFetch('/products/', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(cleanData(data as unknown as Record<string, unknown>)),
+  });
+  return result.id;
+}
+
+export async function actualizarProducto(id: string, data: Partial<ProductFormData>, token: string): Promise<void> {
+  await apiFetch(`/products/${id}`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(cleanData(data as unknown as Record<string, unknown>)),
   });
 }
 
-export async function eliminarProducto(id: string): Promise<void> {
-  await deleteDoc(doc(db, COLLECTION, id));
+export async function eliminarProducto(id: string, token: string): Promise<void> {
+  await apiFetch(`/products/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
 }
