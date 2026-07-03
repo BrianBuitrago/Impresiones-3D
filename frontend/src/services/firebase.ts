@@ -1,7 +1,7 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, Firestore } from "firebase/firestore";
-import { getAuth, Auth } from "firebase/auth";
-import { getStorage, FirebaseStorage } from "firebase/storage";
+import type { FirebaseApp } from "firebase/app";
+import type { Firestore } from "firebase/firestore";
+import type { Auth } from "firebase/auth";
+import type { FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,10 +14,27 @@ const firebaseConfig = {
 
 const isBrowser = typeof window !== 'undefined';
 
-const app: FirebaseApp = isBrowser ? (!getApps().length ? initializeApp(firebaseConfig) : getApp()) : ({} as FirebaseApp);
-const db: Firestore = isBrowser ? getFirestore(app) : ({} as Firestore);
-const auth: Auth = isBrowser ? getAuth(app) : ({} as Auth);
-const storage: FirebaseStorage = isBrowser ? getStorage(app) : ({} as FirebaseStorage);
+let _app: FirebaseApp = undefined as unknown as FirebaseApp;
+let _db: Firestore = undefined as unknown as Firestore;
+let _auth: Auth = undefined as unknown as Auth;
+let _storage: FirebaseStorage = undefined as unknown as FirebaseStorage;
 
-export { app, db, auth, storage };
-export default app;
+if (isBrowser) {
+  // Dynamic imports ensure Firebase SDK is NOT loaded on the server
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { initializeApp, getApps, getApp } = require("firebase/app");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getFirestore } = require("firebase/firestore");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getAuth } = require("firebase/auth");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getStorage } = require("firebase/storage");
+
+  _app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  _db = getFirestore(_app);
+  _auth = getAuth(_app);
+  _storage = getStorage(_app);
+}
+
+export { _app as app, _db as db, _auth as auth, _storage as storage };
+export default _app;
