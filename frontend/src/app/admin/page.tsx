@@ -753,7 +753,9 @@ export default function AdminPage() {
     doc.setLineWidth(1.2);
     doc.line(margin, y + 48, 555, y + 48);
 
-    const quoteImageUrl = selectedQuote.productos?.find((p: any) => p.imagenUrl)?.imagenUrl;
+    const imageFields = ['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal', 'imagenUrl'];
+    const firstProductWithImg = selectedQuote.productos?.find((p: any) => imageFields.some(f => p[f]));
+    const quoteImageUrl = firstProductWithImg ? imageFields.reduce<string | undefined>((url, f) => url || firstProductWithImg[f], undefined) : undefined;
     if (quoteImageUrl) {
       const imageDataUrl = await fetchImageDataUrl(quoteImageUrl);
       if (imageDataUrl) {
@@ -1321,33 +1323,31 @@ export default function AdminPage() {
                                     </div>
                                   </div>
 
-                                  {/* Foto */}
-                                  <div className="flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-xl p-3">
+                                  {/* Fotos */}
+                                  <div className="flex flex-col items-center border border-dashed border-slate-800 rounded-xl p-3">
                                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">
-                                      Foto Referencial
+                                      Fotos
                                     </span>
-                                    {producto.imagenUrl ? (
-                                      <a
-                                        href={producto.imagenUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="relative w-28 h-28 rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group transition-all"
-                                      >
-                                        <img
-                                          src={producto.imagenUrl}
-                                          alt="Referencia"
-                                          className="w-full h-full object-cover"
-                                        />
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1">
-                                          <Eye className="w-4 h-4" /> Ampliar
-                                        </div>
-                                      </a>
-                                    ) : (
-                                      <div className="w-28 h-28 rounded-lg border border-dashed border-slate-800 bg-slate-950 flex flex-col items-center justify-center text-slate-600">
-                                        <ImageIcon className="w-6 h-6 mb-1 text-slate-700" />
-                                        <span className="text-[9px]">Sin foto</span>
-                                      </div>
-                                    )}
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      {['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'].map((f, i) => {
+                                        const imgUrl = producto[f];
+                                        const labels = ['Frontal', 'Lateral', 'Trasera', 'Diagonal'];
+                                        return imgUrl ? (
+                                          <a key={f} href={imgUrl} target="_blank" rel="noopener noreferrer"
+                                            className="relative w-full aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group transition-all">
+                                            <img src={imgUrl} alt={labels[i]} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[8px] font-bold gap-0.5">
+                                              <Eye className="w-3 h-3" /> {labels[i]}
+                                            </div>
+                                          </a>
+                                        ) : (
+                                          <div key={f} className="w-full aspect-square rounded-lg border border-dashed border-slate-800 bg-slate-950 flex flex-col items-center justify-center text-slate-600">
+                                            <ImageIcon className="w-3 h-3 mb-0.5 text-slate-700" />
+                                            <span className="text-[7px]">{labels[i]}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
                                 </div>
                               ) : (
