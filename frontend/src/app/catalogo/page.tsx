@@ -11,16 +11,16 @@ import { fetchProductos, actualizarProducto, crearProducto, eliminarProducto } f
 import type { Product, ProductFormData } from '@/types/productos';
 
 const DEFAULT_PRODUCTOS: Product[] = [
-  { id: 'default-1', nombre: 'Figura Articulada Dragón', descripcion: 'Figura de dragón con articulaciones móviles, ideal para coleccionistas.', material: 'Resina ABS-like', imagenUrl: '', categoria: 'figuras', destacado: true, orden: 1, activo: true },
-  { id: 'default-2', nombre: 'Soporte para Laptop', descripcion: 'Soporte ergonómico plegable para laptop de hasta 15 pulgadas.', material: 'PLA+', imagenUrl: '', categoria: 'tecnologia', destacado: true, orden: 2, activo: true },
-  { id: 'default-3', nombre: 'Maceta Geométrica', descripcion: 'Maceta con diseño geométrico moderno, incluye drenaje.', material: 'PETG', imagenUrl: '', categoria: 'hogar', destacado: true, orden: 3, activo: true },
-  { id: 'default-4', nombre: 'Organizador de Escritorio', descripcion: 'Organizador multinivel para lápices, clips y notas.', material: 'PLA+', imagenUrl: '', categoria: 'organizacion', destacado: true, orden: 4, activo: true },
-  { id: 'default-5', nombre: 'Base para Celular', descripcion: 'Base ajustable para celular con carga inalámbrica compatible.', material: 'PLA+', imagenUrl: '', categoria: 'tecnologia', destacado: true, orden: 5, activo: true },
-  { id: 'default-6', nombre: 'Jarrón Decorativo', descripcion: 'Jarrón con textura espiral, ideal para flores secas.', material: 'PLA+', imagenUrl: '', categoria: 'hogar', destacado: true, orden: 6, activo: true },
-  { id: 'default-7', nombre: 'Soporte para Audífonos', descripcion: 'Soporte de escritorio para audífonos over-ear.', material: 'PLA+', imagenUrl: '', categoria: 'tecnologia', destacado: true, orden: 7, activo: true },
-  { id: 'default-8', nombre: 'Repisa Flotante', descripcion: 'Repisa decorativa con soporte oculto, soporta hasta 3kg.', material: 'PETG', imagenUrl: '', categoria: 'hogar', destacado: true, orden: 8, activo: true },
-  { id: 'default-9', nombre: 'Caja para Joyas', descripcion: 'Caja con compartimentos para anillos, collares y aretes.', material: 'PLA', imagenUrl: '', categoria: 'cajas', destacado: false, orden: 9, activo: true },
-  { id: 'default-10', nombre: 'Llavero Personalizado', descripcion: 'Llavero con diseño personalizable, resistente y ligero.', material: 'PLA', imagenUrl: '', categoria: 'accesorios', destacado: false, orden: 10, activo: true },
+  { id: 'default-1', nombre: 'Figura Articulada Dragón', descripcion: 'Figura de dragón con articulaciones móviles, ideal para coleccionistas.', material: 'Resina ABS-like', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'figuras', destacado: true, orden: 1, activo: true },
+  { id: 'default-2', nombre: 'Soporte para Laptop', descripcion: 'Soporte ergonómico plegable para laptop de hasta 15 pulgadas.', material: 'PLA+', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'tecnologia', destacado: true, orden: 2, activo: true },
+  { id: 'default-3', nombre: 'Maceta Geométrica', descripcion: 'Maceta con diseño geométrico moderno, incluye drenaje.', material: 'PETG', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'hogar', destacado: true, orden: 3, activo: true },
+  { id: 'default-4', nombre: 'Organizador de Escritorio', descripcion: 'Organizador multinivel para lápices, clips y notas.', material: 'PLA+', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'organizacion', destacado: true, orden: 4, activo: true },
+  { id: 'default-5', nombre: 'Base para Celular', descripcion: 'Base ajustable para celular con carga inalámbrica compatible.', material: 'PLA+', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'tecnologia', destacado: true, orden: 5, activo: true },
+  { id: 'default-6', nombre: 'Jarrón Decorativo', descripcion: 'Jarrón con textura espiral, ideal para flores secas.', material: 'PLA+', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'hogar', destacado: true, orden: 6, activo: true },
+  { id: 'default-7', nombre: 'Soporte para Audífonos', descripcion: 'Soporte de escritorio para audífonos over-ear.', material: 'PLA+', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'tecnologia', destacado: true, orden: 7, activo: true },
+  { id: 'default-8', nombre: 'Repisa Flotante', descripcion: 'Repisa decorativa con soporte oculto, soporta hasta 3kg.', material: 'PETG', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'hogar', destacado: true, orden: 8, activo: true },
+  { id: 'default-9', nombre: 'Caja para Joyas', descripcion: 'Caja con compartimentos para anillos, collares y aretes.', material: 'PLA', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'cajas', destacado: false, orden: 9, activo: true },
+  { id: 'default-10', nombre: 'Llavero Personalizado', descripcion: 'Llavero con diseño personalizable, resistente y ligero.', material: 'PLA', imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '', categoria: 'accesorios', destacado: false, orden: 10, activo: true },
 ];
 
 const uploadToCloudinary = async (file: File): Promise<string> => {
@@ -73,7 +73,8 @@ export default function Catalogo() {
     setEditingId(p.id);
     setEditForm({
       nombre: p.nombre, descripcion: p.descripcion, material: p.material,
-      imagenUrl: p.imagenUrl, categoria: p.categoria,
+      imagenFrontal: p.imagenFrontal, imagenLateral: p.imagenLateral, imagenTrasera: p.imagenTrasera, imagenDiagonal: p.imagenDiagonal,
+      categoria: p.categoria,
       destacado: p.destacado, orden: p.orden, activo: p.activo,
     });
   };
@@ -112,13 +113,13 @@ export default function Catalogo() {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: keyof ProductFormData) => {
     const file = e.target.files?.[0];
     if (!file || !editForm) return;
     setUploadingImg(true);
     try {
       const url = await uploadToCloudinary(file);
-      setEditForm(prev => prev ? { ...prev, imagenUrl: url } : prev);
+      setEditForm(prev => prev ? { ...prev, [field]: url } : prev);
     } catch {
       setError('Error al subir imagen');
     } finally {
@@ -160,13 +161,15 @@ export default function Catalogo() {
                   const newId = `default-new-${Date.now()}`;
                   const nuevo: Product = {
                     id: newId, nombre: '', descripcion: '', material: '',
-                    imagenUrl: '', categoria: '', destacado: false, orden: productos.length + 1, activo: true,
+                    imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '',
+                    categoria: '', destacado: false, orden: productos.length + 1, activo: true,
                   };
                   setProductos(prev => [...prev, nuevo]);
                   setCurrentIndex(productos.length);
                   setEditForm({
                     nombre: '', descripcion: '', material: '',
-                    imagenUrl: '', categoria: '', destacado: false, orden: productos.length + 1, activo: true,
+                    imagenFrontal: '', imagenLateral: '', imagenTrasera: '', imagenDiagonal: '',
+                    categoria: '', destacado: false, orden: productos.length + 1, activo: true,
                   });
                   setEditingId(newId);
                 }}
@@ -197,20 +200,33 @@ export default function Catalogo() {
                     <div key={prod.id} className="min-w-full px-2 sm:px-4">
                       <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
                         <div className="grid grid-cols-1 md:grid-cols-2">
-                          <div className="aspect-square bg-slate-800/80 relative flex items-center justify-center overflow-hidden">
-                            {prod.imagenUrl ? (
-                              <img src={prod.imagenUrl} alt={prod.nombre} className="w-full h-full object-cover" />
-                            ) : (
-                              <Box className="w-24 h-24 text-slate-600" />
-                            )}
-                            {editMode && (
-                              <div className="absolute top-3 right-3 z-10">
-                                <button onClick={() => startEdit(prod)}
-                                  className="p-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-xl text-cyan-400 hover:text-white cursor-pointer backdrop-blur-sm transition-colors">
-                                  <Pencil className="w-4 h-4" />
-                                </button>
-                              </div>
-                            )}
+                          <div className="aspect-square bg-slate-800/80 relative overflow-hidden">
+                            <div className="grid grid-cols-2 w-full h-full">
+                              {(['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'] as const).map((angle, i) => {
+                                const labels = ['Frontal', 'Lateral', 'Trasera', 'Diagonal'];
+                                const img = prod[angle];
+                                return (
+                                  <div key={angle} className="relative border border-slate-700/30 flex items-center justify-center overflow-hidden bg-slate-800/60">
+                                    {img ? (
+                                      <img src={img} alt={`${prod.nombre} - ${labels[i]}`} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="flex flex-col items-center gap-1 text-slate-600">
+                                        <Box className="w-6 h-6" />
+                                        <span className="text-[8px] uppercase tracking-wider">{labels[i]}</span>
+                                      </div>
+                                    )}
+                                    {editMode && (
+                                      <div className="absolute top-1 right-1 z-10">
+                                        <button onClick={() => startEdit(prod)}
+                                          className="p-1.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-lg text-cyan-400 hover:text-white cursor-pointer backdrop-blur-sm transition-colors">
+                                          <Pencil className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                           <div className="p-6 sm:p-8 flex flex-col justify-center">
                             {editingId === prod.id && editForm ? (
@@ -221,16 +237,24 @@ export default function Catalogo() {
                                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-300 text-sm outline-none focus:border-cyan-500/50 resize-none" rows={3} />
                                 <input type="text" value={editForm.material} onChange={e => setEditForm(prev => prev ? { ...prev, material: e.target.value } : prev)}
                                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50" placeholder="Material" />
-                                <div className="flex gap-2">
-                                  <label className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-400 text-sm cursor-pointer hover:border-cyan-500/50 transition-colors">
-                                    <Upload className="w-4 h-4" />
-                                    {uploadingImg ? 'Subiendo...' : 'Cambiar Imagen'}
-                                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                                  </label>
-                                  {editForm.imagenUrl && (
-                                    <input type="text" value={editForm.imagenUrl} onChange={e => setEditForm(prev => prev ? { ...prev, imagenUrl: e.target.value } : prev)}
-                                      className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-[10px] outline-none focus:border-cyan-500/50" placeholder="URL de imagen" />
-                                  )}
+                                <div className="grid grid-cols-2 gap-2">
+                                  {(['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'] as const).map((field, i) => {
+                                    const labels = ['Frontal', 'Lateral', 'Trasera', 'Diagonal'];
+                                    return (
+                                      <div key={field} className="flex flex-col gap-1">
+                                        <span className="text-[10px] uppercase tracking-wider text-slate-500">{labels[i]}</span>
+                                        <label className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-400 text-[10px] cursor-pointer hover:border-cyan-500/50 transition-colors overflow-hidden">
+                                          <Upload className="w-3 h-3 flex-shrink-0" />
+                                          <span className="truncate">{uploadingImg ? 'Subiendo...' : 'Subir'}</span>
+                                          <input type="file" accept="image/*" onChange={e => handleImageUpload(e, field)} className="hidden" />
+                                        </label>
+                                        {editForm[field] && (
+                                          <input type="text" value={editForm[field]} onChange={e => setEditForm(prev => prev ? { ...prev, [field]: e.target.value } : prev)}
+                                            className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 text-[9px] outline-none focus:border-cyan-500/50" placeholder="URL" />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                                 <div className="flex gap-2 pt-2">
                                   <button onClick={saveEdit} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors flex items-center justify-center gap-1">
