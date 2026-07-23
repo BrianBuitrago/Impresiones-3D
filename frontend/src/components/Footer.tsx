@@ -20,7 +20,7 @@ interface FooterData {
 
 const DEFAULTS: FooterData = {
   tagline: 'Materializamos tus ideas con precisión. Alta calidad en cada capa.',
-  direccion: 'Ciudad, País',
+  direccion: 'Colombia, Samacá',
   telefono: '+1 234 567 890',
   email: 'contacto@impresiones3d.com',
   copyright: 'Impresiones 3D. Todos los derechos reservados.',
