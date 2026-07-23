@@ -1,7 +1,8 @@
 'use client';
 
+import Image from "next/image";
 import Link from "next/link";
-import { Printer, Mail, MapPin, Phone, Pencil, X, Check } from "lucide-react";
+import { Mail, MapPin, Phone, Pencil, X, Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -88,7 +89,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <Printer className="w-6 h-6 text-cyan-400" />
+              <Image src="/logo.png" alt="Impresiones 3D" width={24} height={24} className="object-contain" />
               <span className="text-xl font-bold text-slate-100">Impresiones 3D</span>
             </div>
             <p className="text-slate-400 text-sm">{data.tagline}</p>
