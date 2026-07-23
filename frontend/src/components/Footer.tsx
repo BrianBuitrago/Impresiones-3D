@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Mail, MapPin, Phone, Pencil, X, Check } from "lucide-react";
+import { Mail, MapPin, Pencil, X, Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -13,7 +13,6 @@ const SETTINGS_ID = 'footer';
 interface FooterData {
   tagline: string;
   direccion: string;
-  telefono: string;
   email: string;
   copyright: string;
 }
@@ -21,7 +20,6 @@ interface FooterData {
 const DEFAULTS: FooterData = {
   tagline: 'Materializamos tus ideas con precisión. Alta calidad en cada capa.',
   direccion: 'Colombia, Samacá',
-  telefono: '+1 234 567 890',
   email: 'contacto@impresiones3d.com',
   copyright: 'Impresiones 3D. Todos los derechos reservados.',
 };
@@ -66,7 +64,7 @@ export default function Footer() {
           <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-white mb-6">Editar Footer</h3>
             <div className="space-y-4">
-              {(['tagline', 'direccion', 'telefono', 'email', 'copyright'] as const).map(field => (
+              {(['tagline', 'direccion', 'email', 'copyright'] as const).map(field => (
                 <div key={field}>
                   <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">{field}</label>
                   <input type="text" value={form[field]} onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
@@ -116,10 +114,6 @@ export default function Footer() {
               <li className="flex items-center gap-2 text-slate-400 text-sm">
                 <MapPin className="w-4 h-4 text-cyan-500" />
                 <span>{data.direccion}</span>
-              </li>
-              <li className="flex items-center gap-2 text-slate-400 text-sm">
-                <Phone className="w-4 h-4 text-cyan-500" />
-                <span>{data.telefono}</span>
               </li>
               <li className="flex items-center gap-2 text-slate-400 text-sm">
                 <Mail className="w-4 h-4 text-cyan-500" />
