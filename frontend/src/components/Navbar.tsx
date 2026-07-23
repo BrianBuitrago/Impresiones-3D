@@ -1,7 +1,8 @@
 'use client';
 
+import Image from "next/image";
 import Link from "next/link";
-import { Printer, ShoppingCart, User, LogOut, ShieldAlert } from "lucide-react";
+import { ShoppingCart, User, LogOut, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 
@@ -17,8 +18,8 @@ export default function Navbar() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="p-2 bg-cyan-500/10 rounded-lg group-hover:bg-cyan-500/20 transition-colors">
-                <Printer className="w-6 h-6 text-cyan-400" />
+              <div className="p-1 bg-cyan-500/10 rounded-lg group-hover:bg-cyan-500/20 transition-colors">
+                <Image src="/logo.png" alt="Impresiones 3D" width={28} height={28} className="object-contain" />
               </div>
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 font-sans">
                 Impresiones 3D
