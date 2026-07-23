@@ -13,7 +13,7 @@ DEFAULT_PRECIO_FILAMENTO_KG = 87000.0
 CLIENT_PRODUCT_FIELDS = {
     "idProducto", "descripcionLineal", "nombre", "tamanoHorizontal", "tamanoVertical", "unidades",
     "accesorios", "personalizacion", "personalizacionOtraText", "personalizacionComentarios",
-    "empaque", "empaqueOtraText", "imagenUrl",
+    "empaque", "empaqueOtraText", "imagenFrontal", "imagenLateral", "imagenTrasera", "imagenDiagonal",
     "tiempoHoras", "tiempoMinutos", "pesoGramos",
     "costoDiseno", "costoAccesorios", "costoPersonalizado", "costoEmpaque",
     "costoDisenoUnitario", "costoAccesoriosUnitario", "valorEmpaqueUnitario", "valorPersonalizacionUnitario",

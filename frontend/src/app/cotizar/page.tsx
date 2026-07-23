@@ -44,8 +44,8 @@ interface ProductForm {
   personalizacionComentarios: Record<string, string>;
   empaque: string;
   empaqueOtraText: string;
-  imageFile: File | null;
-  imagePreview: string | null;
+  imageFiles: Record<string, File | null>;
+  imagePreviews: Record<string, string | null>;
   tiempoHoras: string;
   tiempoMinutos: string;
   pesoGramos: string;
@@ -68,8 +68,8 @@ const newProduct = (): ProductForm => ({
   personalizacionComentarios: {},
   empaque: 'ninguno',
   empaqueOtraText: '',
-  imageFile: null,
-  imagePreview: null,
+  imageFiles: { frontal: null, lateral: null, trasera: null, diagonal: null },
+  imagePreviews: { frontal: null, lateral: null, trasera: null, diagonal: null },
   tiempoHoras: '',
   tiempoMinutos: '',
   pesoGramos: '',
@@ -169,7 +169,7 @@ export default function Cotizar() {
     productoActual.accesorios.trim() !== '' ||
     productoActual.personalizacion.length > 0 ||
     productoActual.empaque !== 'ninguno' ||
-    productoActual.imageFile !== null;
+    Object.values(productoActual.imageFiles).some(f => f !== null);
 
   const totalProductosCount = productos.length + (isFormDirty ? 1 : 0);
 
@@ -240,12 +240,23 @@ export default function Cotizar() {
       },
     }));
 
-  const handleImageChange = (file: File | null) => {
-    if (!file) { setProductoActual(prev => ({ ...prev, imageFile: null, imagePreview: null })); return; }
+  const handleImageChange = (angle: string, file: File | null) => {
+    if (!file) {
+      setProductoActual(prev => ({
+        ...prev,
+        imageFiles: { ...prev.imageFiles, [angle]: null },
+        imagePreviews: { ...prev.imagePreviews, [angle]: null },
+      }));
+      return;
+    }
     if (!file.type.startsWith('image/')) { alert('Por favor selecciona un archivo de imagen válido.'); return; }
     const reader = new FileReader();
     reader.onloadend = () =>
-      setProductoActual(prev => ({ ...prev, imageFile: file, imagePreview: reader.result as string }));
+      setProductoActual(prev => ({
+        ...prev,
+        imageFiles: { ...prev.imageFiles, [angle]: file },
+        imagePreviews: { ...prev.imagePreviews, [angle]: reader.result as string },
+      }));
     reader.readAsDataURL(file);
   };
 
@@ -283,15 +294,15 @@ export default function Cotizar() {
       const productosFinales = [];
       for (const [index, p] of listaProductos.entries()) {
         const idProducto = p.id || `PROD-${index + 1}`;
-        let imagenUrl = '';
-        if (p.imageFile) {
-          try {
-            imagenUrl = await uploadToCloudinary(p.imageFile);
-          } catch {
-            // Si falla la imagen, continuamos sin ella
-            imagenUrl = '';
-          }
-        }
+        const uploadImage = async (angle: string): Promise<string> => {
+          const file = p.imageFiles[angle];
+          if (!file) return '';
+          try { return await uploadToCloudinary(file); }
+          catch { return ''; }
+        };
+        const [imagenFrontal, imagenLateral, imagenTrasera, imagenDiagonal] = await Promise.all([
+          uploadImage('frontal'), uploadImage('lateral'), uploadImage('trasera'), uploadImage('diagonal'),
+        ]);
         productosFinales.push({
           idProducto,
           ID_Producto: idProducto,
@@ -308,7 +319,10 @@ export default function Cotizar() {
           personalizacionComentarios: p.personalizacionComentarios || {},
           empaque:                 p.empaque,
           empaqueOtraText:         p.empaque === 'otra' ? p.empaqueOtraText : '',
-          imagenUrl,
+          imagenFrontal,
+          imagenLateral,
+          imagenTrasera,
+          imagenDiagonal,
           tiempoHoras:             parseFloat(p.tiempoHoras) || 0,
           tiempoMinutos:           parseFloat(p.tiempoMinutos) || 0,
           pesoGramos:              parseFloat(p.pesoGramos) || 0,
@@ -954,46 +968,41 @@ export default function Cotizar() {
                         </AnimatePresence>
                       </div>
 
-                      {/* Foto de referencia */}
+                      {/* Fotos de referencia */}
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <Camera className="w-4 h-4 text-slate-500" />
-                          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Foto / Referencia Visual</label>
+                          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fotos de Referencia</label>
                           <span className="text-[10px] text-slate-600 italic">(Opcional)</span>
                         </div>
 
-                        {!producto.imagePreview ? (
-                          <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-slate-800 hover:border-cyan-500/40 rounded-xl p-8 bg-slate-950/30 transition-all cursor-pointer group">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={e => handleImageChange(e.target.files?.[0] ?? null)}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            />
-                            <Upload className="w-8 h-8 text-slate-600 group-hover:text-cyan-400 mb-3 transition-colors" />
-                            <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors font-semibold text-center">
-                              Arrastra o haz clic para adjuntar
-                            </span>
-                            <span className="text-[10px] text-slate-600 mt-1">JPG, PNG, WEBP — máx. 10 MB</span>
-                          </label>
-                        ) : (
-                          <div className="relative border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
-                            <img src={producto.imagePreview} alt="Preview" className="w-full h-36 object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
-                            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                              <span className="text-xs text-slate-300 font-medium truncate max-w-[160px]">
-                                {producto.imageFile?.name || 'imagen.jpg'}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleImageChange(null)}
-                                className="p-1.5 bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all cursor-pointer"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                        <div className="grid grid-cols-2 gap-3">
+                          {['frontal', 'lateral', 'trasera', 'diagonal'].map(angle => {
+                            const preview = producto.imagePreviews[angle];
+                            const labels: Record<string, string> = { frontal: 'Frontal', lateral: 'Lateral', trasera: 'Trasera', diagonal: 'Diagonal' };
+                            return (
+                              <div key={angle}>
+                                <span className="text-[10px] uppercase tracking-wider text-slate-500 mb-1 block">{labels[angle]}</span>
+                                {!preview ? (
+                                  <label className="relative flex flex-col items-center justify-center border border-dashed border-slate-800 hover:border-cyan-500/40 rounded-lg p-3 bg-slate-950/30 transition-all cursor-pointer group min-h-[90px]">
+                                    <input type="file" accept="image/*" onChange={e => handleImageChange(angle, e.target.files?.[0] ?? null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                    <Upload className="w-5 h-5 text-slate-600 group-hover:text-cyan-400 mb-1.5 transition-colors" />
+                                    <span className="text-[9px] text-slate-500 group-hover:text-slate-300 transition-colors text-center">Subir</span>
+                                  </label>
+                                ) : (
+                                  <div className="relative border border-slate-800 rounded-lg overflow-hidden bg-slate-950">
+                                    <img src={preview} alt={labels[angle]} className="w-full h-20 object-cover" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
+                                    <button type="button" onClick={() => handleImageChange(angle, null)} className="absolute top-1 right-1 p-1 bg-slate-900/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-md transition-all cursor-pointer">
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                    <span className="absolute bottom-1 left-1.5 text-[8px] text-slate-400 font-medium">{labels[angle]}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 
@@ -1050,8 +1059,8 @@ export default function Cotizar() {
                         <tr key={p.id} className="text-xs text-slate-300">
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3">
-                              {p.imagePreview ? (
-                                <img src={p.imagePreview} alt="mini" className="w-10 h-10 object-cover rounded-lg border border-slate-800 shrink-0" />
+                              {p.imagePreviews.frontal || Object.values(p.imagePreviews).find(v => v) ? (
+                                <img src={p.imagePreviews.frontal || Object.values(p.imagePreviews).find(v => v) || ''} alt="mini" className="w-10 h-10 object-cover rounded-lg border border-slate-800 shrink-0" />
                               ) : (
                                 <div className="w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-700 shrink-0">
                                   <ImageIcon className="w-4 h-4" />

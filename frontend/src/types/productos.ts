@@ -3,10 +3,7 @@ export interface Product {
   nombre: string;
   descripcion: string;
   material: string;
-  imagenFrontal: string;
-  imagenLateral: string;
-  imagenTrasera: string;
-  imagenDiagonal: string;
+  imagenUrl: string;
   categoria: string;
   destacado: boolean;
   orden: number;
@@ -17,10 +14,7 @@ export interface ProductFormData {
   nombre: string;
   descripcion: string;
   material: string;
-  imagenFrontal: string;
-  imagenLateral: string;
-  imagenTrasera: string;
-  imagenDiagonal: string;
+  imagenUrl: string;
   categoria: string;
   destacado: boolean;
   orden: number;

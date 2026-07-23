@@ -21,7 +21,10 @@ class ProductoItem(BaseModel):
     personalizacionComentarios: dict[str, str] = Field(default_factory=dict)
     empaque: str = Field(..., description="Tipo de empaque")
     empaqueOtraText: Optional[str] = Field("", max_length=300, description="Detalle si se seleccionó 'Otra'")
-    imagenUrl: Optional[str] = Field("", max_length=1000, description="URL de la imagen de referencia")
+    imagenFrontal: Optional[str] = Field("", max_length=1000, description="URL de la imagen frontal")
+    imagenLateral: Optional[str] = Field("", max_length=1000, description="URL de la imagen lateral")
+    imagenTrasera: Optional[str] = Field("", max_length=1000, description="URL de la imagen trasera")
+    imagenDiagonal: Optional[str] = Field("", max_length=1000, description="URL de la imagen diagonal")
 
     tiempoHoras: Optional[float] = 0.0
     tiempoMinutos: Optional[float] = 0.0
@@ -83,7 +86,7 @@ class ProductoItem(BaseModel):
                 values[target] = values[source]
         return values
 
-    @validator("idProducto", "descripcionLineal", "nombre", "accesorios", "personalizacionOtraText", "empaqueOtraText", "imagenUrl", pre=True, always=True)
+    @validator("idProducto", "descripcionLineal", "nombre", "accesorios", "personalizacionOtraText", "empaqueOtraText", "imagenFrontal", "imagenLateral", "imagenTrasera", "imagenDiagonal", pre=True, always=True)
     def strip_text(cls, value):
         if value is None:
             return ""

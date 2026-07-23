@@ -81,8 +81,8 @@ export default function CatalogoDestacado() {
                   >
                     <div className={`bg-slate-900/70 backdrop-blur-sm border rounded-2xl overflow-hidden shadow-xl h-full transition-all duration-700 ${isCenter ? 'border-cyan-500/30 shadow-cyan-500/10' : 'border-slate-800/50'}`}>
                       <div className="aspect-[4/3] bg-slate-800/60 relative overflow-hidden">
-                        {prod.imagenFrontal ? (
-                          <img src={prod.imagenFrontal} alt={prod.nombre} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        {prod.imagenUrl ? (
+                          <img src={prod.imagenUrl} alt={prod.nombre} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
                             <Box className="w-16 h-16 text-slate-700" />
