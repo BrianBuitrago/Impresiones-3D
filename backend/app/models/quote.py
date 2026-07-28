@@ -4,7 +4,7 @@ from typing import List, Optional
 class ClienteInfo(BaseModel):
     uid: Optional[str] = Field(None, description="UID del cliente en Firebase (si está registrado)")
     nombre: str = Field(..., min_length=2, max_length=120, description="Nombre del cliente")
-    telefono: str = Field(..., min_length=7, max_length=30, description="Telefono de contacto")
+    telefono: str = Field("", max_length=30, description="Telefono de contacto")
     email: EmailStr = Field(..., description="Correo electronico")
     cedula: Optional[str] = Field("", max_length=30, description="Documento de identidad")
 
