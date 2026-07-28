@@ -63,6 +63,9 @@ interface CalcEntry {
   costoAccesorios: string;
   costoEmpaque: string;
   costoPersonalizado: string;
+  horasPostProcesado: string;
+  costoProcesado: string;
+  porcentajeImprevistos: string;
   ganancia: string;
 }
 
@@ -275,6 +278,9 @@ export default function AdminPage() {
         costoAccesorios: (p.costoAccesoriosUnitario ?? p.Costo_Accesorios ?? 0).toString(),
         costoEmpaque: (p.valorEmpaqueUnitario ?? p.Costo_Empaque ?? 0).toString(),
         costoPersonalizado: (p.valorPersonalizacionUnitario ?? p.Costo_Personalizado ?? 0).toString(),
+        horasPostProcesado: (p.horasPostProcesado ?? 0).toString(),
+        costoProcesado: (p.costoProcesado ?? 0).toString(),
+        porcentajeImprevistos: (p.porcentajeImprevistos ?? 0).toString(),
         ganancia: p.porcentajeGanancia?.toString() || '30',
       };
     });
@@ -343,6 +349,9 @@ export default function AdminPage() {
       costoAccesorios: '0',
       costoEmpaque: '0',
       costoPersonalizado: '0',
+      horasPostProcesado: '0',
+      costoProcesado: '0',
+      porcentajeImprevistos: '0',
       ganancia: '30',
     };
 
@@ -354,12 +363,18 @@ export default function AdminPage() {
     const costoAccesorios  = parseFloat(v.costoAccesorios) || 0;
     const valorEmpaque     = parseFloat(v.costoEmpaque) || 0;
     const valorPersonalizacion = parseFloat(v.costoPersonalizado) || 0;
+    const horasProcesado   = parseFloat(v.horasPostProcesado) || 0;
+    const costoProcesado   = parseFloat(v.costoProcesado) || 0;
+    const imprevistos      = parseFloat(v.porcentajeImprevistos) || 0;
     const ganancia          = parseFloat(v.ganancia) || 0;
 
     const precioKwhMinuto           = precioKwhHora / 60;
     const costoEnergiaUnitario      = duracion * precioKwhMinuto;
     const costoFilamentoUnitario    = filamento * (precioFilamentoKg / 1000);
-    const costoFabricacionUnitario  = costoEnergiaUnitario + costoFilamentoUnitario + costoDiseno + costoAccesorios;
+    const costoFabricacionUnitario  = costoEnergiaUnitario + costoFilamentoUnitario + costoDiseno + costoAccesorios + costoProcesado;
+
+    const valorImprevistos          = costoFabricacionUnitario * (imprevistos / 100);
+
     const precioUnitario            = costoFabricacionUnitario * (1 + ganancia / 100);
     const precioTotalUnitario       = precioUnitario + valorEmpaque + valorPersonalizacion;
 
@@ -372,6 +387,7 @@ export default function AdminPage() {
     return {
       tiempoHoras, tiempoMinutos, duracion, filamento, costoDiseno, costoAccesorios,
       valorEmpaque, valorPersonalizacion, ganancia,
+      horasProcesado, costoProcesado, imprevistos, valorImprevistos,
       precioKwhMinuto,
       costoEnergiaUnitario,
       costoFilamentoUnitario,
@@ -438,6 +454,10 @@ export default function AdminPage() {
           filamentoUsadoUnidad: c.filamento,
           valorEmpaqueUnitario: c.valorEmpaque,
           valorPersonalizacionUnitario: c.valorPersonalizacion,
+          horasPostProcesado: c.horasProcesado,
+          costoProcesado: c.costoProcesado,
+          porcentajeImprevistos: c.imprevistos,
+          valorImprevistos: Math.round(c.valorImprevistos * 100) / 100,
           porcentajeGanancia: c.ganancia,
           precioKwhHora,
           precioKwhMinuto: Math.round(c.precioKwhMinuto * 100) / 100,
@@ -593,6 +613,10 @@ export default function AdminPage() {
           filamentoUsadoUnidad: c.filamento,
           valorEmpaqueUnitario: c.valorEmpaque,
           valorPersonalizacionUnitario: c.valorPersonalizacion,
+          horasPostProcesado: c.horasProcesado,
+          costoProcesado: c.costoProcesado,
+          porcentajeImprevistos: c.imprevistos,
+          valorImprevistos: Math.round(c.valorImprevistos * 100) / 100,
           porcentajeGanancia: c.ganancia,
           precioKwhHora,
           precioKwhMinuto: Math.round(c.precioKwhMinuto * 100) / 100,
@@ -1500,6 +1524,54 @@ export default function AdminPage() {
                                   />
                                   <p className="text-[9px] text-slate-500">Por unidad</p>
                                 </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Post-proc. (h)
+                                  </label>
+                                  <Clock className="w-4 h-4 text-cyan-300 mb-1" />
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    value={vals.horasPostProcesado}
+                                    onChange={e => handleCalcChange(idx, 'horasPostProcesado', e.target.value)}
+                                    className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400"
+                                  />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Costo procesado ($)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={vals.costoProcesado}
+                                    onChange={e => handleCalcChange(idx, 'costoProcesado', e.target.value)}
+                                    className="w-full px-2.5 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-semibold focus:outline-none focus:border-cyan-400 text-right"
+                                  />
+                                  <p className="text-[9px] text-slate-500">Total</p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    Imprevistos (%)
+                                  </label>
+                                  <div className="relative">
+                                    <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-300" />
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      value={vals.porcentajeImprevistos}
+                                      onChange={e => handleCalcChange(idx, 'porcentajeImprevistos', e.target.value)}
+                                      className="w-full pl-8 pr-2 py-2 bg-slate-900 border border-cyan-500/20 rounded-2xl text-slate-100 text-xs font-bold focus:outline-none focus:border-cyan-400"
+                                    />
+                                  </div>
+                                  <p className="text-[9px] text-amber-400/70">{formatCOP(c.valorImprevistos)}</p>
+                                </div>
+
                               </div>
 
                                 {/* Resultados desglosados */}
@@ -1520,6 +1592,19 @@ export default function AdminPage() {
                                         Energía {formatCOP(c.costoEnergiaUnitario)} · Material {formatCOP(c.costoFilamentoUnitario)}
                                         {c.costoDiseno > 0 ? ` · Diseño ${formatCOP(c.costoDiseno)}` : ''}
                                         {c.costoAccesorios > 0 ? ` · Accesorios ${formatCOP(c.costoAccesorios)}` : ''}
+                                        {c.costoProcesado > 0 ? ` · Post-proc. ${formatCOP(c.costoProcesado)}` : ''}
+                                      </span>
+                                    </div>
+
+                                    <div>
+                                      <span className="text-[10px] text-slate-500 block mb-1">
+                                        Imprevistos:
+                                      </span>
+                                      <span className="font-semibold text-amber-400">
+                                        {formatCOP(c.valorImprevistos)}
+                                      </span>
+                                      <span className="block text-[9px] text-slate-500 mt-0.5">
+                                        {c.imprevistos}% del costo base
                                       </span>
                                     </div>
 
