@@ -49,6 +49,9 @@ interface ProductForm {
   costoAccesorios: number;
   costoEmpaque: number;
   costoPersonalizacion: number;
+  horasPostProcesado: number;
+  costoProcesado: number;
+  porcentajeImprevistos: number;
   tamanoHorizontal: number;
   tamanoVertical: number;
   colaboradorUid: string;
@@ -71,6 +74,9 @@ const emptyProduct = (cols: Colaborador[]): ProductForm => ({
   costoAccesorios: 0,
   costoEmpaque: 0,
   costoPersonalizacion: 0,
+  horasPostProcesado: 0,
+  costoProcesado: 0,
+  porcentajeImprevistos: 0,
   tamanoHorizontal: 0,
   tamanoVertical: 0,
   colaboradorUid: cols[0]?.uid || '',
@@ -732,6 +738,9 @@ function ManualPurchaseForm({
           costoAccesorios: d?.costoAccesorios || 0,
           costoEmpaque: d?.costoEmpaque || 0,
           costoPersonalizacion: d?.costoPersonalizacion || 0,
+          horasPostProcesado: d?.horasPostProcesado || 0,
+          costoProcesado: d?.costoProcesado || 0,
+          porcentajeImprevistos: d?.porcentajeImprevistos || 0,
           tamanoHorizontal: d?.tamanoHorizontal || 0,
           tamanoVertical: d?.tamanoVertical || 0,
           colaboradorUid: reporteEdit.colaboradorUid,
@@ -1026,6 +1035,21 @@ function ManualPurchaseForm({
                   <div>
                     <label className="block text-[10px] text-slate-500 mb-1"><Sparkles className="w-3 h-3 inline mr-0.5" /> Empaque ($)</label>
                     <input type="number" min="0" value={prod.costoEmpaque || ''} onChange={e => updateProducto(prod.tempId, 'costoEmpaque', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Clock className="w-3 h-3 inline mr-0.5" /> Post-proc. (h)</label>
+                    <input type="number" min="0" step="0.1" value={prod.horasPostProcesado || ''} onChange={e => updateProducto(prod.tempId, 'horasPostProcesado', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"><DollarSign className="w-3 h-3 inline mr-0.5" /> Costo procesado ($)</label>
+                    <input type="number" min="0" value={prod.costoProcesado || ''} onChange={e => updateProducto(prod.tempId, 'costoProcesado', parseFloat(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-1"> Imprevistos (%)</label>
+                    <input type="number" min="0" max="100" value={prod.porcentajeImprevistos || ''} onChange={e => updateProducto(prod.tempId, 'porcentajeImprevistos', parseFloat(e.target.value) || 0)} className={inputClass} />
                   </div>
                 </div>
 

@@ -17,6 +17,7 @@ CLIENT_PRODUCT_FIELDS = {
     "tiempoHoras", "tiempoMinutos", "pesoGramos",
     "costoDiseno", "costoAccesorios", "costoPersonalizado", "costoEmpaque",
     "costoDisenoUnitario", "costoAccesoriosUnitario", "valorEmpaqueUnitario", "valorPersonalizacionUnitario",
+    "horasPostProcesado", "costoProcesado", "porcentajeImprevistos",
     "duracionImpresionUnidad", "filamentoUsadoUnidad", "precioKwhHora", "precioFilamentoKg",
     "precioKwhMinuto", "precioFilamentoGramo", "costoFabricacionUnitario", "precioUnitario",
     "precioConGananciaUnitario", "precioTotalUnitario", "subtotalFabricacionTotal", "gananciaTotal",
@@ -65,6 +66,9 @@ def reset_product_costs(product_data: dict, index: int = 0) -> dict:
         "filamentoUsadoUnidad": safe_value("filamentoUsadoUnidad"),
         "valorEmpaqueUnitario": safe_value("valorEmpaqueUnitario", product_data.get("costoEmpaque") or 0.0),
         "valorPersonalizacionUnitario": safe_value("valorPersonalizacionUnitario", product_data.get("costoPersonalizado") or 0.0),
+        "horasPostProcesado": safe_value("horasPostProcesado"),
+        "costoProcesado": safe_value("costoProcesado"),
+        "porcentajeImprevistos": safe_value("porcentajeImprevistos"),
         "porcentajeGanancia": safe_value("porcentajeGanancia", 30.0) or 30.0,
         "precioKwhHora": safe_value("precioKwhHora", DEFAULT_PRECIO_KWH_HORA),
         "precioKwhMinuto": round_money(safe_value("precioKwhHora", DEFAULT_PRECIO_KWH_HORA) / 60),
@@ -116,13 +120,16 @@ def calculate_product(product, precio_kwh_hora: float, precio_filamento_kg: floa
     valor_personalizacion = data.get("valorPersonalizacionUnitario") or data.get("costoPersonalizado") or 0.0
     costo_diseno = data.get("costoDisenoUnitario") or data.get("costoDiseno") or 0.0
     costo_accesorios = data.get("costoAccesoriosUnitario") or data.get("costoAccesorios") or 0.0
+    costo_procesado = data.get("costoProcesado") or 0.0
+    horas_procesado = data.get("horasPostProcesado") or 0.0
+    porcentaje_imprevistos = data.get("porcentajeImprevistos") or 0.0
     porcentaje_ganancia = data.get("porcentajeGanancia") if data.get("porcentajeGanancia") is not None else 30.0
 
     precio_kwh_minuto = precio_kwh_hora / 60
     precio_filamento_gramo = precio_filamento_kg / 1000
     costo_energia_unitario = duracion * precio_kwh_minuto
     costo_filamento_unitario = filamento * precio_filamento_gramo
-    costo_fabricacion_unitario = costo_energia_unitario + costo_filamento_unitario + costo_diseno + costo_accesorios
+    costo_fabricacion_unitario = costo_energia_unitario + costo_filamento_unitario + costo_diseno + costo_accesorios + costo_procesado
     precio_unitario = costo_fabricacion_unitario * (1 + porcentaje_ganancia / 100)
     precio_total_unitario = precio_unitario + valor_empaque + valor_personalizacion
     subtotal_energia = costo_energia_unitario * unidades
@@ -130,6 +137,7 @@ def calculate_product(product, precio_kwh_hora: float, precio_filamento_kg: floa
     subtotal_fabricacion_total = costo_fabricacion_unitario * unidades
     ganancia_total = (precio_unitario - costo_fabricacion_unitario) * unidades
     precio_total = precio_total_unitario * unidades
+    valor_imprevistos = round_money(costo_fabricacion_unitario * (porcentaje_imprevistos / 100))
 
     data.update({
         "idProducto": data.get("idProducto") or data.get("ID_Producto", ""),
@@ -143,6 +151,10 @@ def calculate_product(product, precio_kwh_hora: float, precio_filamento_kg: floa
         "filamentoUsadoUnidad": round_money(filamento),
         "valorEmpaqueUnitario": round_money(valor_empaque),
         "valorPersonalizacionUnitario": round_money(valor_personalizacion),
+        "horasPostProcesado": round_money(horas_procesado),
+        "costoProcesado": round_money(costo_procesado),
+        "porcentajeImprevistos": round_money(porcentaje_imprevistos),
+        "valorImprevistos": round_money(valor_imprevistos),
         "porcentajeGanancia": round_money(porcentaje_ganancia),
         "precioKwhHora": round_money(precio_kwh_hora),
         "precioKwhMinuto": round_money(precio_kwh_minuto),

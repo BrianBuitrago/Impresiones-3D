@@ -19,6 +19,9 @@ export interface ProductoDetalle {
   costoAccesorios?: number;
   costoEmpaque?: number;
   costoPersonalizacion?: number;
+  horasPostProcesado?: number;
+  costoProcesado?: number;
+  porcentajeImprevistos?: number;
   valorUnitario?: number;
   tamanoHorizontal?: number;
   tamanoVertical?: number;

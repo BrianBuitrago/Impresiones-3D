@@ -35,6 +35,9 @@ class ProductoItem(BaseModel):
     filamentoUsadoUnidad: Optional[float] = 0.0
     valorEmpaqueUnitario: Optional[float] = 0.0
     valorPersonalizacionUnitario: Optional[float] = 0.0
+    horasPostProcesado: Optional[float] = 0.0
+    costoProcesado: Optional[float] = 0.0
+    porcentajeImprevistos: Optional[float] = 0.0
     porcentajeGanancia: Optional[float] = 30.0
     precioKwhHora: Optional[float] = 950.0
     precioKwhMinuto: Optional[float] = 15.8
@@ -127,8 +130,8 @@ class ProductoItem(BaseModel):
     @validator(
         "duracionImpresionUnidad", "filamentoUsadoUnidad", "valorEmpaqueUnitario",
         "valorPersonalizacionUnitario", "tiempoHoras", "tiempoMinutos", "pesoGramos",
-        "costoDisenoUnitario", "costoAccesoriosUnitario", "precioKwhHora", "precioKwhMinuto",
-        "precioFilamentoKg", "precioFilamentoGramo", "costoFabricacionUnitario",
+        "costoDisenoUnitario", "costoAccesoriosUnitario", "horasPostProcesado", "costoProcesado", "porcentajeImprevistos",
+        "precioKwhHora", "precioKwhMinuto",
         "precioUnitario", "precioConGananciaUnitario", "precioTotalUnitario",
         "subtotalFabricacionTotal", "gananciaTotal", "precioTotal",
         "Precio_Unitario", "Valor_Ganancia_Total", "Precio_Total", "Subtotal_Fabricacion_Total",
