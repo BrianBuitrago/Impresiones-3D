@@ -38,6 +38,8 @@ class ProductoItem(BaseModel):
     horasPostProcesado: Optional[float] = 0.0
     costoProcesado: Optional[float] = 0.0
     porcentajeImprevistos: Optional[float] = 0.0
+    kwH: Optional[float] = 0.0
+    kwMin: Optional[float] = 0.0
     porcentajeGanancia: Optional[float] = 30.0
     precioKwhHora: Optional[float] = 950.0
     precioKwhMinuto: Optional[float] = 15.8
