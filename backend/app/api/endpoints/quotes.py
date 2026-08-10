@@ -3,40 +3,15 @@ from app.core.firebase import db, firebase_auth
 from app.models.quote import QuoteCreate, QuoteUpdate, QuoteResponse
 from app.api.deps import RoleChecker, get_firebase_uid
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import List, Optional
 
 router = APIRouter()
 
 DEFAULT_PRECIO_KWH_HORA = 950.0
 DEFAULT_PRECIO_FILAMENTO_KG = 87000.0
 
-CLIENT_PRODUCT_FIELDS = {
-    "idProducto", "descripcionLineal", "nombre", "tamanoHorizontal", "tamanoVertical", "unidades",
-    "accesorios", "personalizacion", "personalizacionOtraText", "personalizacionComentarios",
-    "empaque", "empaqueOtraText", "imagenFrontal", "imagenLateral", "imagenTrasera", "imagenDiagonal",
-    "tiempoHoras", "tiempoMinutos", "pesoGramos",
-    "costoDiseno", "costoAccesorios", "costoPersonalizado", "costoEmpaque",
-    "costoDisenoUnitario", "costoAccesoriosUnitario", "valorEmpaqueUnitario", "valorPersonalizacionUnitario",
-    "horasPostProcesado", "costoProcesado", "porcentajeImprevistos",
-    "kwH", "kwMin", "porcentajeGanancia",
-    "duracionImpresionUnidad", "filamentoUsadoUnidad", "precioKwhHora", "precioFilamentoKg",
-    "precioKwhMinuto", "precioFilamentoGramo", "costoFabricacionUnitario", "precioUnitario",
-    "precioConGananciaUnitario", "precioTotalUnitario", "subtotalFabricacionTotal", "gananciaTotal",
-    "precioTotal", "Precio_Unitario", "Valor_Ganancia_Total", "Precio_Total", "Subtotal_Fabricacion_Total",
-    "subtotalEnergia", "subtotalMaterial", "precioLinealTotal",
-    "ID_Producto", "Descripcion_Lineal", "Tiempo_Horas", "Tiempo_Minutos", "Peso_Gramos",
-    "Cantidad_Piezas", "Costo_Diseño", "Costo_Accesorios", "Costo_Personalizado", "Costo_Empaque",
-    "Subtotal_Energia", "Subtotal_Material", "Subtotal_Fabricacion", "Precio_Unitario_Con_Ganancia", "Precio_Lineal_Total",
-}
-
 def round_money(value: float) -> float:
     return round(float(value or 0), 2)
-
-def safe_float(value: Any, default: float = 0.0) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
 
 # ─── FIX: convierte DatetimeWithNanoseconds a str antes de pasar a Pydantic ───
 def serialize_doc(data: dict) -> dict:
@@ -46,66 +21,6 @@ def serialize_doc(data: dict) -> dict:
             data[key] = value.isoformat()
     return data
 # ──────────────────────────────────────────────────────────────────────────────
-
-def clean_client_product(product) -> dict:
-    data = product.dict()
-    return {key: data.get(key) for key in CLIENT_PRODUCT_FIELDS}
-
-def reset_product_costs(product_data: dict, index: int = 0) -> dict:
-    def safe_value(key: str, fallback: Any = 0.0) -> float:
-        return safe_float(product_data.get(key, fallback) or fallback)
-
-    product_data["idProducto"] = product_data.get("idProducto") or f"PROD-{index + 1:03d}"
-    product_data["descripcionLineal"] = product_data.get("descripcionLineal") or product_data.get("nombre", "")
-    product_data.update({
-        "tiempoHoras": safe_value("tiempoHoras"),
-        "tiempoMinutos": safe_value("tiempoMinutos"),
-        "pesoGramos": safe_value("pesoGramos"),
-        "costoDisenoUnitario": safe_value("costoDisenoUnitario", product_data.get("costoDiseno") or 0.0),
-        "costoAccesoriosUnitario": safe_value("costoAccesoriosUnitario", product_data.get("costoAccesorios") or 0.0),
-        "duracionImpresionUnidad": safe_value("duracionImpresionUnidad"),
-        "filamentoUsadoUnidad": safe_value("filamentoUsadoUnidad"),
-        "valorEmpaqueUnitario": safe_value("valorEmpaqueUnitario", product_data.get("costoEmpaque") or 0.0),
-        "valorPersonalizacionUnitario": safe_value("valorPersonalizacionUnitario", product_data.get("costoPersonalizado") or 0.0),
-        "horasPostProcesado": safe_value("horasPostProcesado"),
-        "costoProcesado": safe_value("costoProcesado"),
-        "porcentajeImprevistos": safe_value("porcentajeImprevistos"),
-        "porcentajeGanancia": safe_value("porcentajeGanancia", 30.0) or 30.0,
-        "precioKwhHora": safe_value("precioKwhHora", DEFAULT_PRECIO_KWH_HORA),
-        "precioKwhMinuto": round_money(safe_value("precioKwhHora", DEFAULT_PRECIO_KWH_HORA) / 60),
-        "precioFilamentoKg": safe_value("precioFilamentoKg", DEFAULT_PRECIO_FILAMENTO_KG),
-        "precioFilamentoGramo": round_money(safe_value("precioFilamentoKg", DEFAULT_PRECIO_FILAMENTO_KG) / 1000),
-        "costoFabricacionUnitario": safe_value("costoFabricacionUnitario"),
-        "precioUnitario": safe_value("precioUnitario"),
-        "precioConGananciaUnitario": safe_value("precioConGananciaUnitario"),
-        "precioTotalUnitario": safe_value("precioTotalUnitario"),
-        "subtotalFabricacionTotal": safe_value("subtotalFabricacionTotal"),
-        "gananciaTotal": safe_value("gananciaTotal"),
-        "precioTotal": safe_value("precioTotal"),
-        "Precio_Unitario": safe_value("Precio_Unitario"),
-        "Valor_Ganancia_Total": safe_value("Valor_Ganancia_Total"),
-        "Precio_Total": safe_value("Precio_Total"),
-        "Subtotal_Fabricacion_Total": safe_value("Subtotal_Fabricacion_Total"),
-        "subtotalEnergia": safe_value("subtotalEnergia"),
-        "subtotalMaterial": safe_value("subtotalMaterial"),
-        "precioLinealTotal": safe_value("precioLinealTotal"),
-        "ID_Producto": product_data["idProducto"],
-        "Descripcion_Lineal": product_data["descripcionLineal"],
-        "Tiempo_Horas": safe_value("Tiempo_Horas", product_data.get("tiempoHoras") or 0.0),
-        "Tiempo_Minutos": safe_value("Tiempo_Minutos", product_data.get("tiempoMinutos") or 0.0),
-        "Peso_Gramos": safe_value("Peso_Gramos", product_data.get("pesoGramos") or 0.0),
-        "Cantidad_Piezas": int(product_data.get("unidades", 0)),
-        "Costo_Diseño": safe_value("Costo_Diseño", product_data.get("costoDiseno") or 0.0),
-        "Costo_Accesorios": safe_value("Costo_Accesorios", product_data.get("costoAccesorios") or 0.0),
-        "Costo_Personalizado": safe_value("Costo_Personalizado", product_data.get("costoPersonalizado") or 0.0),
-        "Costo_Empaque": safe_value("Costo_Empaque", product_data.get("costoEmpaque") or 0.0),
-        "Subtotal_Energia": safe_value("Subtotal_Energia"),
-        "Subtotal_Material": safe_value("Subtotal_Material"),
-        "Subtotal_Fabricacion": safe_value("Subtotal_Fabricacion"),
-        "Precio_Unitario_Con_Ganancia": safe_value("Precio_Unitario_Con_Ganancia"),
-        "Precio_Lineal_Total": safe_value("Precio_Lineal_Total"),
-    })
-    return product_data
 
 def calculate_product(product, precio_kwh_hora: float, precio_filamento_kg: float) -> dict:
     data = product.dict()
@@ -254,10 +169,20 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
             "cedula": (quote_in.cliente.cedula or "").strip()
         }
 
-    productos_dict = [
-        reset_product_costs(clean_client_product(prod), idx)
-        for idx, prod in enumerate(quote_in.productos)
-    ]
+    productos_dict = []
+    for idx, prod in enumerate(quote_in.productos):
+        calculado = calculate_product(prod, DEFAULT_PRECIO_KWH_HORA, DEFAULT_PRECIO_FILAMENTO_KG)
+        if not calculado.get("idProducto"):
+            calculado["idProducto"] = f"PROD-{idx + 1:03d}"
+            calculado["ID_Producto"] = calculado["idProducto"]
+        if not calculado.get("descripcionLineal"):
+            calculado["descripcionLineal"] = calculado.get("nombre", "")
+            calculado["Descripcion_Lineal"] = calculado["descripcionLineal"]
+        productos_dict.append(calculado)
+
+    subtotal_fabricacion = round_money(sum(p["subtotalFabricacionTotal"] for p in productos_dict))
+    valor_ganancia = round_money(sum(p["gananciaTotal"] for p in productos_dict))
+    precio_total = round_money(sum(p["precioTotal"] for p in productos_dict))
     fecha = datetime.utcnow().isoformat()
     cantidad_total_piezas = sum(p.get("unidades", 0) for p in productos_dict)
     notas_cotizacion = (quote_in.notasCotizacion or "").strip()
@@ -271,21 +196,21 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
         "precioKwhHora": DEFAULT_PRECIO_KWH_HORA,
         "precioFilamentoKg": DEFAULT_PRECIO_FILAMENTO_KG,
         "porcentajeGanancia": 30.0,
-        "subtotalFabricacionTotal": 0.0,
-        "valorGananciaTotal": 0.0,
-        "precioTotal": 0.0,
-        "precioTotalCotizacion": 0.0,
+        "subtotalFabricacionTotal": subtotal_fabricacion,
+        "valorGananciaTotal": valor_ganancia,
+        "precioTotal": precio_total,
+        "precioTotalCotizacion": precio_total,
         "cantidadTotalPiezas": cantidad_total_piezas,
         "notasCotizacion": notas_cotizacion,
         "Fecha": fecha,
         "ID_Cliente": cliente_data.get("uid"),
         "Porcentaje_Ganancia": 30.0,
-        "Subtotal_Fabricacion_Total": 0.0,
-        "Valor_Ganancia_Total": 0.0,
-        "Precio_Total": 0.0,
+        "Subtotal_Fabricacion_Total": subtotal_fabricacion,
+        "Valor_Ganancia_Total": valor_ganancia,
+        "Precio_Total": precio_total,
         "Cantidad_Total_Piezas": cantidad_total_piezas,
         "Notas_Cotizacion": notas_cotizacion,
-        "Precio_Total_Cotizacion": 0.0
+        "Precio_Total_Cotizacion": precio_total
     }
 
     try:
