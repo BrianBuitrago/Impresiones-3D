@@ -2,6 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from app.core.firebase import db
 from app.api.deps import get_current_user
+from app.models.product import ProductCreate, ProductUpdate
 
 router = APIRouter()
 
@@ -21,18 +22,17 @@ def list_products(destacado: Optional[bool] = Query(None)):
     return results
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_product(data: dict, current_user: dict = Depends(get_current_user)):
+def create_product(data: ProductCreate, current_user: dict = Depends(get_current_user)):
     role = current_user.get("rol", "")
     if role not in ("administrador", "colaborador"):
         raise HTTPException(status_code=403, detail="No tienes permisos")
     if db is None:
         raise HTTPException(status_code=503, detail="Base de datos no disponible")
-    data.pop("id", None)
-    ref = db.collection("products").add(data)
+    ref = db.collection("products").add(data.dict())
     return {"id": ref[1].id}
 
 @router.put("/{product_id}")
-def update_product(product_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+def update_product(product_id: str, data: ProductUpdate, current_user: dict = Depends(get_current_user)):
     role = current_user.get("rol", "")
     if role not in ("administrador", "colaborador"):
         raise HTTPException(status_code=403, detail="No tienes permisos")
@@ -41,8 +41,10 @@ def update_product(product_id: str, data: dict, current_user: dict = Depends(get
     doc_ref = db.collection("products").document(product_id)
     if not doc_ref.get().exists:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    data.pop("id", None)
-    doc_ref.update(data)
+    updated_fields = data.dict(exclude_unset=True)
+    if not updated_fields:
+        raise HTTPException(status_code=400, detail="No se enviaron campos válidos para actualizar.")
+    doc_ref.update(updated_fields)
     return {"id": product_id}
 
 @router.delete("/{product_id}")
