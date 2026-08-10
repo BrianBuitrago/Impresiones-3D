@@ -420,6 +420,63 @@ export default function AdminPage() {
     return { subtotalFabricacion, ganancia, total };
   };
 
+  // Recalcula todos los campos de precio de un producto de la cotización a partir de calcProduct
+  const mapProductoConCalculo = (p: any, idx: number) => {
+    const c = calcProduct(idx, p.unidades);
+    return {
+      ...p,
+      idProducto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
+      descripcionLineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
+      tiempoHoras: c.tiempoHoras,
+      tiempoMinutos: c.tiempoMinutos,
+      pesoGramos: c.filamento,
+      costoDisenoUnitario: c.costoDiseno,
+      costoAccesoriosUnitario: c.costoAccesorios,
+      duracionImpresionUnidad: c.duracion,
+      filamentoUsadoUnidad: c.filamento,
+      valorEmpaqueUnitario: c.valorEmpaque,
+      valorPersonalizacionUnitario: c.valorPersonalizacion,
+      horasPostProcesado: c.horasProcesado,
+      costoProcesado: c.costoProcesado,
+      porcentajeImprevistos: c.imprevistos,
+      valorImprevistos: Math.round(c.valorImprevistos * 100) / 100,
+      porcentajeGanancia: c.ganancia,
+      precioKwhHora,
+      precioKwhMinuto: Math.round(c.precioKwhMinuto * 100) / 100,
+      precioFilamentoKg,
+      precioFilamentoGramo: Math.round((precioFilamentoKg / 1000) * 100) / 100,
+      costoFabricacionUnitario: Math.round(c.costoFabricacionUnitario * 100) / 100,
+      precioUnitario: Math.round(c.precioUnitario * 100) / 100,
+      precioConGananciaUnitario: Math.round(c.precioConGananciaUnitario * 100) / 100,
+      precioTotalUnitario: Math.round(c.precioTotalUnitario * 100) / 100,
+      subtotalFabricacionTotal: Math.round(c.subtotalFabricacionTotal * 100) / 100,
+      gananciaTotal: Math.round(c.gananciaTotal * 100) / 100,
+      precioTotal: Math.round(c.precioTotalProducto * 100) / 100,
+      Precio_Unitario: Math.round(c.precioUnitario * 100) / 100,
+      Valor_Ganancia_Total: Math.round(c.gananciaTotal * 100) / 100,
+      Precio_Total: Math.round(c.precioTotalProducto * 100) / 100,
+      Subtotal_Fabricacion_Total: Math.round(c.subtotalFabricacionTotal * 100) / 100,
+      subtotalEnergia: Math.round(c.subtotalEnergia * 100) / 100,
+      subtotalMaterial: Math.round(c.subtotalMaterial * 100) / 100,
+      precioLinealTotal: Math.round(c.precioTotalProducto * 100) / 100,
+      ID_Producto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
+      Descripcion_Lineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
+      Tiempo_Horas: Math.round(c.tiempoHoras * 100) / 100,
+      Tiempo_Minutos: Math.round(c.tiempoMinutos * 100) / 100,
+      Peso_Gramos: Math.round(c.filamento * 100) / 100,
+      Cantidad_Piezas: p.unidades,
+      'Costo_Diseño': Math.round(c.costoDiseno * 100) / 100,
+      Costo_Accesorios: Math.round(c.costoAccesorios * 100) / 100,
+      Costo_Personalizado: Math.round(c.valorPersonalizacion * 100) / 100,
+      Costo_Empaque: Math.round(c.valorEmpaque * 100) / 100,
+      Subtotal_Energia: Math.round(c.subtotalEnergia * 100) / 100,
+      Subtotal_Material: Math.round(c.subtotalMaterial * 100) / 100,
+      Subtotal_Fabricacion: Math.round(c.subtotalFabricacionTotal * 100) / 100,
+      Precio_Unitario_Con_Ganancia: Math.round(c.precioUnitario * 100) / 100,
+      Precio_Lineal_Total: Math.round(c.precioTotalProducto * 100) / 100,
+    };
+  };
+
   // ── Guardar cotización ────────────────────────────────────────────────────
 
   const handleSaveQuote = async (newStatus: string) => {
@@ -444,61 +501,7 @@ export default function AdminPage() {
 
     setSaving(true);
     try {
-      const updatedProductos = selectedQuote.productos.map((p: any, idx: number) => {
-        const c = calcProduct(idx, p.unidades);
-        return {
-          ...p,
-          idProducto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
-          descripcionLineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
-          tiempoHoras: c.tiempoHoras,
-          tiempoMinutos: c.tiempoMinutos,
-          pesoGramos: c.filamento,
-          costoDisenoUnitario: c.costoDiseno,
-          costoAccesoriosUnitario: c.costoAccesorios,
-          duracionImpresionUnidad: c.duracion,
-          filamentoUsadoUnidad: c.filamento,
-          valorEmpaqueUnitario: c.valorEmpaque,
-          valorPersonalizacionUnitario: c.valorPersonalizacion,
-          horasPostProcesado: c.horasProcesado,
-          costoProcesado: c.costoProcesado,
-          porcentajeImprevistos: c.imprevistos,
-          valorImprevistos: Math.round(c.valorImprevistos * 100) / 100,
-          porcentajeGanancia: c.ganancia,
-          precioKwhHora,
-          precioKwhMinuto: Math.round(c.precioKwhMinuto * 100) / 100,
-          precioFilamentoKg,
-          precioFilamentoGramo: Math.round((precioFilamentoKg / 1000) * 100) / 100,
-          costoFabricacionUnitario: Math.round(c.costoFabricacionUnitario * 100) / 100,
-          precioUnitario: Math.round(c.precioUnitario * 100) / 100,
-          precioConGananciaUnitario: Math.round(c.precioConGananciaUnitario * 100) / 100,
-          precioTotalUnitario: Math.round(c.precioTotalUnitario * 100) / 100,
-          subtotalFabricacionTotal: Math.round(c.subtotalFabricacionTotal * 100) / 100,
-          gananciaTotal: Math.round(c.gananciaTotal * 100) / 100,
-          precioTotal: Math.round(c.precioTotalProducto * 100) / 100,
-          Precio_Unitario: Math.round(c.precioUnitario * 100) / 100,
-          Valor_Ganancia_Total: Math.round(c.gananciaTotal * 100) / 100,
-          Precio_Total: Math.round(c.precioTotalProducto * 100) / 100,
-          Subtotal_Fabricacion_Total: Math.round(c.subtotalFabricacionTotal * 100) / 100,
-          subtotalEnergia: Math.round(c.subtotalEnergia * 100) / 100,
-          subtotalMaterial: Math.round(c.subtotalMaterial * 100) / 100,
-          precioLinealTotal: Math.round(c.precioTotalProducto * 100) / 100,
-          ID_Producto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
-          Descripcion_Lineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
-          Tiempo_Horas: Math.round(c.tiempoHoras * 100) / 100,
-          Tiempo_Minutos: Math.round(c.tiempoMinutos * 100) / 100,
-          Peso_Gramos: Math.round(c.filamento * 100) / 100,
-          Cantidad_Piezas: p.unidades,
-          'Costo_Diseño': Math.round(c.costoDiseno * 100) / 100,
-          Costo_Accesorios: Math.round(c.costoAccesorios * 100) / 100,
-          Costo_Personalizado: Math.round(c.valorPersonalizacion * 100) / 100,
-          Costo_Empaque: Math.round(c.valorEmpaque * 100) / 100,
-          Subtotal_Energia: Math.round(c.subtotalEnergia * 100) / 100,
-          Subtotal_Material: Math.round(c.subtotalMaterial * 100) / 100,
-          Subtotal_Fabricacion: Math.round(c.subtotalFabricacionTotal * 100) / 100,
-          Precio_Unitario_Con_Ganancia: Math.round(c.precioUnitario * 100) / 100,
-          Precio_Lineal_Total: Math.round(c.precioTotalProducto * 100) / 100,
-        };
-      });
+      const updatedProductos = selectedQuote.productos.map(mapProductoConCalculo);
 
       const { subtotalFabricacion, ganancia, total } = getQuoteTotals();
 
@@ -589,61 +592,7 @@ export default function AdminPage() {
       }
 
       // Save quote as aceptado
-      const updatedProductos = selectedQuote.productos.map((p: any, idx: number) => {
-        const c = calcProduct(idx, p.unidades);
-        return {
-          ...p,
-          idProducto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
-          descripcionLineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
-          tiempoHoras: c.tiempoHoras,
-          tiempoMinutos: c.tiempoMinutos,
-          pesoGramos: c.filamento,
-          costoDisenoUnitario: c.costoDiseno,
-          costoAccesoriosUnitario: c.costoAccesorios,
-          duracionImpresionUnidad: c.duracion,
-          filamentoUsadoUnidad: c.filamento,
-          valorEmpaqueUnitario: c.valorEmpaque,
-          valorPersonalizacionUnitario: c.valorPersonalizacion,
-          horasPostProcesado: c.horasProcesado,
-          costoProcesado: c.costoProcesado,
-          porcentajeImprevistos: c.imprevistos,
-          valorImprevistos: Math.round(c.valorImprevistos * 100) / 100,
-          porcentajeGanancia: c.ganancia,
-          precioKwhHora,
-          precioKwhMinuto: Math.round(c.precioKwhMinuto * 100) / 100,
-          precioFilamentoKg,
-          precioFilamentoGramo: Math.round((precioFilamentoKg / 1000) * 100) / 100,
-          costoFabricacionUnitario: Math.round(c.costoFabricacionUnitario * 100) / 100,
-          precioUnitario: Math.round(c.precioUnitario * 100) / 100,
-          precioConGananciaUnitario: Math.round(c.precioConGananciaUnitario * 100) / 100,
-          precioTotalUnitario: Math.round(c.precioTotalUnitario * 100) / 100,
-          subtotalFabricacionTotal: Math.round(c.subtotalFabricacionTotal * 100) / 100,
-          gananciaTotal: Math.round(c.gananciaTotal * 100) / 100,
-          precioTotal: Math.round(c.precioTotalProducto * 100) / 100,
-          Precio_Unitario: Math.round(c.precioUnitario * 100) / 100,
-          Valor_Ganancia_Total: Math.round(c.gananciaTotal * 100) / 100,
-          Precio_Total: Math.round(c.precioTotalProducto * 100) / 100,
-          Subtotal_Fabricacion_Total: Math.round(c.subtotalFabricacionTotal * 100) / 100,
-          subtotalEnergia: Math.round(c.subtotalEnergia * 100) / 100,
-          subtotalMaterial: Math.round(c.subtotalMaterial * 100) / 100,
-          precioLinealTotal: Math.round(c.precioTotalProducto * 100) / 100,
-          ID_Producto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
-          Descripcion_Lineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
-          Tiempo_Horas: Math.round(c.tiempoHoras * 100) / 100,
-          Tiempo_Minutos: Math.round(c.tiempoMinutos * 100) / 100,
-          Peso_Gramos: Math.round(c.filamento * 100) / 100,
-          Cantidad_Piezas: p.unidades,
-          'Costo_Diseño': Math.round(c.costoDiseno * 100) / 100,
-          Costo_Accesorios: Math.round(c.costoAccesorios * 100) / 100,
-          Costo_Personalizado: Math.round(c.valorPersonalizacion * 100) / 100,
-          Costo_Empaque: Math.round(c.valorEmpaque * 100) / 100,
-          Subtotal_Energia: Math.round(c.subtotalEnergia * 100) / 100,
-          Subtotal_Material: Math.round(c.subtotalMaterial * 100) / 100,
-          Subtotal_Fabricacion: Math.round(c.subtotalFabricacionTotal * 100) / 100,
-          Precio_Unitario_Con_Ganancia: Math.round(c.precioUnitario * 100) / 100,
-          Precio_Lineal_Total: Math.round(c.precioTotalProducto * 100) / 100,
-        };
-      });
+      const updatedProductos = selectedQuote.productos.map(mapProductoConCalculo);
 
       const { subtotalFabricacion, ganancia, total } = getQuoteTotals();
 
