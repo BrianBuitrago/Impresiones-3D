@@ -2,29 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.firebase import db
 from app.api.deps import RoleChecker, get_current_user
 from app.models.report import ReportCreate, ReportResponse, ReportUpdate
+from app.utils.firestore import serialize_doc
+from app.services.reports import calculate_totals
 from datetime import datetime
 from typing import List
 
 router = APIRouter()
-
-def serialize_doc(data: dict) -> dict:
-    for key, value in data.items():
-        if hasattr(value, "isoformat"):
-            data[key] = value.isoformat()
-    return data
-
-def calculate_totals(items: List[dict]) -> dict:
-    totals = {}
-    total = 0.0
-    for item in items:
-        categoria = item.get('categoria', 'sin_categoria')
-        valor = float(item.get('valor', 0) or 0)
-        totals[categoria] = round(totals.get(categoria, 0) + valor, 2)
-        total += valor
-    return {
-        'totalesPorCategoria': totals,
-        'totalAPagar': round(total, 2)
-    }
 
 @router.post('', response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
 def create_report(
