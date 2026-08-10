@@ -2,21 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.firebase import db, firebase_auth
 from app.models.user import UserCreate, UserResponse, UserRoleUpdate, UserProfileUpdate, GoogleSyncRequest
 from app.api.deps import get_current_user, RoleChecker, get_firebase_uid
+from app.utils.firestore import serialize_doc
 from datetime import datetime
 from google.cloud.firestore_v1.base_query import FieldFilter # Importación útil si usas filtros modernos
 
 router = APIRouter()
-
-# --- Función Auxiliar para limpiar datos de Firestore ---
-def clean_firestore_data(data: dict) -> dict:
-    """
-    Convierte objetos datetime de Firestore a strings ISO format
-    para evitar errores de validación en Pydantic/FastAPI.
-    """
-    for key, value in data.items():
-        if hasattr(value, 'isoformat'): # Detecta si es un objeto datetime
-            data[key] = value.isoformat()
-    return data
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_in: UserCreate):
@@ -247,7 +237,7 @@ def list_all_users(
         for doc in docs:
             user_data = doc.to_dict()
             user_data["uid"] = doc.id
-            user_data = clean_firestore_data(user_data)
+            user_data = serialize_doc(user_data)
             users_list.append(user_data)
             
         return users_list
