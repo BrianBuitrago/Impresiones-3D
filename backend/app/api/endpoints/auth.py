@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.firebase import db, firebase_auth
-from app.models.user import UserCreate, UserResponse, UserRoleUpdate, GoogleSyncRequest
+from app.models.user import UserCreate, UserResponse, UserRoleUpdate, UserProfileUpdate, GoogleSyncRequest
 from app.api.deps import get_current_user, RoleChecker, get_firebase_uid
 from datetime import datetime
 from google.cloud.firestore_v1.base_query import FieldFilter # Importación útil si usas filtros modernos
@@ -160,24 +160,23 @@ def get_my_profile(current_user: dict = Depends(get_current_user)):
 
 @router.put("/me", response_model=UserResponse)
 def update_my_profile(
-    updated_fields: dict, 
+    profile_update: UserProfileUpdate,
     uid: str = Depends(get_firebase_uid),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Permite al usuario autenticado actualizar sus datos personales.
+    Solo acepta los campos definidos en UserProfileUpdate (whitelist);
+    rol y email nunca se pueden modificar desde este endpoint.
     """
     if db is None:
         raise HTTPException(status_code=503, detail="Base de datos no disponible")
-        
-    # Impedimos modificar rol e email por seguridad
-    for key in ["rol", "email", "uid", "creado_en"]:
-        if key in updated_fields:
-            del updated_fields[key]
-            
+
+    updated_fields = profile_update.dict(exclude_unset=True)
+
     if not updated_fields:
         raise HTTPException(status_code=400, detail="No se enviaron campos válidos para actualizar.")
-        
+
     try:
         user_ref = db.collection("users").document(uid)
         user_ref.update(updated_fields)

@@ -30,6 +30,13 @@ class UserResponse(UserBase):
     rol: str = Field("cliente", description="Rol del usuario en el sistema (administrador, colaborador, cliente)")
     creado_en: Optional[str] = None
 
+class UserProfileUpdate(BaseModel):
+    nombre: Optional[str] = Field(None, min_length=1, description="Nombre completo del usuario")
+    cedula: Optional[str] = Field(None, min_length=1, description="Cédula de identidad")
+    edad: Optional[int] = Field(None, ge=0, description="Edad del usuario")
+    fecha_nacimiento: Optional[str] = Field(None, description="Fecha de nacimiento en formato YYYY-MM-DD")
+    telefono: Optional[str] = Field(None, min_length=1, description="Número telefónico de contacto")
+
 class UserRoleUpdate(BaseModel):
     rol: str = Field(..., description="Nuevo rol (administrador, colaborador, cliente)")
 
