@@ -2,11 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Mail, MapPin, Pencil, X, Check } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/services/firebase";
+import { Mail, MapPin, Pencil } from "lucide-react";
+import { useEditableSetting } from "@/hooks/useEditableSetting";
+import SettingsEditModal from "@/components/ui/SettingsEditModal";
 
 const SETTINGS_ID = 'footer';
 
@@ -25,31 +23,8 @@ const DEFAULTS: FooterData = {
 };
 
 export default function Footer() {
-  const { profile } = useAuth();
-  const isAdmin = profile?.rol === 'administrador';
-  const [data, setData] = useState<FooterData>(DEFAULTS);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<FooterData>(DEFAULTS);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db!, 'settings', SETTINGS_ID));
-        if (snap.exists()) setData(snap.data() as FooterData);
-      } catch { /* usa defaults */ }
-    })();
-  }, []);
-
-  const startEdit = () => { setForm({ ...data }); setEditing(true); };
-  const cancelEdit = () => setEditing(false);
-
-  const saveEdit = async () => {
-    try {
-      await setDoc(doc(db!, 'settings', SETTINGS_ID), form);
-      setData({ ...form });
-      setEditing(false);
-    } catch { /* error */ }
-  };
+  const { isAdmin, data, editing, form, setForm, startEdit, cancelEdit, saveEdit } =
+    useEditableSetting<FooterData>(SETTINGS_ID, DEFAULTS);
 
   return (
     <footer className="bg-slate-950 border-t border-slate-800 pt-12 pb-8 relative">
@@ -60,28 +35,15 @@ export default function Footer() {
         </button>
       )}
       {isAdmin && editing && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-white mb-6">Editar Footer</h3>
-            <div className="space-y-4">
-              {(['tagline', 'direccion', 'email', 'copyright'] as const).map(field => (
-                <div key={field}>
-                  <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">{field}</label>
-                  <input type="text" value={form[field]} onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50" />
-                </div>
-              ))}
+        <SettingsEditModal title="Editar Footer" onSave={saveEdit} onCancel={cancelEdit}>
+          {(['tagline', 'direccion', 'email', 'copyright'] as const).map(field => (
+            <div key={field}>
+              <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">{field}</label>
+              <input type="text" value={form[field]} onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50" />
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={saveEdit} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5">
-                <Check className="w-4 h-4" /> Guardar
-              </button>
-              <button onClick={cancelEdit} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5">
-                <X className="w-4 h-4" /> Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
+          ))}
+        </SettingsEditModal>
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8">

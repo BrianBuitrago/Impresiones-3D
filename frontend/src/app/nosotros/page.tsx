@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Target, Award, Users, Pencil, X, Check, Eye, Lightbulb } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '@/services/firebase';
+import React from 'react';
+import { Target, Award, Users, Pencil, Eye, Lightbulb } from 'lucide-react';
+import { useEditableSetting } from '@/hooks/useEditableSetting';
+import SettingsEditModal from '@/components/ui/SettingsEditModal';
 
 const SETTINGS_ID = 'nosotros';
 
@@ -39,31 +38,8 @@ const DEFAULTS: NosotrosData = {
 };
 
 export default function Nosotros() {
-  const { profile } = useAuth();
-  const isAdmin = profile?.rol === 'administrador';
-  const [data, setData] = useState<NosotrosData>(DEFAULTS);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<NosotrosData>(DEFAULTS);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db!, 'settings', SETTINGS_ID));
-        if (snap.exists()) setData(snap.data() as NosotrosData);
-      } catch { /* usa defaults */ }
-    })();
-  }, []);
-
-  const startEdit = () => { setForm({ ...data }); setEditing(true); };
-  const cancelEdit = () => setEditing(false);
-
-  const saveEdit = async () => {
-    try {
-      await setDoc(doc(db!, 'settings', SETTINGS_ID), form);
-      setData({ ...form });
-      setEditing(false);
-    } catch { /* error */ }
-  };
+  const { isAdmin, data, editing, form, setForm, startEdit, cancelEdit, saveEdit } =
+    useEditableSetting<NosotrosData>(SETTINGS_ID, DEFAULTS);
 
   const fields: { key: keyof NosotrosData; label: string; multiline?: boolean }[] = [
     { key: 'headerTitulo', label: 'Header Título' },
@@ -90,33 +66,20 @@ export default function Nosotros() {
       )}
 
       {isAdmin && editing && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-white mb-6">Editar Nosotros</h3>
-            <div className="space-y-4">
-              {fields.map(f => (
-                <div key={f.key}>
-                  <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">{f.label}</label>
-                  {f.multiline ? (
-                    <textarea value={form[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 resize-none" rows={3} />
-                  ) : (
-                    <input type="text" value={form[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50" />
-                  )}
-                </div>
-              ))}
+        <SettingsEditModal title="Editar Nosotros" onSave={saveEdit} onCancel={cancelEdit} maxWidthClassName="max-w-2xl">
+          {fields.map(f => (
+            <div key={f.key}>
+              <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">{f.label}</label>
+              {f.multiline ? (
+                <textarea value={form[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 resize-none" rows={3} />
+              ) : (
+                <input type="text" value={form[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50" />
+              )}
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={saveEdit} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5">
-                <Check className="w-4 h-4" /> Guardar
-              </button>
-              <button onClick={cancelEdit} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5">
-                <X className="w-4 h-4" /> Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
+          ))}
+        </SettingsEditModal>
       )}
 
       <div className="max-w-4xl mx-auto">
