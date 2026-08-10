@@ -18,6 +18,7 @@ CLIENT_PRODUCT_FIELDS = {
     "costoDiseno", "costoAccesorios", "costoPersonalizado", "costoEmpaque",
     "costoDisenoUnitario", "costoAccesoriosUnitario", "valorEmpaqueUnitario", "valorPersonalizacionUnitario",
     "horasPostProcesado", "costoProcesado", "porcentajeImprevistos",
+    "kwH", "kwMin", "porcentajeGanancia",
     "duracionImpresionUnidad", "filamentoUsadoUnidad", "precioKwhHora", "precioFilamentoKg",
     "precioKwhMinuto", "precioFilamentoGramo", "costoFabricacionUnitario", "precioUnitario",
     "precioConGananciaUnitario", "precioTotalUnitario", "subtotalFabricacionTotal", "gananciaTotal",
@@ -124,10 +125,15 @@ def calculate_product(product, precio_kwh_hora: float, precio_filamento_kg: floa
     horas_procesado = data.get("horasPostProcesado") or 0.0
     porcentaje_imprevistos = data.get("porcentajeImprevistos") or 0.0
     porcentaje_ganancia = data.get("porcentajeGanancia") if data.get("porcentajeGanancia") is not None else 30.0
+    kw_h = data.get("kwH") or 0.0
+    kw_min = data.get("kwMin") or 0.0
 
     precio_kwh_minuto = precio_kwh_hora / 60
     precio_filamento_gramo = precio_filamento_kg / 1000
-    costo_energia_unitario = duracion * precio_kwh_minuto
+    if kw_h > 0 or kw_min > 0:
+        costo_energia_unitario = (kw_h * tiempo_horas + kw_min * tiempo_minutos / 60) * precio_kwh_hora
+    else:
+        costo_energia_unitario = duracion * precio_kwh_minuto
     costo_filamento_unitario = filamento * precio_filamento_gramo
     costo_fabricacion_unitario = costo_energia_unitario + costo_filamento_unitario + costo_diseno + costo_accesorios + costo_procesado
     precio_unitario = costo_fabricacion_unitario * (1 + porcentaje_ganancia / 100)
@@ -154,6 +160,8 @@ def calculate_product(product, precio_kwh_hora: float, precio_filamento_kg: floa
         "horasPostProcesado": round_money(horas_procesado),
         "costoProcesado": round_money(costo_procesado),
         "porcentajeImprevistos": round_money(porcentaje_imprevistos),
+        "kwH": round_money(kw_h),
+        "kwMin": round_money(kw_min),
         "valorImprevistos": round_money(valor_imprevistos),
         "porcentajeGanancia": round_money(porcentaje_ganancia),
         "precioKwhHora": round_money(precio_kwh_hora),

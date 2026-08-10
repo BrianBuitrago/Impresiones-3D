@@ -56,6 +56,7 @@ def list_reports(
     periodo: str | None = None,
     colaboradorUid: str | None = None,
     estado: str | None = None,
+    tipo: str | None = None,
     current_user: dict = Depends(RoleChecker(['administrador', 'colaborador']))
 ):
     if db is None:
@@ -69,6 +70,8 @@ def list_reports(
             query = query.where('colaboradorUid', '==', colaboradorUid.strip())
         if estado:
             query = query.where('estado', '==', estado.strip().lower())
+        if tipo:
+            query = query.where('tipo', '==', tipo.strip().lower())
         docs = query.order_by('creadoEn', direction='DESCENDING').stream()
         reports = []
         for doc in docs:

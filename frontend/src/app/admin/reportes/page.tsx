@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import {
   ShieldAlert, ArrowLeft, BarChart3, Users, Tag, DollarSign,
   Plus, X, Search, RefreshCw, ChevronDown, ChevronUp, Filter,
-  FileText, Calendar, Layers, TrendingUp, User, Phone, Weight,
-  Clock, Ruler, Box, Palette, Sparkles, Pen, Globe, ShoppingCart,
+  FileText, Calendar, Layers, TrendingUp, User, Phone,
+  Box, Globe, ShoppingCart,
   CheckCircle2, XCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,19 +41,6 @@ interface ProductForm {
   categoria: string;
   cantidad: number;
   valorUnitario: number;
-  pesoGramos: number;
-  tiempoHoras: number;
-  tiempoMinutos: number;
-  filamentoUsado: number;
-  costoDiseno: number;
-  costoAccesorios: number;
-  costoEmpaque: number;
-  costoPersonalizacion: number;
-  horasPostProcesado: number;
-  costoProcesado: number;
-  porcentajeImprevistos: number;
-  tamanoHorizontal: number;
-  tamanoVertical: number;
   colaboradorUid: string;
   colaboradorNombre: string;
   trabajos: TrabajoForm[];
@@ -66,19 +53,6 @@ const emptyProduct = (cols: Colaborador[]): ProductForm => ({
   categoria: 'cajas',
   cantidad: 1,
   valorUnitario: 0,
-  pesoGramos: 0,
-  tiempoHoras: 0,
-  tiempoMinutos: 0,
-  filamentoUsado: 0,
-  costoDiseno: 0,
-  costoAccesorios: 0,
-  costoEmpaque: 0,
-  costoPersonalizacion: 0,
-  horasPostProcesado: 0,
-  costoProcesado: 0,
-  porcentajeImprevistos: 0,
-  tamanoHorizontal: 0,
-  tamanoVertical: 0,
   colaboradorUid: cols[0]?.uid || '',
   colaboradorNombre: cols[0]?.nombre || '',
   trabajos: [],
@@ -616,6 +590,18 @@ export default function ReportesPage() {
                         <span className="text-[10px] text-slate-500">{r.items?.length || 0} items</span>
                       </div>
                       <div className="text-[11px] text-slate-400">{r.colaboradorNombre}</div>
+                      {r.pedidoId && <div className="text-[10px] text-slate-500">Pedido: <span className="text-slate-300">{r.pedidoId}</span></div>}
+                      {r.fechaConfirmacion && <div className="text-[10px] text-slate-500">Confirmado: <span className="text-slate-300">{r.fechaConfirmacion}</span></div>}
+                      {r.tipo && <span className="inline-block text-[9px] mt-0.5 px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 capitalize">{r.tipo}</span>}
+                      {(r.abono || r.restante || r.totalRecibido) ? (
+                        <div className="text-[9px] text-slate-500 mt-0.5">
+                          {r.abono ? <>Abono: <span className="text-emerald-400">{formatCOP(r.abono)}</span></> : ''}
+                          {r.abono && r.restante ? ' | ' : ''}
+                          {r.restante ? <>Restante: <span className="text-amber-400">{formatCOP(r.restante)}</span></> : ''}
+                          {(r.abono || r.restante) && r.totalRecibido ? ' | ' : ''}
+                          {r.totalRecibido ? <>Recibido: <span className="text-cyan-400">{formatCOP(r.totalRecibido)}</span></> : ''}
+                        </div>
+                      ) : null}
                       <div className="text-xs text-emerald-400 font-bold mt-1">Total: {formatCOP(r.totalAPagar || 0)}</div>
                       <div className="flex gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => handleEditReport(r)}
@@ -730,19 +716,6 @@ function ManualPurchaseForm({
           categoria: item.categoria,
           cantidad: item.cantidad,
           valorUnitario: d?.valorUnitario || (item.cantidad > 0 ? item.valor / item.cantidad : item.valor),
-          pesoGramos: d?.pesoGramos || 0,
-          tiempoHoras: d?.tiempoHoras || 0,
-          tiempoMinutos: d?.tiempoMinutos || 0,
-          filamentoUsado: d?.filamentoUsado || 0,
-          costoDiseno: d?.costoDiseno || 0,
-          costoAccesorios: d?.costoAccesorios || 0,
-          costoEmpaque: d?.costoEmpaque || 0,
-          costoPersonalizacion: d?.costoPersonalizacion || 0,
-          horasPostProcesado: d?.horasPostProcesado || 0,
-          costoProcesado: d?.costoProcesado || 0,
-          porcentajeImprevistos: d?.porcentajeImprevistos || 0,
-          tamanoHorizontal: d?.tamanoHorizontal || 0,
-          tamanoVertical: d?.tamanoVertical || 0,
           colaboradorUid: reporteEdit.colaboradorUid,
           colaboradorNombre: reporteEdit.colaboradorNombre,
           trabajos: [],
@@ -753,6 +726,12 @@ function ManualPurchaseForm({
   });
   const [selectedPeriodo, setSelectedPeriodo] = useState(reporteEdit?.periodo || periodo);
   const [notas, setNotas] = useState(reporteEdit?.notas || '');
+  const [fechaConfirmacion, setFechaConfirmacion] = useState(reporteEdit?.fechaConfirmacion || '');
+  const [pedidoId, setPedidoId] = useState(reporteEdit?.pedidoId || '');
+  const [tipo, setTipo] = useState(reporteEdit?.tipo || '');
+  const [abono, setAbono] = useState(reporteEdit?.abono || 0);
+  const [restante, setRestante] = useState(reporteEdit?.restante || 0);
+  const [totalRecibido, setTotalRecibido] = useState(reporteEdit?.totalRecibido || 0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -803,7 +782,6 @@ function ManualPurchaseForm({
 
   const handleSubmit = async () => {
     if (!clienteNombre.trim()) { setError('El nombre del cliente es obligatorio'); return; }
-    if (!clienteTelefono.trim()) { setError('El teléfono del cliente es obligatorio'); return; }
     if (productos.length === 0) { setError('Agrega al menos un producto'); return; }
     for (const p of productos) {
       if (!p.nombre.trim()) { setError('Todos los productos deben tener nombre'); return; }
@@ -818,17 +796,7 @@ function ManualPurchaseForm({
         const detalle: ProductoDetalle = {
           nombre: p.nombre,
           descripcion: p.descripcion,
-          pesoGramos: p.pesoGramos,
-          tiempoHoras: p.tiempoHoras,
-          tiempoMinutos: p.tiempoMinutos,
-          filamentoUsado: p.filamentoUsado,
-          costoDiseno: p.costoDiseno,
-          costoAccesorios: p.costoAccesorios,
-          costoEmpaque: p.costoEmpaque,
-          costoPersonalizacion: p.costoPersonalizacion,
           valorUnitario: p.valorUnitario,
-          tamanoHorizontal: p.tamanoHorizontal,
-          tamanoVertical: p.tamanoVertical,
         };
         const item: ReportItem = {
           categoria: p.categoria,
@@ -876,6 +844,12 @@ function ManualPurchaseForm({
           categorias: [],
           items: allItems,
           notas: notas || undefined,
+          fechaConfirmacion: fechaConfirmacion || undefined,
+          pedidoId: pedidoId || undefined,
+          tipo: tipo || undefined,
+          abono: abono || undefined,
+          restante: restante || undefined,
+          totalRecibido: totalRecibido || undefined,
         });
       } else {
         for (const [colUid, items] of itemsPorColaborador) {
@@ -887,6 +861,12 @@ function ManualPurchaseForm({
             categorias: col?.categorias || [],
             items,
             notas: notas || undefined,
+            fechaConfirmacion: fechaConfirmacion || undefined,
+            pedidoId: pedidoId || undefined,
+            tipo: tipo || undefined,
+            abono: abono || undefined,
+            restante: restante || undefined,
+            totalRecibido: totalRecibido || undefined,
           });
         }
       }
@@ -920,10 +900,10 @@ function ManualPurchaseForm({
 
           {/* ── Datos del Cliente ── */}
           <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2"><User className="w-4 h-4 text-cyan-400" /> Datos del Cliente</h3>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2"><User className="w-4 h-4 text-cyan-400" /> datos del cliente</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-slate-400 font-bold mb-1.5">Nombre del Cliente *</label>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">nombre del cliente *</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input type="text" value={clienteNombre} onChange={e => setClienteNombre(e.target.value)}
@@ -931,12 +911,55 @@ function ManualPurchaseForm({
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 font-bold mb-1.5">Teléfono *</label>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">Teléfono</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input type="text" value={clienteTelefono} onChange={e => setClienteTelefono(e.target.value)}
                     placeholder="300 123 4567" className={`${inputClass} pl-10`} />
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── información del pedido ── */}
+          <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2"><FileText className="w-4 h-4 text-cyan-400" /> información del pedido</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">fecha de confirmación</label>
+                <input type="date" value={fechaConfirmacion} onChange={e => setFechaConfirmacion(e.target.value)}
+                  className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">id del pedido</label>
+                <input type="text" value={pedidoId} onChange={e => setPedidoId(e.target.value)}
+                  placeholder="Ej: PED-001" className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">tipo</label>
+                <select value={tipo} onChange={e => setTipo(e.target.value)} className={selectClass}>
+                  <option value="">Sin tipo</option>
+                  <option value="conseñal">Con seña</option>
+                  <option value="completo">Pago completo</option>
+                  <option value="contrato">Contrato</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">abono ($)</label>
+                <input type="number" min="0" step="0.01" value={abono || ''} onChange={e => setAbono(parseFloat(e.target.value) || 0)}
+                  className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">restante ($)</label>
+                <input type="number" min="0" step="0.01" value={restante || ''} onChange={e => setRestante(parseFloat(e.target.value) || 0)}
+                  className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 font-bold mb-1.5">total recibido ($)</label>
+                <input type="number" min="0" step="0.01" value={totalRecibido || ''} onChange={e => setTotalRecibido(parseFloat(e.target.value) || 0)}
+                  className={inputClass} />
               </div>
             </div>
           </div>
@@ -963,12 +986,12 @@ function ManualPurchaseForm({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
-                    <label className="block text-[10px] text-slate-500 mb-1">Nombre del producto</label>
+                    <label className="block text-[10px] text-slate-500 mb-1">nombre del producto</label>
                     <input type="text" value={prod.nombre} onChange={e => updateProducto(prod.tempId, 'nombre', e.target.value)}
                       placeholder="Ej: Caja personalizada" className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1">Categoría</label>
+                    <label className="block text-[10px] text-slate-500 mb-1">categoría</label>
                     <select value={prod.categoria} onChange={e => updateProducto(prod.tempId, 'categoria', e.target.value)} className={selectClass}>
                       {categorias.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
                     </select>
@@ -976,89 +999,27 @@ function ManualPurchaseForm({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] text-slate-500 mb-1">Descripción</label>
+                  <label className="block text-[10px] text-slate-500 mb-1">descripción</label>
                   <input type="text" value={prod.descripcion} onChange={e => updateProducto(prod.tempId, 'descripcion', e.target.value)}
                     placeholder="Detalles del trabajo realizado" className={inputClass} />
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Ruler className="w-3 h-3 inline mr-0.5" /> Ancho (mm)</label>
-                    <input type="number" min="0" value={prod.tamanoHorizontal || ''} onChange={e => updateProducto(prod.tempId, 'tamanoHorizontal', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Ruler className="w-3 h-3 inline mr-0.5" /> Alto (mm)</label>
-                    <input type="number" min="0" value={prod.tamanoVertical || ''} onChange={e => updateProducto(prod.tempId, 'tamanoVertical', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Weight className="w-3 h-3 inline mr-0.5" /> Peso (g)</label>
-                    <input type="number" min="0" value={prod.pesoGramos || ''} onChange={e => updateProducto(prod.tempId, 'pesoGramos', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Box className="w-3 h-3 inline mr-0.5" /> Cantidad</label>
+                    <label className="block text-[10px] text-slate-500 mb-1"><Box className="w-3 h-3 inline mr-0.5" /> cantidad</label>
                     <input type="number" min="1" value={prod.cantidad} onChange={e => updateProducto(prod.tempId, 'cantidad', parseInt(e.target.value) || 1)} className={inputClass} />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Clock className="w-3 h-3 inline mr-0.5" /> Horas</label>
-                    <input type="number" min="0" step="0.5" value={prod.tiempoHoras || ''} onChange={e => updateProducto(prod.tempId, 'tiempoHoras', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Clock className="w-3 h-3 inline mr-0.5" /> Minutos</label>
-                    <input type="number" min="0" value={prod.tiempoMinutos || ''} onChange={e => updateProducto(prod.tempId, 'tiempoMinutos', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Weight className="w-3 h-3 inline mr-0.5" /> Filamento (g)</label>
-                    <input type="number" min="0" value={prod.filamentoUsado || ''} onChange={e => updateProducto(prod.tempId, 'filamentoUsado', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><DollarSign className="w-3 h-3 inline mr-0.5" /> Valor Unit.</label>
+                    <label className="block text-[10px] text-slate-500 mb-1"><DollarSign className="w-3 h-3 inline mr-0.5" /> valor unit.</label>
                     <input type="number" min="0" value={prod.valorUnitario || ''} onChange={e => updateProducto(prod.tempId, 'valorUnitario', parseFloat(e.target.value) || 0)} className={inputClass} />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Pen className="w-3 h-3 inline mr-0.5" /> Diseño ($)</label>
-                    <input type="number" min="0" value={prod.costoDiseno || ''} onChange={e => updateProducto(prod.tempId, 'costoDiseno', parseFloat(e.target.value) || 0)} className={inputClass} />
+                    <label className="block text-[10px] text-slate-500 mb-1"><Users className="w-3 h-3 inline mr-0.5" /> colaborador *</label>
+                    <select value={prod.colaboradorUid} onChange={e => handleColaboradorChange(prod.tempId, e.target.value)} className={selectClass}>
+                      <option value="">Seleccionar</option>
+                      {colaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
+                    </select>
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Box className="w-3 h-3 inline mr-0.5" /> Accesorios ($)</label>
-                    <input type="number" min="0" value={prod.costoAccesorios || ''} onChange={e => updateProducto(prod.tempId, 'costoAccesorios', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Palette className="w-3 h-3 inline mr-0.5" /> Personaliz. ($)</label>
-                    <input type="number" min="0" value={prod.costoPersonalizacion || ''} onChange={e => updateProducto(prod.tempId, 'costoPersonalizacion', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Sparkles className="w-3 h-3 inline mr-0.5" /> Empaque ($)</label>
-                    <input type="number" min="0" value={prod.costoEmpaque || ''} onChange={e => updateProducto(prod.tempId, 'costoEmpaque', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><Clock className="w-3 h-3 inline mr-0.5" /> Post-proc. (h)</label>
-                    <input type="number" min="0" step="0.1" value={prod.horasPostProcesado || ''} onChange={e => updateProducto(prod.tempId, 'horasPostProcesado', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"><DollarSign className="w-3 h-3 inline mr-0.5" /> Costo procesado ($)</label>
-                    <input type="number" min="0" value={prod.costoProcesado || ''} onChange={e => updateProducto(prod.tempId, 'costoProcesado', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1"> Imprevistos (%)</label>
-                    <input type="number" min="0" max="100" value={prod.porcentajeImprevistos || ''} onChange={e => updateProducto(prod.tempId, 'porcentajeImprevistos', parseFloat(e.target.value) || 0)} className={inputClass} />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] text-slate-500 mb-1"><Users className="w-3 h-3 inline mr-0.5" /> Colaborador que realizó el trabajo *</label>
-                  <select value={prod.colaboradorUid} onChange={e => handleColaboradorChange(prod.tempId, e.target.value)} className={selectClass}>
-                    <option value="">Seleccionar colaborador</option>
-                    {colaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
-                  </select>
                 </div>
 
                 {/* ── Trabajos (sub-items) ── */}
@@ -1115,7 +1076,7 @@ function ManualPurchaseForm({
           </div>
 
           <div>
-            <label className="block text-xs text-slate-400 font-bold mb-1.5">Notas (opcional)</label>
+            <label className="block text-xs text-slate-400 font-bold mb-1.5">notas (opcional)</label>
             <textarea value={notas} onChange={e => setNotas(e.target.value)} className={`${inputClass} resize-none`} rows={2} placeholder="Notas adicionales sobre esta compra..." />
           </div>
 

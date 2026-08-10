@@ -22,6 +22,9 @@ export interface ProductoDetalle {
   horasPostProcesado?: number;
   costoProcesado?: number;
   porcentajeImprevistos?: number;
+  kwH?: number;
+  kwMin?: number;
+  porcentajeGanancia?: number;
   valorUnitario?: number;
   tamanoHorizontal?: number;
   tamanoVertical?: number;
@@ -55,6 +58,12 @@ export interface ReportData {
   totalAPagar: number;
   creadoEn?: string;
   actualizadoEn?: string;
+  fechaConfirmacion?: string;
+  pedidoId?: string;
+  abono?: number;
+  restante?: number;
+  totalRecibido?: number;
+  tipo?: string;
 }
 
 export interface ReportCreate {
@@ -65,6 +74,12 @@ export interface ReportCreate {
   items: ReportItem[];
   notas?: string;
   estado?: string;
+  fechaConfirmacion?: string;
+  pedidoId?: string;
+  abono?: number;
+  restante?: number;
+  totalRecibido?: number;
+  tipo?: string;
 }
 
 export interface ComparativaColaborador {

@@ -12,6 +12,12 @@ class ProductoDetalle(BaseModel):
     costoAccesorios: Optional[float] = Field(0.0, ge=0, description="Costo accesorios unitario")
     costoEmpaque: Optional[float] = Field(0.0, ge=0, description="Costo empaque unitario")
     costoPersonalizacion: Optional[float] = Field(0.0, ge=0, description="Costo personalización unitario")
+    horasPostProcesado: Optional[float] = Field(0.0, ge=0, description="Horas de post procesado")
+    costoProcesado: Optional[float] = Field(0.0, ge=0, description="Costo de post procesado")
+    porcentajeImprevistos: Optional[float] = Field(0.0, ge=0, description="Porcentaje de imprevistos")
+    kwH: Optional[float] = Field(0.0, ge=0, description="Kilovatios por hora")
+    kwMin: Optional[float] = Field(0.0, ge=0, description="Kilovatios por minuto")
+    porcentajeGanancia: Optional[float] = Field(0.0, ge=0, description="Porcentaje de ganancia")
     valorUnitario: Optional[float] = Field(0.0, ge=0, description="Valor unitario")
     tamanoHorizontal: Optional[float] = Field(0.0, ge=0, description="Tamaño horizontal mm")
     tamanoVertical: Optional[float] = Field(0.0, ge=0, description="Tamaño vertical mm")
@@ -42,6 +48,12 @@ class ReportBase(BaseModel):
     items: List[ReportItem] = Field(..., min_items=1, description="Lista de ítems del reporte")
     notas: Optional[str] = Field("", max_length=1000, description="Notas generales del reporte")
     estado: Optional[str] = Field("abierto", description="Estado del reporte")
+    fechaConfirmacion: Optional[str] = Field(None, description="Fecha de confirmación del pedido")
+    pedidoId: Optional[str] = Field("", description="Número o ID del pedido")
+    abono: Optional[float] = Field(0.0, ge=0, description="Abono o anticipo recibido")
+    restante: Optional[float] = Field(0.0, ge=0, description="Saldo restante por pagar")
+    totalRecibido: Optional[float] = Field(0.0, ge=0, description="Total recibido real")
+    tipo: Optional[str] = Field("reporte", description="Tipo: reporte o compra")
 
     @validator('periodo')
     def validate_periodo(cls, value):
@@ -62,6 +74,12 @@ class ReportUpdate(BaseModel):
     notas: Optional[str] = Field(None, max_length=1000)
     estado: Optional[str] = Field(None, description="Estado del reporte")
     categorias: Optional[List[str]] = Field(None, description="Categorías asignadas al colaborador")
+    fechaConfirmacion: Optional[str] = Field(None, description="Fecha de confirmación del pedido")
+    pedidoId: Optional[str] = Field(None, description="Número o ID del pedido")
+    abono: Optional[float] = Field(None, ge=0, description="Abono o anticipo recibido")
+    restante: Optional[float] = Field(None, ge=0, description="Saldo restante por pagar")
+    totalRecibido: Optional[float] = Field(None, ge=0, description="Total recibido real")
+    tipo: Optional[str] = Field(None, description="Tipo: reporte o compra")
 
     @validator('categorias', each_item=True, pre=True)
     def validate_categoria(cls, value):
