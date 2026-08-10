@@ -13,8 +13,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Colaborador, ReportData, ReportItem, ProductoDetalle } from '@/types/reportes';
 import { fetchColaboradores, fetchReportes, crearReporte, updateReporte, deleteReporte } from '@/services/reporteService';
+import { fetchQuotes } from '@/services/quoteService';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -99,7 +99,7 @@ export default function ReportesPage() {
       const [cols, reps, qs] = await Promise.all([
         fetchColaboradores(token),
         fetchReportes(token),
-        fetch(`${API_URL}/quotes`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []),
+        fetchQuotes(token).catch(() => []),
       ]);
       setColaboradores(cols);
       setReportes(reps);

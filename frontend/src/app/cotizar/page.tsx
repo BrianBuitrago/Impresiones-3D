@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { crearQuote } from '@/services/quoteService';
 import {
   Plus,
   Trash2,
@@ -93,7 +94,6 @@ const EMPAQUE_OPTIONS = [
 ];
 
 const MAX_PRODUCTOS = 5;
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 // Valores por defecto para evitar `undefined` en entornos donde faltan las env vars
 const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dobul5gbb';
 const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'impresiones3d_unsigned';
@@ -365,21 +365,7 @@ export default function Cotizar() {
             }),
       };
 
-      const response = await fetch(`${API_URL}/quotes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(quoteData),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.detail || 'No se pudo registrar la cotización.');
-      }
-
-      const createdQuote = await response.json();
+      const createdQuote = await crearQuote(quoteData, token);
       setQuoteId(createdQuote.id);
       setSuccess(true);
       setProductos([]);

@@ -36,6 +36,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
 import { Colaborador, ReportItem } from '@/types/reportes';
 import { fetchColaboradores, crearReporte } from '@/services/reporteService';
+import { fetchQuotes as fetchQuotesApi, actualizarQuote } from '@/services/quoteService';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -161,14 +162,7 @@ export default function AdminPage() {
     setQuotesFetching(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/quotes`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || 'No se pudo obtener la lista de cotizaciones.');
-      }
-      setQuotesList(await res.json());
+      setQuotesList(await fetchQuotesApi(token));
     } catch (err: any) {
       setError(err.message || 'Error al cargar cotizaciones.');
     } finally {
@@ -508,39 +502,25 @@ export default function AdminPage() {
 
       const { subtotalFabricacion, ganancia, total } = getQuoteTotals();
 
-      const response = await fetch(`${API_URL}/quotes/${selectedQuote.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          productos: updatedProductos,
-          estado: newStatus,
-          precioKwhHora,
-          precioFilamentoKg,
-          subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
-          valorGananciaTotal: Math.round(ganancia * 100) / 100,
-          precioTotalCotizacion: Math.round(total * 100) / 100,
-          porcentajeGanancia: updatedProductos.length > 0
-            ? Math.round((updatedProductos.reduce((acc: number, p: any) => acc + (p.porcentajeGanancia || 0), 0) / updatedProductos.length) * 100) / 100
-            : 30,
-          notasCotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
-          Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
-          Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
-          Precio_Total: Math.round(total * 100) / 100,
-          Precio_Total_Cotizacion: Math.round(total * 100) / 100,
-          Cantidad_Total_Piezas: updatedProductos.reduce((acc: number, p: any) => acc + (p.unidades || 0), 0),
-          Notas_Cotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
-        }),
+      const updatedQuote = await actualizarQuote(token, selectedQuote.id, {
+        productos: updatedProductos,
+        estado: newStatus,
+        precioKwhHora,
+        precioFilamentoKg,
+        subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
+        valorGananciaTotal: Math.round(ganancia * 100) / 100,
+        precioTotalCotizacion: Math.round(total * 100) / 100,
+        porcentajeGanancia: updatedProductos.length > 0
+          ? Math.round((updatedProductos.reduce((acc: number, p: any) => acc + (p.porcentajeGanancia || 0), 0) / updatedProductos.length) * 100) / 100
+          : 30,
+        notasCotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
+        Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
+        Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
+        Precio_Total: Math.round(total * 100) / 100,
+        Precio_Total_Cotizacion: Math.round(total * 100) / 100,
+        Cantidad_Total_Piezas: updatedProductos.reduce((acc: number, p: any) => acc + (p.unidades || 0), 0),
+        Notas_Cotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
       });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.detail || 'No se pudo guardar la cotización.');
-      }
-
-      const updatedQuote = await response.json();
       setSelectedQuote(updatedQuote);
       setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
     } catch (err: any) {
@@ -667,39 +647,25 @@ export default function AdminPage() {
 
       const { subtotalFabricacion, ganancia, total } = getQuoteTotals();
 
-      const response = await fetch(`${API_URL}/quotes/${selectedQuote.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          productos: updatedProductos,
-          estado: 'aceptado',
-          precioKwhHora,
-          precioFilamentoKg,
-          subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
-          valorGananciaTotal: Math.round(ganancia * 100) / 100,
-          precioTotalCotizacion: Math.round(total * 100) / 100,
-          porcentajeGanancia: updatedProductos.length > 0
-            ? Math.round((updatedProductos.reduce((acc: number, p: any) => acc + (p.porcentajeGanancia || 0), 0) / updatedProductos.length) * 100) / 100
-            : 30,
-          notasCotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
-          Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
-          Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
-          Precio_Total: Math.round(total * 100) / 100,
-          Precio_Total_Cotizacion: Math.round(total * 100) / 100,
-          Cantidad_Total_Piezas: updatedProductos.reduce((acc: number, p: any) => acc + (p.unidades || 0), 0),
-          Notas_Cotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
-        }),
+      const updatedQuote = await actualizarQuote(token, selectedQuote.id, {
+        productos: updatedProductos,
+        estado: 'aceptado',
+        precioKwhHora,
+        precioFilamentoKg,
+        subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
+        valorGananciaTotal: Math.round(ganancia * 100) / 100,
+        precioTotalCotizacion: Math.round(total * 100) / 100,
+        porcentajeGanancia: updatedProductos.length > 0
+          ? Math.round((updatedProductos.reduce((acc: number, p: any) => acc + (p.porcentajeGanancia || 0), 0) / updatedProductos.length) * 100) / 100
+          : 30,
+        notasCotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
+        Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
+        Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
+        Precio_Total: Math.round(total * 100) / 100,
+        Precio_Total_Cotizacion: Math.round(total * 100) / 100,
+        Cantidad_Total_Piezas: updatedProductos.reduce((acc: number, p: any) => acc + (p.unidades || 0), 0),
+        Notas_Cotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
       });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.detail || 'No se pudo guardar la cotización.');
-      }
-
-      const updatedQuote = await response.json();
       setSelectedQuote(updatedQuote);
       setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
 
