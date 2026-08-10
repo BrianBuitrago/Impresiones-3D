@@ -20,20 +20,26 @@ service cloud.firestore {
 
     // --- COLECCIÓN: users ---
     match /users/{userId} {
-      allow read: if isAuthenticated(); // Cualquiera logueado puede leer perfiles (necesario para validar roles)
-      allow create: if isOwner(userId); // Solo el usuario puede crear su propio perfil al registrarse
-      allow update: if isOwner(userId) || isStaff(); // El usuario puede editar sus datos o el staff también
+      // Solo el dueño del perfil o staff pueden leerlo (evita fuga de PII de todos los usuarios)
+      allow read: if isOwner(userId) || isStaff();
+      // El usuario puede crear su propio perfil al registrarse, pero no con un rol privilegiado
+      allow create: if isOwner(userId) && request.resource.data.rol == 'cliente';
+      // El dueño puede editar sus datos pero no su propio rol; staff sí puede cambiar roles
+      allow update: if isStaff() || (
+        isOwner(userId) && request.resource.data.rol == resource.data.rol
+      );
       allow delete: if isStaff(); // Solo staff puede borrar usuarios
     }
 
     // --- COLECCIÓN: quotes (Cotizaciones) ---
     match /quotes/{quoteId} {
       allow read: if isAuthenticated() && (
-        isStaff() || 
+        isStaff() ||
         (resource.data.cliente != null && resource.data.cliente.uid == request.auth.uid)
       );
-      // Permitir creación de cotizaciones directa por cualquier usuario
-      allow create: if true; 
+      // Toda creación de cotizaciones pasa por el backend (Admin SDK, ignora estas reglas),
+      // que valida y calcula el precio en servidor. No hay escritura directa legítima desde el cliente.
+      allow create: if false;
       // Solo el personal (staff) de la aplicación puede modificar o eliminar cotizaciones
       allow update, delete: if isAuthenticated() && isStaff();
     }
