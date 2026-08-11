@@ -9,6 +9,7 @@ import {
   FileText,
   BarChart3,
   ShoppingCart,
+  DollarSign,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
@@ -19,6 +20,7 @@ import { fetchColaboradores, crearReporte } from '@/services/reporteService';
 import { fetchQuotes as fetchQuotesApi, actualizarQuote } from '@/services/quoteService';
 import QuotesTab from './components/QuotesTab';
 import UsersTab from './components/UsersTab';
+import PreciosTab from './components/PreciosTab';
 import AssignColaboradorDialog from './components/AssignColaboradorDialog';
 import { formatCOP, type CalcEntry } from './components/shared';
 
@@ -53,7 +55,7 @@ export default function AdminPage() {
   const router = useRouter();
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'cotizaciones' | 'usuarios' | 'reportes' | 'compras'>('cotizaciones');
+  const [activeTab, setActiveTab] = useState<'cotizaciones' | 'usuarios' | 'reportes' | 'compras' | 'precios'>('cotizaciones');
 
   // Usuarios
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
@@ -894,6 +896,19 @@ export default function AdminPage() {
           )}
           {profile?.rol === 'administrador' && (
             <button
+              onClick={() => { setActiveTab('precios'); setError(null); }}
+              className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'precios'
+                  ? 'border-cyan-500 text-cyan-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <DollarSign className="w-4 h-4" />
+              Precios
+            </button>
+          )}
+          {profile?.rol === 'administrador' && (
+            <button
               onClick={() => { setActiveTab('compras'); setError(null); }}
               className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'compras'
@@ -971,6 +986,8 @@ export default function AdminPage() {
               handleRoleChange={handleRoleChange}
             />
           )}
+
+          {activeTab === 'precios' && <PreciosTab />}
 
         </AnimatePresence>
       </div>
