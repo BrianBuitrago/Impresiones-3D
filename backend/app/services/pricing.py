@@ -6,6 +6,27 @@ def round_money(value: float) -> float:
     return round(float(value or 0), 2)
 
 
+def get_precios_globales(db) -> tuple[float, float]:
+    """Lee los precios base configurables (documento settings/precios) desde Firestore.
+
+    Devuelve (precioKwhHora, precioFilamentoKg). Si el documento no existe todavía
+    (nadie configuró precios desde el panel admin) o Firestore no está disponible,
+    devuelve los valores por defecto como fallback.
+    """
+    if db is None:
+        return DEFAULT_PRECIO_KWH_HORA, DEFAULT_PRECIO_FILAMENTO_KG
+    try:
+        doc = db.collection("settings").document("precios").get()
+        if doc.exists:
+            data = doc.to_dict() or {}
+            precio_kwh_hora = float(data.get("precioKwhHora", DEFAULT_PRECIO_KWH_HORA))
+            precio_filamento_kg = float(data.get("precioFilamentoKg", DEFAULT_PRECIO_FILAMENTO_KG))
+            return precio_kwh_hora, precio_filamento_kg
+    except Exception:
+        pass
+    return DEFAULT_PRECIO_KWH_HORA, DEFAULT_PRECIO_FILAMENTO_KG
+
+
 def calculate_product(product, precio_kwh_hora: float, precio_filamento_kg: float) -> dict:
     data = product.dict()
     unidades = data["unidades"]

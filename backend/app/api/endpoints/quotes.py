@@ -3,12 +3,7 @@ from app.core.firebase import db, firebase_auth
 from app.models.quote import QuoteCreate, QuoteUpdate, QuoteResponse
 from app.api.deps import RoleChecker, get_firebase_uid
 from app.utils.firestore import serialize_doc
-from app.services.pricing import (
-    round_money,
-    calculate_product,
-    DEFAULT_PRECIO_KWH_HORA,
-    DEFAULT_PRECIO_FILAMENTO_KG,
-)
+from app.services.pricing import round_money, calculate_product, get_precios_globales
 from datetime import datetime
 from typing import List, Optional
 
@@ -68,9 +63,11 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
             "cedula": (quote_in.cliente.cedula or "").strip()
         }
 
+    precio_kwh_hora, precio_filamento_kg = get_precios_globales(db)
+
     productos_dict = []
     for idx, prod in enumerate(quote_in.productos):
-        calculado = calculate_product(prod, DEFAULT_PRECIO_KWH_HORA, DEFAULT_PRECIO_FILAMENTO_KG)
+        calculado = calculate_product(prod, precio_kwh_hora, precio_filamento_kg)
         if not calculado.get("idProducto"):
             calculado["idProducto"] = f"PROD-{idx + 1:03d}"
             calculado["ID_Producto"] = calculado["idProducto"]
@@ -92,8 +89,8 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
         "estado": "pendiente",
         "creadoEn": fecha,
         "actualizadoEn": None,
-        "precioKwhHora": DEFAULT_PRECIO_KWH_HORA,
-        "precioFilamentoKg": DEFAULT_PRECIO_FILAMENTO_KG,
+        "precioKwhHora": precio_kwh_hora,
+        "precioFilamentoKg": precio_filamento_kg,
         "porcentajeGanancia": 30.0,
         "subtotalFabricacionTotal": subtotal_fabricacion,
         "valorGananciaTotal": valor_ganancia,
