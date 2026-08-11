@@ -327,17 +327,21 @@ export default function AdminPage() {
       ? (kwH * tiempoHoras + kwMin * tiempoMinutos / 60) * precioKwhHora
       : duracion * precioKwhMinuto;
     const costoFilamentoUnitario    = filamento * (precioFilamentoKg / 1000);
-    const costoFabricacionUnitario  = costoEnergiaUnitario + costoFilamentoUnitario + costoDiseno + costoAccesorios + costoProcesado;
+    // El subtotal de fabricación incluye empaque y personalización (igual que la hoja de cálculo
+    // original del negocio), para que imprevistos y ganancia se apliquen también sobre esos costos.
+    const costoFabricacionUnitario  = costoEnergiaUnitario + costoFilamentoUnitario + costoDiseno + costoAccesorios + costoProcesado + valorEmpaque + valorPersonalizacion;
 
     const valorImprevistos          = costoFabricacionUnitario * (imprevistos / 100);
+    const baseConImprevistos        = costoFabricacionUnitario + valorImprevistos;
+    const gananciaUnitaria          = baseConImprevistos * (ganancia / 100);
 
-    const precioUnitario            = costoFabricacionUnitario * (1 + ganancia / 100);
-    const precioTotalUnitario       = precioUnitario + valorEmpaque + valorPersonalizacion;
+    const precioUnitario            = costoFabricacionUnitario + gananciaUnitaria;
+    const precioTotalUnitario       = precioUnitario;
 
     const subtotalEnergia           = costoEnergiaUnitario * unidades;
     const subtotalMaterial          = costoFilamentoUnitario * unidades;
     const subtotalFabricacionTotal  = costoFabricacionUnitario * unidades;
-    const gananciaTotal             = (precioUnitario - costoFabricacionUnitario) * unidades;
+    const gananciaTotal             = gananciaUnitaria * unidades;
     const precioTotalProducto       = precioTotalUnitario * unidades;
 
     return {
