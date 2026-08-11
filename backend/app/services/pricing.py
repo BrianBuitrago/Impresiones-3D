@@ -1,5 +1,5 @@
-DEFAULT_PRECIO_KWH_HORA = 950.0
-DEFAULT_PRECIO_FILAMENTO_KG = 87000.0
+DEFAULT_PRECIO_KWH_HORA = 900.0
+DEFAULT_PRECIO_FILAMENTO_KG = 85000.0
 
 
 def round_money(value: float) -> float:
@@ -34,15 +34,23 @@ def calculate_product(product, precio_kwh_hora: float, precio_filamento_kg: floa
     else:
         costo_energia_unitario = duracion * precio_kwh_minuto
     costo_filamento_unitario = filamento * precio_filamento_gramo
-    costo_fabricacion_unitario = costo_energia_unitario + costo_filamento_unitario + costo_diseno + costo_accesorios + costo_procesado
-    precio_unitario = costo_fabricacion_unitario * (1 + porcentaje_ganancia / 100)
-    precio_total_unitario = precio_unitario + valor_empaque + valor_personalizacion
+    # El subtotal de fabricación incluye empaque y personalización (igual que la hoja de cálculo
+    # original del negocio), para que imprevistos y ganancia se apliquen también sobre esos costos.
+    costo_fabricacion_unitario = (
+        costo_energia_unitario + costo_filamento_unitario + costo_diseno + costo_accesorios
+        + costo_procesado + valor_empaque + valor_personalizacion
+    )
+    valor_imprevistos_unitario = costo_fabricacion_unitario * (porcentaje_imprevistos / 100)
+    base_con_imprevistos = costo_fabricacion_unitario + valor_imprevistos_unitario
+    ganancia_unitaria = base_con_imprevistos * (porcentaje_ganancia / 100)
+    precio_unitario = costo_fabricacion_unitario + ganancia_unitaria
+    precio_total_unitario = precio_unitario
     subtotal_energia = costo_energia_unitario * unidades
     subtotal_material = costo_filamento_unitario * unidades
     subtotal_fabricacion_total = costo_fabricacion_unitario * unidades
-    ganancia_total = (precio_unitario - costo_fabricacion_unitario) * unidades
+    ganancia_total = ganancia_unitaria * unidades
     precio_total = precio_total_unitario * unidades
-    valor_imprevistos = round_money(costo_fabricacion_unitario * (porcentaje_imprevistos / 100))
+    valor_imprevistos = round_money(valor_imprevistos_unitario)
 
     data.update({
         "idProducto": data.get("idProducto") or data.get("ID_Producto", ""),
