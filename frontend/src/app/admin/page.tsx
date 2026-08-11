@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/services/firebase';
 import { Colaborador, ReportItem } from '@/types/reportes';
 import { fetchColaboradores, crearReporte } from '@/services/reporteService';
 import { fetchQuotes as fetchQuotesApi, actualizarQuote } from '@/services/quoteService';
@@ -83,10 +85,24 @@ export default function AdminPage() {
     items: [],
   });
 
-  // Variables globales de fabricación (editables en el panel)
-  const [precioKwhHora, setPrecioKwhHora] = useState<number>(950);
-  const [precioFilamentoKg, setPrecioFilamentoKg] = useState<number>(87000);
+  // Variables globales de fabricación (editables en el panel, ver también pestaña "Precios")
+  const [precioKwhHora, setPrecioKwhHora] = useState<number>(900);
+  const [precioFilamentoKg, setPrecioFilamentoKg] = useState<number>(85000);
   const [showGlobalConfig, setShowGlobalConfig] = useState(false);
+
+  // Cargar los precios base persistidos (settings/precios) para usarlos como punto de partida
+  useEffect(() => {
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db!, 'settings', 'precios'));
+        if (snap.exists()) {
+          const data = snap.data() as { precioKwhHora?: number; precioFilamentoKg?: number };
+          if (typeof data.precioKwhHora === 'number') setPrecioKwhHora(data.precioKwhHora);
+          if (typeof data.precioFilamentoKg === 'number') setPrecioFilamentoKg(data.precioFilamentoKg);
+        }
+      } catch { /* usa los valores por defecto */ }
+    })();
+  }, []);
 
   // Cálculos por producto (index → valores)
   const [calcValues, setCalcValues] = useState<{ [key: number]: CalcEntry }>({});
