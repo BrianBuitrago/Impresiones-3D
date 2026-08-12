@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ShoppingCart } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ShoppingCart, ChevronDown, ChevronUp, Mail, Phone, IdCard, ImageIcon, Eye } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP } from './shared';
 
 const SUB_ESTADOS = [
@@ -32,6 +32,7 @@ interface ComprasTabProps {
 
 export default function ComprasTab({ quotesList, handleUpdateSubEstado }: ComprasTabProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const compras = quotesList.filter(q => q.estado === 'aceptado');
 
@@ -107,6 +108,89 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado }: Compra
                   )}
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setExpandedId(expandedId === q.id ? null : q.id)}
+                className="w-full py-2 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-white border-t border-slate-800 pt-3 cursor-pointer transition-colors"
+              >
+                {expandedId === q.id ? (
+                  <>Ver menos <ChevronUp className="w-3.5 h-3.5" /></>
+                ) : (
+                  <>Ver más <ChevronDown className="w-3.5 h-3.5" /></>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {expandedId === q.id && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-4 pt-1">
+                      <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-400">
+                        {q.cliente?.email && (
+                          <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-slate-500" /> {q.cliente.email}</span>
+                        )}
+                        {q.cliente?.telefono && (
+                          <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-slate-500" /> {q.cliente.telefono}</span>
+                        )}
+                        {q.cliente?.cedula && (
+                          <span className="flex items-center gap-1.5"><IdCard className="w-3.5 h-3.5 text-slate-500" /> {q.cliente.cedula}</span>
+                        )}
+                        {(q.notasCotizacion || q.Notas_Cotizacion) && (
+                          <span className="block mt-1 text-slate-500 italic">"{q.notasCotizacion || q.Notas_Cotizacion}"</span>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        {(q.productos || []).map((p: any, idx: number) => (
+                          <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 space-y-2">
+                            <div className="flex justify-between items-start gap-2">
+                              <p className="text-xs font-bold text-white">{p.nombre || `Producto #${idx + 1}`}</p>
+                              <span className="text-[10px] font-semibold text-emerald-400 shrink-0">
+                                {formatCOP(p.precioTotal || p.Precio_Total || 0)}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400">
+                              {p.tamanoHorizontal} × {p.tamanoVertical} mm · {p.unidades} unidad{p.unidades !== 1 ? 'es' : ''}
+                            </p>
+                            <div className="text-[10px] text-slate-500 space-y-0.5">
+                              <p>accesorios: {p.accesorios || 'ninguno'}</p>
+                              <p>
+                                personalización: {p.personalizacion?.length > 0 ? p.personalizacion.join(', ') : 'sin personalización'}
+                              </p>
+                              <p>empaque: {p.empaque === 'otra' ? p.empaqueOtraText : p.empaque}</p>
+                            </div>
+                            {(p.imagenFrontal || p.imagenLateral || p.imagenTrasera || p.imagenDiagonal) && (
+                              <div className="grid grid-cols-4 gap-1.5 pt-1">
+                                {['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'].map((f) => {
+                                  const imgUrl = p[f];
+                                  return imgUrl ? (
+                                    <a key={f} href={imgUrl} target="_blank" rel="noopener noreferrer"
+                                      className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group">
+                                      <img src={imgUrl} alt={f} className="w-full h-full object-cover" />
+                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                        <Eye className="w-3 h-3 text-white" />
+                                      </div>
+                                    </a>
+                                  ) : (
+                                    <div key={f} className="aspect-square rounded-lg border border-dashed border-slate-800 bg-slate-950 flex items-center justify-center">
+                                      <ImageIcon className="w-3 h-3 text-slate-700" />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ))}
         </div>
