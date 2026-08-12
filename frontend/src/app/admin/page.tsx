@@ -452,7 +452,7 @@ export default function AdminPage() {
 
   // ── Guardar cotización ────────────────────────────────────────────────────
 
-  const handleSaveQuote = async (newStatus: string) => {
+  const handleSaveQuote = async (newStatus: string, subEstado?: string) => {
     if (!selectedQuote || !token) return;
 
     // Si es aceptado, primero mostrar diálogo de asignación de colaborador
@@ -481,6 +481,7 @@ export default function AdminPage() {
       const updatedQuote = await actualizarQuote(token, selectedQuote.id, {
         productos: updatedProductos,
         estado: newStatus,
+        ...(subEstado ? { subEstado } : {}),
         precioKwhHora,
         precioFilamentoKg,
         subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
@@ -503,6 +504,31 @@ export default function AdminPage() {
       alert('Error al guardar: ' + err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Cambia el sub-estado de una cotización que ya está en estado "compra".
+  // Reenvía los campos que la cotización ya tiene guardados (sin pasar por la
+  // calculadora, que es exclusiva de la pestaña Cotizaciones).
+  const handleUpdateSubEstado = async (quote: any, newSubEstado: string) => {
+    if (!token) return;
+    try {
+      const updatedQuote = await actualizarQuote(token, quote.id, {
+        productos: quote.productos,
+        estado: 'compra',
+        subEstado: newSubEstado,
+        precioKwhHora: quote.precioKwhHora,
+        precioFilamentoKg: quote.precioFilamentoKg,
+        subtotalFabricacionTotal: quote.subtotalFabricacionTotal,
+        valorGananciaTotal: quote.valorGananciaTotal,
+        precioTotalCotizacion: quote.precioTotalCotizacion,
+        porcentajeGanancia: quote.porcentajeGanancia,
+        notasCotizacion: quote.notasCotizacion || quote.Notas_Cotizacion || '',
+      });
+      setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
+      if (selectedQuote?.id === updatedQuote.id) setSelectedQuote(updatedQuote);
+    } catch (err: any) {
+      alert('Error al actualizar el sub-estado: ' + err.message);
     }
   };
 
