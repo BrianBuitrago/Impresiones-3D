@@ -4,6 +4,12 @@ import { useState } from 'react';
 import { ShoppingCart, ChevronDown, ChevronLeft, Mail, Phone, IdCard, ImageIcon, Eye, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP } from './shared';
+import ImageLightbox from '@/components/ui/ImageLightbox';
+
+const getProductImages = (producto: any) =>
+  (['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'] as const)
+    .map((f, i) => ({ url: producto[f], label: ['Frontal', 'Lateral', 'Trasera', 'Diagonal'][i] }))
+    .filter(img => img.url);
 
 const SUB_ESTADOS = [
   'diseñando',
@@ -40,6 +46,7 @@ interface ComprasTabProps {
 export default function ComprasTab({ quotesList, handleUpdateSubEstado }: ComprasTabProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ images: { url: string; label?: string }[]; index: number } | null>(null);
 
   const compras = quotesList.filter(q => q.estado === 'aceptado');
   const expandedQuote = compras.find(q => q.id === expandedId) || null;
@@ -208,13 +215,18 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado }: Compra
                           {['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'].map((f) => {
                             const imgUrl = p[f];
                             return imgUrl ? (
-                              <a key={f} href={imgUrl} target="_blank" rel="noopener noreferrer"
-                                className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group">
+                              <button key={f} type="button"
+                                onClick={() => {
+                                  const imgs = getProductImages(p);
+                                  const clickedIdx = imgs.findIndex(img => img.url === imgUrl);
+                                  setLightbox({ images: imgs, index: clickedIdx >= 0 ? clickedIdx : 0 });
+                                }}
+                                className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group cursor-pointer">
                                 <img src={imgUrl} alt={f} className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                   <Eye className="w-3.5 h-3.5 text-white" />
                                 </div>
-                              </a>
+                              </button>
                             ) : (
                               <div key={f} className="aspect-square rounded-lg border border-dashed border-slate-800 bg-slate-950 flex items-center justify-center">
                                 <ImageIcon className="w-3.5 h-3.5 text-slate-700" />
@@ -287,6 +299,15 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado }: Compra
             </div>
           ))}
         </div>
+      )}
+
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onNavigate={i => setLightbox(prev => (prev ? { ...prev, index: i } : prev))}
+        />
       )}
     </motion.div>
   );

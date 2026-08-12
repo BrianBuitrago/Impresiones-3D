@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
   Search,
@@ -18,6 +19,7 @@ import {
   CheckCircle2,
   RefreshCw,
 } from 'lucide-react';
+import ImageLightbox from '@/components/ui/ImageLightbox';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP, estadoBadgeClass, type CalcEntry } from './shared';
 
@@ -78,6 +80,13 @@ export default function QuotesTab({
   handleSaveQuote,
   handleGeneratePdfAndOpenWhatsApp,
 }: QuotesTabProps) {
+  const [lightbox, setLightbox] = useState<{ images: { url: string; label?: string }[]; index: number } | null>(null);
+
+  const getProductImages = (producto: any) =>
+    (['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'] as const)
+      .map((f, i) => ({ url: producto[f], label: ['Frontal', 'Lateral', 'Trasera', 'Diagonal'][i] }))
+      .filter(img => img.url);
+
   return (
             <motion.div
               key="cotizaciones"
@@ -362,17 +371,14 @@ export default function QuotesTab({
                               {/* Header del producto */}
                               <div className="bg-slate-950/60 px-5 py-4 border-b border-slate-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                                 <div className="flex items-center gap-3 min-w-0">
-                                  {['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'].some(f => producto[f]) && (
+                                  {getProductImages(producto).length > 0 && (
                                     <div className="flex -space-x-2 shrink-0">
-                                      {['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal']
-                                        .filter(f => producto[f])
-                                        .slice(0, 4)
-                                        .map((f) => (
-                                          <a key={f} href={producto[f]} target="_blank" rel="noopener noreferrer"
-                                            className="w-10 h-10 rounded-lg overflow-hidden border-2 border-slate-900 bg-slate-950 hover:border-cyan-500/60 hover:z-10 relative transition-all">
-                                            <img src={producto[f]} alt={f} className="w-full h-full object-cover" />
-                                          </a>
-                                        ))}
+                                      {getProductImages(producto).slice(0, 4).map((img, i) => (
+                                        <button key={img.url} type="button" onClick={() => setLightbox({ images: getProductImages(producto), index: i })}
+                                          className="w-10 h-10 rounded-lg overflow-hidden border-2 border-slate-900 bg-slate-950 hover:border-cyan-500/60 hover:z-10 relative transition-all cursor-pointer">
+                                          <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                                        </button>
+                                      ))}
                                     </div>
                                   )}
                                   <div className="min-w-0">
@@ -443,13 +449,18 @@ export default function QuotesTab({
                                         const imgUrl = producto[f];
                                         const labels = ['Frontal', 'Lateral', 'Trasera', 'Diagonal'];
                                         return imgUrl ? (
-                                          <a key={f} href={imgUrl} target="_blank" rel="noopener noreferrer"
-                                            className="relative w-full aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group transition-all">
+                                          <button key={f} type="button"
+                                            onClick={() => {
+                                              const imgs = getProductImages(producto);
+                                              const clickedIdx = imgs.findIndex(img => img.url === imgUrl);
+                                              setLightbox({ images: imgs, index: clickedIdx >= 0 ? clickedIdx : 0 });
+                                            }}
+                                            className="relative w-full aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group transition-all cursor-pointer">
                                             <img src={imgUrl} alt={labels[i]} className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[8px] font-bold gap-0.5">
                                               <Eye className="w-3 h-3" /> {labels[i]}
                                             </div>
-                                          </a>
+                                          </button>
                                         ) : (
                                           <div key={f} className="w-full aspect-square rounded-lg border border-dashed border-slate-800 bg-slate-950 flex flex-col items-center justify-center text-slate-600">
                                             <ImageIcon className="w-3 h-3 mb-0.5 text-slate-700" />
@@ -850,6 +861,15 @@ export default function QuotesTab({
                 </div>
 
               </div>
+
+              {lightbox && (
+                <ImageLightbox
+                  images={lightbox.images}
+                  index={lightbox.index}
+                  onClose={() => setLightbox(null)}
+                  onNavigate={i => setLightbox(prev => (prev ? { ...prev, index: i } : prev))}
+                />
+              )}
             </motion.div>
   );
 }
