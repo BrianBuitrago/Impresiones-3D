@@ -204,8 +204,8 @@ SUB_ESTADOS_COMPRA = {
 
 class QuoteUpdate(BaseModel):
     productos: List[ProductoItem] = Field(..., min_items=1, max_items=5, description="Lista de productos con cálculos actualizados")
-    estado: str = Field(..., description="Estado de la cotización (pendiente, cotizado, aceptado, rechazado, compra)")
-    subEstado: Optional[str] = Field(None, max_length=50, description="Sub-estado de producción/entrega, solo aplica cuando estado='compra'")
+    estado: str = Field(..., description="Estado de la cotización (pendiente, cotizado, aceptado, rechazado)")
+    subEstado: Optional[str] = Field(None, max_length=50, description="Sub-estado de producción/entrega, se asigna cuando estado='aceptado'")
     precioKwhHora: float = Field(..., ge=0, le=1000000, description="Precio global de energía por Kw/h")
     precioFilamentoKg: float = Field(..., ge=0, le=10000000, description="Precio global de filamento por Kg")
     subtotalFabricacionTotal: float = Field(0.0, ge=0, description="Subtotal de fabricación de todos los productos")
@@ -233,7 +233,7 @@ class QuoteUpdate(BaseModel):
     @validator("estado")
     def validate_estado(cls, value):
         normalized = value.strip().lower()
-        allowed = {"pendiente", "cotizado", "aceptado", "rechazado", "compra"}
+        allowed = {"pendiente", "cotizado", "aceptado", "rechazado"}
         if normalized not in allowed:
             raise ValueError("Estado de cotizacion no permitido.")
         return normalized
@@ -244,7 +244,7 @@ class QuoteUpdate(BaseModel):
             return value
         normalized = value.strip().lower()
         if normalized not in SUB_ESTADOS_COMPRA:
-            raise ValueError("Sub-estado de compra no permitido.")
+            raise ValueError("Sub-estado no permitido.")
         return normalized
 
     class Config:
