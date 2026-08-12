@@ -21,6 +21,7 @@ import { fetchQuotes as fetchQuotesApi, actualizarQuote } from '@/services/quote
 import QuotesTab from './components/QuotesTab';
 import UsersTab from './components/UsersTab';
 import PreciosTab from './components/PreciosTab';
+import ComprasTab from './components/ComprasTab';
 import AssignColaboradorDialog from './components/AssignColaboradorDialog';
 import { formatCOP, type CalcEntry } from './components/shared';
 
@@ -1014,6 +1015,10 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'precios' && <PreciosTab />}
+
+          {activeTab === 'compras' && (
+            <ComprasTab quotesList={quotesList} handleUpdateSubEstado={handleUpdateSubEstado} />
+          )}
 
         </AnimatePresence>
       </div>
