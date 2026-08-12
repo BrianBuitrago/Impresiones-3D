@@ -196,9 +196,16 @@ class QuoteCreate(BaseModel):
         return values
 
 
+SUB_ESTADOS_COMPRA = {
+    "diseñando", "listo para imprimir", "imprimiendo", "post impresión",
+    "pintura", "pendiente de entrega", "entregado", "stand by",
+}
+
+
 class QuoteUpdate(BaseModel):
     productos: List[ProductoItem] = Field(..., min_items=1, max_items=5, description="Lista de productos con cálculos actualizados")
-    estado: str = Field(..., description="Estado de la cotización (pendiente, cotizado, aceptado, rechazado)")
+    estado: str = Field(..., description="Estado de la cotización (pendiente, cotizado, aceptado, rechazado, compra)")
+    subEstado: Optional[str] = Field(None, max_length=50, description="Sub-estado de producción/entrega, solo aplica cuando estado='compra'")
     precioKwhHora: float = Field(..., ge=0, le=1000000, description="Precio global de energía por Kw/h")
     precioFilamentoKg: float = Field(..., ge=0, le=10000000, description="Precio global de filamento por Kg")
     subtotalFabricacionTotal: float = Field(0.0, ge=0, description="Subtotal de fabricación de todos los productos")
@@ -226,9 +233,18 @@ class QuoteUpdate(BaseModel):
     @validator("estado")
     def validate_estado(cls, value):
         normalized = value.strip().lower()
-        allowed = {"pendiente", "cotizado", "aceptado", "rechazado"}
+        allowed = {"pendiente", "cotizado", "aceptado", "rechazado", "compra"}
         if normalized not in allowed:
             raise ValueError("Estado de cotizacion no permitido.")
+        return normalized
+
+    @validator("subEstado")
+    def validate_sub_estado(cls, value):
+        if value is None:
+            return value
+        normalized = value.strip().lower()
+        if normalized not in SUB_ESTADOS_COMPRA:
+            raise ValueError("Sub-estado de compra no permitido.")
         return normalized
 
     class Config:
@@ -241,6 +257,7 @@ class QuoteResponse(BaseModel):
     cliente: ClienteInfo
     productos: List[ProductoItem]
     estado: str = Field("pendiente", description="Estado de la cotización")
+    subEstado: Optional[str] = None
     creadoEn: Optional[str] = None        # ← era `str`, ahora Optional[str]
     actualizadoEn: Optional[str] = None
     precioKwhHora: Optional[float] = None

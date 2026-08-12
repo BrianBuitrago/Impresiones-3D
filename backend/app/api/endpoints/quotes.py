@@ -247,6 +247,8 @@ def update_quote(
             "Precio_Total_Cotizacion": precio_total,
             "actualizadoEn": datetime.utcnow().isoformat()
         }
+        if quote_up.subEstado is not None:
+            update_data["subEstado"] = quote_up.subEstado
         quote_ref.update(update_data)
         final_doc = quote_ref.get().to_dict()
         final_doc["id"] = quote_id
