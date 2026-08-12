@@ -817,15 +817,6 @@ export default function QuotesTab({
                               >
                                 Rechazada
                               </button>
-                              {selectedQuote.estado === 'aceptado' && (
-                                <button
-                                  disabled={saving}
-                                  onClick={() => handleSaveQuote('compra', 'diseñando')}
-                                  className="flex-1 py-3 px-4 bg-cyan-900/40 hover:bg-cyan-900/60 border border-cyan-800/40 text-cyan-400 font-bold rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                                >
-                                  Pasar a Compra
-                                </button>
-                              )}
                             </div>
                           </div>
                         </div>

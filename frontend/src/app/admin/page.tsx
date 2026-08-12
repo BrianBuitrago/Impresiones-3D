@@ -522,7 +522,7 @@ export default function AdminPage() {
     try {
       const updatedQuote = await actualizarQuote(token, quote.id, {
         productos: quote.productos,
-        estado: 'compra',
+        estado: quote.estado,
         subEstado: newSubEstado,
         precioKwhHora: quote.precioKwhHora,
         precioFilamentoKg: quote.precioFilamentoKg,
@@ -605,6 +605,7 @@ export default function AdminPage() {
       const updatedQuote = await actualizarQuote(token, selectedQuote.id, {
         productos: updatedProductos,
         estado: 'aceptado',
+        subEstado: 'diseñando',
         precioKwhHora,
         precioFilamentoKg,
         subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,

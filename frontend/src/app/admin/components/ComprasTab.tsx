@@ -33,7 +33,7 @@ interface ComprasTabProps {
 export default function ComprasTab({ quotesList, handleUpdateSubEstado }: ComprasTabProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const compras = quotesList.filter(q => q.estado === 'compra');
+  const compras = quotesList.filter(q => q.estado === 'aceptado');
 
   const onChangeSubEstado = async (quote: any, value: string) => {
     setUpdatingId(quote.id);
@@ -70,7 +70,7 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado }: Compra
           <ShoppingCart className="w-14 h-14 mx-auto mb-4 text-slate-800" />
           <p className="text-base font-bold text-slate-400">ninguna compra en proceso</p>
           <p className="text-xs text-slate-600 mt-1">
-            Las cotizaciones aceptadas aparecen acá cuando se pasan a "Compra" desde la pestaña Cotizaciones.
+            Las cotizaciones aceptadas aparecen acá automáticamente.
           </p>
         </div>
       ) : (
