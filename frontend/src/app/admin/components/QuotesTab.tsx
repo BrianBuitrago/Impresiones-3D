@@ -360,15 +360,30 @@ export default function QuotesTab({
                             <div key={idx} className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
 
                               {/* Header del producto */}
-                              <div className="bg-slate-950/60 px-5 py-4 border-b border-slate-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                                <div>
-                                  <h4 className="text-sm font-bold text-white">{producto.nombre}</h4>
-                                  <p className="text-xs text-slate-400 mt-0.5">
-                                    {producto.tamanoHorizontal} × {producto.tamanoVertical} mm ·{' '}
-                                    <span className="text-slate-300 font-semibold">{producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''}</span>
-                                  </p>
+                              <div className="bg-slate-950/60 px-5 py-4 border-b border-slate-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  {['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'].some(f => producto[f]) && (
+                                    <div className="flex -space-x-2 shrink-0">
+                                      {['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal']
+                                        .filter(f => producto[f])
+                                        .slice(0, 4)
+                                        .map((f) => (
+                                          <a key={f} href={producto[f]} target="_blank" rel="noopener noreferrer"
+                                            className="w-10 h-10 rounded-lg overflow-hidden border-2 border-slate-900 bg-slate-950 hover:border-cyan-500/60 hover:z-10 relative transition-all">
+                                            <img src={producto[f]} alt={f} className="w-full h-full object-cover" />
+                                          </a>
+                                        ))}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <h4 className="text-sm font-bold text-white truncate">{producto.nombre}</h4>
+                                    <p className="text-xs text-slate-400 mt-0.5">
+                                      {producto.tamanoHorizontal} × {producto.tamanoVertical} mm ·{' '}
+                                      <span className="text-slate-300 font-semibold">{producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''}</span>
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 shrink-0">
                                   <span className="text-xs font-bold text-cyan-400 px-3 py-1 bg-cyan-950/20 border border-cyan-800/20 rounded-lg shrink-0">
                                     Producto #{idx + 1}
                                   </span>

@@ -50,10 +50,6 @@ interface ProductForm {
   tiempoHoras: string;
   tiempoMinutos: string;
   pesoGramos: string;
-  costoDiseno: string;
-  costoAccesorios: string;
-  costoPersonalizado: string;
-  costoEmpaque: string;
 }
 
 const newProduct = (): ProductForm => ({
@@ -74,10 +70,6 @@ const newProduct = (): ProductForm => ({
   tiempoHoras: '',
   tiempoMinutos: '',
   pesoGramos: '',
-  costoDiseno: '',
-  costoAccesorios: '',
-  costoPersonalizado: '',
-  costoEmpaque: '',
 });
 
 const PERSONALIZACION_OPTIONS = [
@@ -183,10 +175,6 @@ export default function Cotizar() {
     if (p.tiempoHoras && parseFloat(p.tiempoHoras) < 0)            return `Las horas de impresión del ${label} no pueden ser negativas.`;
     if (p.tiempoMinutos && parseFloat(p.tiempoMinutos) < 0)        return `Los minutos de impresión del ${label} no pueden ser negativos.`;
     if (p.pesoGramos && parseFloat(p.pesoGramos) < 0)              return `El peso en gramos del ${label} no puede ser negativo.`;
-    if (p.costoDiseno && parseFloat(p.costoDiseno) < 0)            return `El costo de diseño del ${label} no puede ser negativo.`;
-    if (p.costoAccesorios && parseFloat(p.costoAccesorios) < 0)    return `El costo de accesorios del ${label} no puede ser negativo.`;
-    if (p.costoPersonalizado && parseFloat(p.costoPersonalizado) < 0) return `El costo personalizado del ${label} no puede ser negativo.`;
-    if (p.costoEmpaque && parseFloat(p.costoEmpaque) < 0)          return `El costo de empaque del ${label} no puede ser negativo.`;
     if (p.personalizacion.includes('otra') && !p.personalizacionOtraText.trim())
       return `Describe la personalización "Otra" del ${label}.`;
     if (p.empaque === 'otra' && !p.empaqueOtraText.trim())
@@ -326,26 +314,14 @@ export default function Cotizar() {
           tiempoHoras:             parseFloat(p.tiempoHoras) || 0,
           tiempoMinutos:           parseFloat(p.tiempoMinutos) || 0,
           pesoGramos:              parseFloat(p.pesoGramos) || 0,
-          costoDiseno:             parseFloat(p.costoDiseno) || 0,
-          costoAccesorios:         parseFloat(p.costoAccesorios) || 0,
-          costoPersonalizado:      parseFloat(p.costoPersonalizado) || 0,
-          costoEmpaque:            parseFloat(p.costoEmpaque) || 0,
           Tiempo_Horas:            parseFloat(p.tiempoHoras) || 0,
           Tiempo_Minutos:          parseFloat(p.tiempoMinutos) || 0,
           Peso_Gramos:             parseFloat(p.pesoGramos) || 0,
-          'Costo_Diseño':          parseFloat(p.costoDiseno) || 0,
-          Costo_Accesorios:        parseFloat(p.costoAccesorios) || 0,
-          Costo_Personalizado:     parseFloat(p.costoPersonalizado) || 0,
-          Costo_Empaque:           parseFloat(p.costoEmpaque) || 0,
           Subtotal_Energia:        0,
           Subtotal_Material:       0,
           Subtotal_Fabricacion:    0,
           Precio_Unitario_Con_Ganancia: 0,
           Precio_Lineal_Total:      0,
-          costoDisenoUnitario:      parseFloat(p.costoDiseno) || 0,
-          costoAccesoriosUnitario:  parseFloat(p.costoAccesorios) || 0,
-          valorPersonalizacionUnitario: parseFloat(p.costoPersonalizado) || 0,
-          valorEmpaqueUnitario:     parseFloat(p.costoEmpaque) || 0,
         });
       }
 
@@ -748,49 +724,6 @@ export default function Cotizar() {
                             />
                             <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">mm</span>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Fila 3: Costos directos */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Costos directos
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={producto.costoDiseno}
-                            onChange={e => handleProductChange('costoDiseno', e.target.value)}
-                            placeholder="Diseño"
-                            className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-xs font-mono"
-                          />
-                          <input
-                            type="number"
-                            min="0"
-                            value={producto.costoAccesorios}
-                            onChange={e => handleProductChange('costoAccesorios', e.target.value)}
-                            placeholder="Accesorios"
-                            className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-xs font-mono"
-                          />
-                          <input
-                            type="number"
-                            min="0"
-                            value={producto.costoPersonalizado}
-                            onChange={e => handleProductChange('costoPersonalizado', e.target.value)}
-                            placeholder="Personalizado"
-                            className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-xs font-mono"
-                          />
-                          <input
-                            type="number"
-                            min="0"
-                            value={producto.costoEmpaque}
-                            onChange={e => handleProductChange('costoEmpaque', e.target.value)}
-                            placeholder="Empaque"
-                            className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-xs font-mono"
-                          />
                         </div>
                       </div>
                     </div>
