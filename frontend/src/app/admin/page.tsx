@@ -27,6 +27,12 @@ import { formatCOP, type CalcEntry } from './components/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
+// Mismo formato que admin/reportes/page.tsx (el backend exige "MM/AA", ej. "Agosto/26")
+const MONTHS = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface ReportItemInput {
@@ -619,7 +625,8 @@ export default function AdminPage() {
       setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
 
       // Create report entries for assigned products
-      const periodo = new Date().toISOString().slice(0, 7);
+      const now = new Date();
+      const periodo = `${MONTHS[now.getMonth()]}/${String(now.getFullYear()).slice(-2)}`;
       for (const [colUid, items] of itemsPorColaborador) {
         const col = colUid === '__sin_asignar__' ? null : colsDisponibles.find(c => c.uid === colUid);
         await crearReporte(token, {
