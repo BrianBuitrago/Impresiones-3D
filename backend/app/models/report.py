@@ -19,8 +19,8 @@ class ProductoDetalle(BaseModel):
     kwMin: Optional[float] = Field(0.0, ge=0, description="Kilovatios por minuto")
     porcentajeGanancia: Optional[float] = Field(0.0, ge=0, description="Porcentaje de ganancia")
     valorUnitario: Optional[float] = Field(0.0, ge=0, description="Valor unitario")
-    tamanoHorizontal: Optional[float] = Field(0.0, ge=0, description="Tamaño horizontal mm")
-    tamanoVertical: Optional[float] = Field(0.0, ge=0, description="Tamaño vertical mm")
+    tamanoHorizontal: Optional[float] = Field(0.0, ge=0, description="Tamaño horizontal cm")
+    tamanoVertical: Optional[float] = Field(0.0, ge=0, description="Tamaño vertical cm")
 
 class ReportItem(BaseModel):
     quote_id: str = Field("", description="ID de cotización relacionada (vacío si es manual)")
