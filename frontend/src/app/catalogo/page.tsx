@@ -50,7 +50,6 @@ export default function Catalogo() {
   const [uploadingImg, setUploadingImg] = useState(false);
 
   const loadProductos = useCallback(async () => {
-    if (!isAdmin) { setLoading(false); return; }
     try {
       const prods = await fetchProductos();
       if (prods.length > 0) setProductos(prods);
@@ -59,12 +58,11 @@ export default function Catalogo() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
-    if (!isAdmin) setLoading(false);
-    else loadProductos();
-  }, [isAdmin, loadProductos]);
+    loadProductos();
+  }, [loadProductos]);
 
   const handlePrev = () => setCurrentIndex(prev => Math.max(0, prev - 1));
   const handleNext = () => setCurrentIndex(prev => Math.min(productos.length - 1, prev + 1));
