@@ -634,7 +634,7 @@ export default function Cotizar() {
                         <p className="text-[11px] text-slate-500">
                           {producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''} ·{' '}
                           {producto.tamanoHorizontal && producto.tamanoVertical
-                            ? `${producto.tamanoHorizontal} × ${producto.tamanoVertical} mm`
+                            ? `${producto.tamanoHorizontal} × ${producto.tamanoVertical} cm`
                             : 'Sin dimensiones'}
                         </p>
                       </div>
@@ -698,31 +698,31 @@ export default function Cotizar() {
                       </div>
                       <div className="grid grid-cols-2 gap-5">
                         <div className="space-y-2">
-                          <label className="block text-[11px] text-slate-500 font-semibold">Tamaño Horizontal — Ancho (mm)</label>
+                          <label className="block text-[11px] text-slate-500 font-semibold">Tamaño Horizontal — Ancho (cm)</label>
                           <div className="relative">
                             <input
                               type="number"
                               min="1"
                               value={producto.tamanoHorizontal}
                               onChange={e => handleProductChange('tamanoHorizontal', e.target.value)}
-                              placeholder="Ej. 150"
+                              placeholder="Ej. 15"
                               className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
                             />
-                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">mm</span>
+                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">cm</span>
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="block text-[11px] text-slate-500 font-semibold">Tamaño Vertical — Alto (mm)</label>
+                          <label className="block text-[11px] text-slate-500 font-semibold">Tamaño Vertical — Alto (cm)</label>
                           <div className="relative">
                             <input
                               type="number"
                               min="1"
                               value={producto.tamanoVertical}
                               onChange={e => handleProductChange('tamanoVertical', e.target.value)}
-                              placeholder="Ej. 80"
+                              placeholder="Ej. 8"
                               className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
                             />
-                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">mm</span>
+                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">cm</span>
                           </div>
                         </div>
                       </div>
@@ -991,7 +991,7 @@ export default function Cotizar() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-5 py-3 font-mono">{p.tamanoHorizontal} × {p.tamanoVertical} mm</td>
+                          <td className="px-5 py-3 font-mono">{p.tamanoHorizontal} × {p.tamanoVertical} cm</td>
                           <td className="px-5 py-3 font-bold text-cyan-300">{p.unidades}</td>
                           <td className="px-5 py-3">
                             {p.personalizacion.length > 0
