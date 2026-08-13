@@ -177,8 +177,8 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado }: Compra
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">datos del producto</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2.5">
                         <Field label="Unidades" value={p.unidades} />
-                        <Field label="Tamaño horizontal" value={p.tamanoHorizontal ? `${p.tamanoHorizontal} mm` : null} />
-                        <Field label="Tamaño vertical" value={p.tamanoVertical ? `${p.tamanoVertical} mm` : null} />
+                        <Field label="Tamaño horizontal" value={p.tamanoHorizontal ? `${p.tamanoHorizontal} cm` : null} />
+                        <Field label="Tamaño vertical" value={p.tamanoVertical ? `${p.tamanoVertical} cm` : null} />
                         <Field label="Accesorios" value={p.accesorios || 'ninguno'} />
                         <Field label="Personalización" value={p.personalizacion?.length > 0 ? p.personalizacion.join(', ') : 'sin personalización'} />
                         <Field label="Tipo de empaque" value={p.empaque === 'otra' ? (p.empaqueOtraText || 'otro') : p.empaque} />

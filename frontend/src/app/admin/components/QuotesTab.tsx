@@ -384,7 +384,7 @@ export default function QuotesTab({
                                   <div className="min-w-0">
                                     <h4 className="text-sm font-bold text-white truncate">{producto.nombre}</h4>
                                     <p className="text-xs text-slate-400 mt-0.5">
-                                      {producto.tamanoHorizontal} × {producto.tamanoVertical} mm ·{' '}
+                                      {producto.tamanoHorizontal} × {producto.tamanoVertical} cm ·{' '}
                                       <span className="text-slate-300 font-semibold">{producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''}</span>
                                     </p>
                                   </div>
