@@ -14,14 +14,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Colaborador, ReportData, ReportItem, ProductoDetalle } from '@/types/reportes';
 import { fetchColaboradores, fetchReportes, crearReporte, updateReporte, deleteReporte } from '@/services/reporteService';
 import { fetchQuotes } from '@/services/quoteService';
+import { formatCOP } from '../components/shared';
 
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
-
-const formatCOP = (v: number) => `$${Math.round(v).toLocaleString('es-CO')} COP`;
 
 const inputClass = 'w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 transition-colors';
 const selectClass = 'w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer transition-colors';
@@ -578,13 +577,21 @@ export default function ReportesPage() {
                 <span className="text-xs text-slate-500">{reportesFiltrados.length}</span>
               </div>
               {fetching ? (
-                <div className="py-6 text-center text-slate-500 text-xs">Cargando...</div>
+                <div className="py-6 flex flex-col items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+                  <p className="text-slate-500 text-xs">Cargando...</p>
+                </div>
               ) : reportesFiltrados.length === 0 ? (
                 <div className="py-6 text-center text-slate-500 text-xs">Sin reportes en este periodo</div>
               ) : (
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                  {reportesFiltrados.map(r => (
-                    <div key={r.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl hover:border-slate-700 transition-all group">
+                  {reportesFiltrados.map((r, idx) => (
+                    <motion.div
+                      key={r.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(idx, 10) * 0.03 }}
+                      className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl hover:border-slate-700 transition-all group">
                       <div className="flex justify-between items-start mb-1">
                         <span className="text-xs font-mono text-cyan-400 font-bold">{r.periodo}</span>
                         <span className="text-[10px] text-slate-500">{r.items?.length || 0} items</span>
@@ -613,7 +620,7 @@ export default function ReportesPage() {
                           {deletingId === r.id ? '...' : 'Eliminar'}
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               )}
@@ -900,7 +907,7 @@ function ManualPurchaseForm({
 
           {/* ── Datos del Cliente ── */}
           <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2"><User className="w-4 h-4 text-cyan-400" /> datos del cliente</h3>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2"><User className="w-4 h-4 text-cyan-400" /> Datos del Cliente</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-slate-400 font-bold mb-1.5">nombre del cliente *</label>
@@ -923,7 +930,7 @@ function ManualPurchaseForm({
 
           {/* ── información del pedido ── */}
           <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2"><FileText className="w-4 h-4 text-cyan-400" /> información del pedido</h3>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2"><FileText className="w-4 h-4 text-cyan-400" /> Información del Pedido</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs text-slate-400 font-bold mb-1.5">fecha de confirmación</label>

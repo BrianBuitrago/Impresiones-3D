@@ -1127,6 +1127,7 @@ export default function AdminPage() {
           ══════════════════════════════════════════════════════════════════ */}
           {activeTab === 'usuarios' && (
             <UsersTab
+              usersList={usersList}
               filteredUsers={filteredUsers}
               usersFetching={usersFetching}
               error={error}

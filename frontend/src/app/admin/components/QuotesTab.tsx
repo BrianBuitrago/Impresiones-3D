@@ -160,13 +160,19 @@ export default function QuotesTab({
 
                   <div className="border-t border-slate-800 pt-3 max-h-[520px] overflow-y-auto space-y-2 pr-1">
                     {quotesFetching ? (
-                      <div className="py-10 text-center text-slate-500 text-xs">Cargando...</div>
+                      <div className="py-10 flex flex-col items-center gap-2">
+                        <div className="w-5 h-5 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+                        <p className="text-slate-500 text-xs">Cargando...</p>
+                      </div>
                     ) : filteredQuotes.length === 0 ? (
                       <div className="py-10 text-center text-slate-500 text-xs">Sin resultados</div>
                     ) : (
-                      filteredQuotes.map(q => (
-                        <button
+                      filteredQuotes.map((q, idx) => (
+                        <motion.button
                           key={q.id}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: Math.min(idx, 10) * 0.03 }}
                           onClick={() => handleSelectQuote(q)}
                           className={`w-full text-left p-3.5 rounded-xl border transition-all flex flex-col gap-1.5 cursor-pointer ${
                             selectedQuote?.id === q.id
@@ -193,7 +199,7 @@ export default function QuotesTab({
                               {formatCOP(q.precioTotalCotizacion)}
                             </span>
                           )}
-                        </button>
+                        </motion.button>
                       ))
                     )}
                   </div>
