@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from app.core.firebase import db, firebase_auth
-from app.models.quote import QuoteCreate, QuoteUpdate, QuoteResponse
+from app.models.quote import QuoteCreate, QuoteUpdate, QuoteResponse, SubEstadoUpdate, strip_monetary_fields
 from app.api.deps import RoleChecker, get_firebase_uid
 from app.utils.firestore import serialize_doc
 from app.services.pricing import round_money, calculate_product, get_precios_globales
@@ -136,6 +136,7 @@ def get_all_quotes(
         query = query.order_by("creadoEn", direction="DESCENDING")
         docs = query.stream()
         quotes_list = []
+        is_colaborador = current_user.get("rol") == "colaborador"
         for doc in docs:
             q_data = doc.to_dict()
             q_data["id"] = doc.id
@@ -145,6 +146,8 @@ def get_all_quotes(
                 continue
             if fecha_hasta and fecha_val > fecha_hasta:
                 continue
+            if is_colaborador:
+                serialized = strip_monetary_fields(serialized)
             quotes_list.append(serialized)
         return quotes_list
     except Exception as e:
@@ -197,6 +200,8 @@ def get_quote_by_id(quote_id: str, uid: str = Depends(get_firebase_uid)):
     if not is_owner and not is_staff:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="No tienes permisos suficientes para ver los detalles de esta cotización.")
+    if user_role == "colaborador":
+        q_data = strip_monetary_fields(q_data)
     return q_data
 
 
@@ -204,7 +209,7 @@ def get_quote_by_id(quote_id: str, uid: str = Depends(get_firebase_uid)):
 def update_quote(
     quote_id: str,
     quote_up: QuoteUpdate,
-    current_user: dict = Depends(RoleChecker(["administrador", "colaborador"]))
+    current_user: dict = Depends(RoleChecker(["administrador"]))
 ):
     if db is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -257,3 +262,35 @@ def update_quote(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f"Error al actualizar la cotización: {str(e)}")
+
+
+@router.patch("/{quote_id}/subestado", response_model=QuoteResponse)
+def update_quote_subestado(
+    quote_id: str,
+    payload: SubEstadoUpdate,
+    current_user: dict = Depends(RoleChecker(["administrador", "colaborador"]))
+):
+    """Actualiza únicamente el sub-estado de producción/entrega, sin tocar
+    productos ni precios — es lo único que un colaborador puede modificar
+    de una cotización, y no necesita ver ni reenviar datos de precio para usarlo."""
+    if db is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Servicio de base de datos no disponible.")
+    quote_ref = db.collection("quotes").document(quote_id)
+    if not quote_ref.get().exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="La cotización solicitada no existe.")
+    try:
+        quote_ref.update({
+            "subEstado": payload.subEstado,
+            "actualizadoEn": datetime.utcnow().isoformat(),
+        })
+        final_doc = quote_ref.get().to_dict()
+        final_doc["id"] = quote_id
+        serialize_doc(final_doc)
+        if current_user.get("rol") == "colaborador":
+            final_doc = strip_monetary_fields(final_doc)
+        return final_doc
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Error al actualizar el sub-estado: {str(e)}")
