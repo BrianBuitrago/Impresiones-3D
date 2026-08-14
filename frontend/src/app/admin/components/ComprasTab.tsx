@@ -255,10 +255,13 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
           {compras.length > 1 && (
             <div className="space-y-2">
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider px-1">otras compras</p>
-              {compras.filter(q => q.id !== expandedQuote.id).map(q => (
-                <button
+              {compras.filter(q => q.id !== expandedQuote.id).map((q, idx) => (
+                <motion.button
                   key={q.id}
                   type="button"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(idx, 10) * 0.03 }}
                   onClick={() => setExpandedId(q.id)}
                   className="w-full flex items-center justify-between gap-3 bg-slate-900/30 hover:bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3 text-left cursor-pointer transition-colors"
                 >
@@ -273,15 +276,20 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
                     <span className="text-xs font-bold text-emerald-400">{formatCOP(q.precioTotalCotizacion || q.precioTotal || 0)}</span>
                     <ChevronDown className="w-4 h-4 text-slate-500 -rotate-90" />
                   </div>
-                </button>
+                </motion.button>
               ))}
             </div>
           )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {compras.map(q => (
-            <div key={q.id} className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-3">
+          {compras.map((q, idx) => (
+            <motion.div
+              key={q.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(idx, 10) * 0.03 }}
+              className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-3">
               <div className="flex justify-between items-start gap-2">
                 <span className="text-[10px] font-mono text-cyan-400 font-bold truncate max-w-[140px]">{q.id}</span>
                 <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border shrink-0 ${subEstadoBadgeClass(q.subEstado || '')}`}>
@@ -305,7 +313,7 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
               >
                 Ver más <ChevronDown className="w-3.5 h-3.5" />
               </button>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
