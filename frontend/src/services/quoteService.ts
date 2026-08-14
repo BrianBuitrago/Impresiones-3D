@@ -39,3 +39,19 @@ export async function actualizarQuote(token: string, id: string, data: any): Pro
     })
   );
 }
+
+export async function actualizarSubEstado(token: string, id: string, subEstado: string): Promise<any> {
+  return handleRes(
+    await fetch(`${API_URL}/quotes/${id}/subestado`, {
+      method: 'PATCH',
+      headers: headers(token),
+      body: JSON.stringify({ subEstado }),
+    })
+  );
+}
+
+export async function fetchMyQuotes(token: string): Promise<any[]> {
+  return handleRes(
+    await fetch(`${API_URL}/quotes/my`, { headers: headers(token) })
+  );
+}
