@@ -63,6 +63,7 @@ export default function AdminPage() {
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'cotizaciones' | 'usuarios' | 'reportes' | 'compras' | 'precios'>('cotizaciones');
+  const [autoExpandCompraId, setAutoExpandCompraId] = useState<string | null>(null);
 
   // Usuarios
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
@@ -641,6 +642,9 @@ export default function AdminPage() {
       }
 
       setShowAssignDialog(false);
+      setSelectedQuote(null);
+      setAutoExpandCompraId(updatedQuote.id);
+      setActiveTab('compras');
     } catch (err: any) {
       alert('Error al guardar: ' + err.message);
     } finally {
@@ -1140,7 +1144,12 @@ export default function AdminPage() {
           {activeTab === 'precios' && <PreciosTab />}
 
           {activeTab === 'compras' && (
-            <ComprasTab quotesList={quotesList} handleUpdateSubEstado={handleUpdateSubEstado} />
+            <ComprasTab
+              quotesList={quotesList}
+              handleUpdateSubEstado={handleUpdateSubEstado}
+              autoExpandId={autoExpandCompraId}
+              onAutoExpandHandled={() => setAutoExpandCompraId(null)}
+            />
           )}
 
         </AnimatePresence>
