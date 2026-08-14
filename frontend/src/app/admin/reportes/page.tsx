@@ -14,7 +14,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Colaborador, ReportData, ReportItem, ProductoDetalle } from '@/types/reportes';
 import { fetchColaboradores, fetchReportes, crearReporte, updateReporte, deleteReporte } from '@/services/reporteService';
 import { fetchQuotes } from '@/services/quoteService';
+import { fetchInversiones } from '@/services/inversionService';
 import { formatCOP } from '../components/shared';
+import { GRANULARIDADES, bucketKey, bucketLabel, type Granularidad } from '../components/periodo';
 
 
 const MONTHS = [
@@ -89,20 +91,24 @@ export default function ReportesPage() {
   const [purchaseTab, setPurchaseTab] = useState<'manual' | 'web'>('manual');
   const [quotes, setQuotes] = useState<any[]>([]);
   const [quotesFetching, setQuotesFetching] = useState(false);
+  const [inversiones, setInversiones] = useState<any[]>([]);
+  const [rentGranularidad, setRentGranularidad] = useState<Granularidad>('mensual');
 
   const loadData = useCallback(async () => {
     if (!token || profile?.rol !== 'administrador') return;
     setFetching(true);
     setError(null);
     try {
-      const [cols, reps, qs] = await Promise.all([
+      const [cols, reps, qs, invs] = await Promise.all([
         fetchColaboradores(token),
         fetchReportes(token),
         fetchQuotes(token).catch(() => []),
+        fetchInversiones(token).catch(() => []),
       ]);
       setColaboradores(cols);
       setReportes(reps);
       setQuotes(Array.isArray(qs) ? qs : []);
+      setInversiones(Array.isArray(invs) ? invs : []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -229,6 +235,36 @@ export default function ReportesPage() {
     }
     return items;
   }, [quotes, filtroColaboradores]);
+
+  // ── Rentabilidad: compras entregadas vs. inversiones, por período ──────────
+  const comprasEntregadas = useMemo(
+    () => quotes.filter(q => q.estado === 'aceptado' && q.subEstado === 'entregado'),
+    [quotes]
+  );
+
+  const rentabilidadPorPeriodo = useMemo(() => {
+    if (rentGranularidad === 'total') {
+      const compras = comprasEntregadas.reduce((acc, q) => acc + (q.precioTotalCotizacion || q.precioTotal || 0), 0);
+      const inversionesTotal = inversiones.reduce((acc, i) => acc + (i.total || 0), 0);
+      return [{ key: 'total', label: 'Todo el histórico', compras, inversiones: inversionesTotal, rentabilidad: compras - inversionesTotal }];
+    }
+    const map = new Map<string, { compras: number; inversiones: number }>();
+    for (const q of comprasEntregadas) {
+      const key = bucketKey(q.creadoEn || q.Fecha || '', rentGranularidad);
+      const entry = map.get(key) || { compras: 0, inversiones: 0 };
+      entry.compras += q.precioTotalCotizacion || q.precioTotal || 0;
+      map.set(key, entry);
+    }
+    for (const inv of inversiones) {
+      const key = bucketKey(inv.fecha || '', rentGranularidad);
+      const entry = map.get(key) || { compras: 0, inversiones: 0 };
+      entry.inversiones += inv.total || 0;
+      map.set(key, entry);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([key, v]) => ({ key, label: bucketLabel(key, rentGranularidad), ...v, rentabilidad: v.compras - v.inversiones }));
+  }, [comprasEntregadas, inversiones, rentGranularidad]);
 
   const kpiTotales = useMemo(() => {
     let totalGanado = 0, totalItems = 0;
@@ -395,6 +431,64 @@ export default function ReportesPage() {
               <div className={`text-2xl font-extrabold ${kpi.color}`}>{kpi.value}</div>
             </div>
           ))}
+        </div>
+
+        {/* ── Rentabilidad: compras entregadas vs. inversiones ── */}
+        <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-5 shadow-xl">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-base font-bold text-white">Rentabilidad: Compras vs. Inversiones</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">ver por:</span>
+              <select
+                value={rentGranularidad}
+                onChange={e => setRentGranularidad(e.target.value as Granularidad)}
+                className="py-2 px-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 text-xs font-semibold cursor-pointer focus:outline-none"
+              >
+                {GRANULARIDADES.map(g => (
+                  <option key={g.value} value={g.value}>{g.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {rentabilidadPorPeriodo.length === 0 ? (
+            <div className="p-10 text-center text-slate-500">
+              <TrendingUp className="w-10 h-10 mx-auto mb-2 text-slate-700" />
+              <p className="text-sm">Sin compras entregadas ni inversiones todavía</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-800">
+                    <th className="py-3 px-4">Período</th>
+                    <th className="py-3 px-4 text-right">Compras entregadas</th>
+                    <th className="py-3 px-4 text-right">Inversiones</th>
+                    <th className="py-3 px-4 text-right">Rentabilidad</th>
+                    <th className="py-3 px-4 text-right">Margen</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {rentabilidadPorPeriodo.map(row => (
+                    <tr key={row.key} className="hover:bg-slate-800/10 transition-colors">
+                      <td className="py-3 px-4 text-sm font-semibold text-white whitespace-nowrap">{row.label}</td>
+                      <td className="py-3 px-4 text-sm text-emerald-400 text-right font-bold whitespace-nowrap">{formatCOP(row.compras)}</td>
+                      <td className="py-3 px-4 text-sm text-amber-400 text-right font-bold whitespace-nowrap">{formatCOP(row.inversiones)}</td>
+                      <td className={`py-3 px-4 text-sm text-right font-bold whitespace-nowrap ${row.rentabilidad >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
+                        {formatCOP(row.rentabilidad)}
+                      </td>
+                      <td className={`py-3 px-4 text-sm text-right font-semibold whitespace-nowrap ${row.rentabilidad >= 0 ? 'text-slate-300' : 'text-red-400'}`}>
+                        {row.compras > 0 ? `${((row.rentabilidad / row.compras) * 100).toFixed(1)}%` : '---'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
