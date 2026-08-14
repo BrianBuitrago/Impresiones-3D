@@ -56,6 +56,12 @@ service cloud.firestore {
       allow create, update, delete: if isAuthenticated() && isStaff();
     }
 
+    // --- COLECCIÓN: inversiones ---
+    match /inversiones/{inversionId} {
+      allow read: if isAuthenticated() && isStaff();
+      allow create, update, delete: if isAuthenticated() && isStaff();
+    }
+
     // --- COLECCIÓN: settings ---
     match /settings/{settingId} {
       allow read: if true;
