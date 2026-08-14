@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShoppingCart, ChevronDown, ChevronLeft, Mail, Phone, IdCard, ImageIcon, Eye, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP } from './shared';
@@ -41,15 +41,24 @@ const Field = ({ label, value }: { label: string; value: any }) => (
 interface ComprasTabProps {
   quotesList: any[];
   handleUpdateSubEstado: (quote: any, newSubEstado: string) => Promise<void>;
+  autoExpandId?: string | null;
+  onAutoExpandHandled?: () => void;
 }
 
-export default function ComprasTab({ quotesList, handleUpdateSubEstado }: ComprasTabProps) {
+export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpandId, onAutoExpandHandled }: ComprasTabProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ images: { url: string; label?: string }[]; index: number } | null>(null);
 
   const compras = quotesList.filter(q => q.estado === 'aceptado');
   const expandedQuote = compras.find(q => q.id === expandedId) || null;
+
+  useEffect(() => {
+    if (autoExpandId) {
+      setExpandedId(autoExpandId);
+      onAutoExpandHandled?.();
+    }
+  }, [autoExpandId, onAutoExpandHandled]);
 
   const onChangeSubEstado = async (quote: any, value: string) => {
     setUpdatingId(quote.id);
