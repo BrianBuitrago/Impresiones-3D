@@ -42,13 +42,14 @@ const Field = ({ label, value }: { label: string; value: any }) => (
 );
 
 interface ComprasTabProps {
+  isColaborador?: boolean;
   quotesList: any[];
   handleUpdateSubEstado: (quote: any, newSubEstado: string) => Promise<void>;
   autoExpandId?: string | null;
   onAutoExpandHandled?: () => void;
 }
 
-export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpandId, onAutoExpandHandled }: ComprasTabProps) {
+export default function ComprasTab({ isColaborador = false, quotesList, handleUpdateSubEstado, autoExpandId, onAutoExpandHandled }: ComprasTabProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ images: { url: string; label?: string }[]; index: number } | null>(null);
@@ -215,12 +216,14 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
             )}
 
             {/* ── Datos de pago (pendiente de captura en la app) ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950/40 border border-slate-800 rounded-2xl p-4">
-              <Field label="Total cotización" value={formatCOP(expandedQuote.precioTotalCotizacion || expandedQuote.precioTotal || 0)} />
-              <Field label="Abono" value="No registrado" />
-              <Field label="Restante" value="No registrado" />
-              <Field label="Total recibido" value="No registrado" />
-            </div>
+            {!isColaborador && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950/40 border border-slate-800 rounded-2xl p-4">
+                <Field label="Total cotización" value={formatCOP(expandedQuote.precioTotalCotizacion || expandedQuote.precioTotal || 0)} />
+                <Field label="Abono" value="No registrado" />
+                <Field label="Restante" value="No registrado" />
+                <Field label="Total recibido" value="No registrado" />
+              </div>
+            )}
 
             {/* ── Productos ── */}
             <div className="space-y-4">
@@ -228,7 +231,9 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
                 <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl overflow-hidden">
                   <div className="bg-slate-900/60 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
                     <p className="text-sm font-bold text-white">{p.nombre || `Producto #${idx + 1}`}</p>
-                    <span className="text-sm font-extrabold text-emerald-400">{formatCOP(p.precioTotal || p.Precio_Total || 0)}</span>
+                    {!isColaborador && (
+                      <span className="text-sm font-extrabold text-emerald-400">{formatCOP(p.precioTotal || p.Precio_Total || 0)}</span>
+                    )}
                   </div>
 
                   <div className="p-4 space-y-4">
@@ -248,28 +253,30 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
                       </div>
                     </div>
 
-                    <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">cálculo de fabricación</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2.5">
-                        <Field label="Kw/h" value={p.precioKwhHora} />
-                        <Field label="Kw/min" value={p.precioKwhMinuto} />
-                        <Field label="Tiempo impresión (h)" value={p.tiempoHoras} />
-                        <Field label="Min" value={p.tiempoMinutos} />
-                        <Field label="Subtotal energía" value={formatCOP(p.subtotalEnergia || 0)} />
-                        <Field label="Peso (g)" value={p.pesoGramos} />
-                        <Field label="Subtotal peso" value={formatCOP(p.subtotalMaterial || 0)} />
-                        <Field label="Diseño" value={formatCOP(p.costoDisenoUnitario || 0)} />
-                        <Field label="Accesorios ($)" value={formatCOP(p.costoAccesoriosUnitario || 0)} />
-                        <Field label="Horas post-procesado" value={p.horasPostProcesado} />
-                        <Field label="Costo procesado" value={formatCOP(p.costoProcesado || 0)} />
-                        <Field label="Personalizado + pintura" value={formatCOP(p.valorPersonalizacionUnitario || 0)} />
-                        <Field label="Empaque ($)" value={formatCOP(p.valorEmpaqueUnitario || 0)} />
-                        <Field label="Sub total fabricación" value={formatCOP(p.costoFabricacionUnitario || 0)} />
-                        <Field label="% imprevistos" value={p.porcentajeImprevistos != null ? `${p.porcentajeImprevistos}%` : null} />
-                        <Field label="% ganancia" value={p.porcentajeGanancia != null ? `${p.porcentajeGanancia}%` : null} />
-                        <Field label="Precio C/U" value={formatCOP(p.precioUnitario || 0)} />
+                    {!isColaborador && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">cálculo de fabricación</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2.5">
+                          <Field label="Kw/h" value={p.precioKwhHora} />
+                          <Field label="Kw/min" value={p.precioKwhMinuto} />
+                          <Field label="Tiempo impresión (h)" value={p.tiempoHoras} />
+                          <Field label="Min" value={p.tiempoMinutos} />
+                          <Field label="Subtotal energía" value={formatCOP(p.subtotalEnergia || 0)} />
+                          <Field label="Peso (g)" value={p.pesoGramos} />
+                          <Field label="Subtotal peso" value={formatCOP(p.subtotalMaterial || 0)} />
+                          <Field label="Diseño" value={formatCOP(p.costoDisenoUnitario || 0)} />
+                          <Field label="Accesorios ($)" value={formatCOP(p.costoAccesoriosUnitario || 0)} />
+                          <Field label="Horas post-procesado" value={p.horasPostProcesado} />
+                          <Field label="Costo procesado" value={formatCOP(p.costoProcesado || 0)} />
+                          <Field label="Personalizado + pintura" value={formatCOP(p.valorPersonalizacionUnitario || 0)} />
+                          <Field label="Empaque ($)" value={formatCOP(p.valorEmpaqueUnitario || 0)} />
+                          <Field label="Sub total fabricación" value={formatCOP(p.costoFabricacionUnitario || 0)} />
+                          <Field label="% imprevistos" value={p.porcentajeImprevistos != null ? `${p.porcentajeImprevistos}%` : null} />
+                          <Field label="% ganancia" value={p.porcentajeGanancia != null ? `${p.porcentajeGanancia}%` : null} />
+                          <Field label="Precio C/U" value={formatCOP(p.precioUnitario || 0)} />
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {(p.imagenFrontal || p.imagenLateral || p.imagenTrasera || p.imagenDiagonal) && (
                       <div>
@@ -327,7 +334,9 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
                     </span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs font-bold text-emerald-400">{formatCOP(q.precioTotalCotizacion || q.precioTotal || 0)}</span>
+                    {!isColaborador && (
+                      <span className="text-xs font-bold text-emerald-400">{formatCOP(q.precioTotalCotizacion || q.precioTotal || 0)}</span>
+                    )}
                     <ChevronDown className="w-4 h-4 text-slate-500 -rotate-90" />
                   </div>
                 </motion.button>
@@ -353,7 +362,9 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
               <p className="text-sm font-semibold text-white truncate">{q.cliente?.nombre || 'Sin nombre'}</p>
               <div className="flex items-center justify-between text-xs text-slate-400">
                 <span>{q.productos?.length || 0} producto{q.productos?.length !== 1 ? 's' : ''}</span>
-                <span className="font-bold text-emerald-400">{formatCOP(q.precioTotalCotizacion || q.precioTotal || 0)}</span>
+                {!isColaborador && (
+                  <span className="font-bold text-emerald-400">{formatCOP(q.precioTotalCotizacion || q.precioTotal || 0)}</span>
+                )}
               </div>
               <div className="pt-2 border-t border-slate-800">
                 <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1.5">sub-estado</label>

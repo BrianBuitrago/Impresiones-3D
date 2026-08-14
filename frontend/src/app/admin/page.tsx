@@ -18,7 +18,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { Colaborador, ReportItem } from '@/types/reportes';
 import { fetchColaboradores, crearReporte } from '@/services/reporteService';
-import { fetchQuotes as fetchQuotesApi, actualizarQuote } from '@/services/quoteService';
+import { fetchQuotes as fetchQuotesApi, actualizarQuote, actualizarSubEstado } from '@/services/quoteService';
 import QuotesTab from './components/QuotesTab';
 import UsersTab from './components/UsersTab';
 import PreciosTab from './components/PreciosTab';
@@ -516,24 +516,13 @@ export default function AdminPage() {
     }
   };
 
-  // Cambia el sub-estado de una cotización que ya está en estado "compra".
-  // Reenvía los campos que la cotización ya tiene guardados (sin pasar por la
-  // calculadora, que es exclusiva de la pestaña Cotizaciones).
+  // Cambia el sub-estado de una cotización aceptada. Usa el endpoint dedicado
+  // (PATCH .../subestado) que solo toca ese campo, sin precios ni productos —
+  // es lo único que un colaborador puede modificar de una cotización.
   const handleUpdateSubEstado = async (quote: any, newSubEstado: string) => {
     if (!token) return;
     try {
-      const updatedQuote = await actualizarQuote(token, quote.id, {
-        productos: quote.productos,
-        estado: quote.estado,
-        subEstado: newSubEstado,
-        precioKwhHora: quote.precioKwhHora,
-        precioFilamentoKg: quote.precioFilamentoKg,
-        subtotalFabricacionTotal: quote.subtotalFabricacionTotal,
-        valorGananciaTotal: quote.valorGananciaTotal,
-        precioTotalCotizacion: quote.precioTotalCotizacion,
-        porcentajeGanancia: quote.porcentajeGanancia,
-        notasCotizacion: quote.notasCotizacion || quote.Notas_Cotizacion || '',
-      });
+      const updatedQuote = await actualizarSubEstado(token, quote.id, newSubEstado);
       setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
       if (selectedQuote?.id === updatedQuote.id) setSelectedQuote(updatedQuote);
     } catch (err: any) {
@@ -1062,7 +1051,7 @@ export default function AdminPage() {
               Precios
             </button>
           )}
-          {profile?.rol === 'administrador' && (
+          {(profile?.rol === 'administrador' || profile?.rol === 'colaborador') && (
             <button
               onClick={() => { setActiveTab('compras'); setError(null); }}
               className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
@@ -1103,6 +1092,7 @@ export default function AdminPage() {
           ══════════════════════════════════════════════════════════════════ */}
           {activeTab === 'cotizaciones' && (
             <QuotesTab
+              isColaborador={profile?.rol === 'colaborador'}
               quotesList={quotesList}
               quotesFetching={quotesFetching}
               selectedQuote={selectedQuote}
@@ -1156,6 +1146,7 @@ export default function AdminPage() {
 
           {activeTab === 'compras' && (
             <ComprasTab
+              isColaborador={profile?.rol === 'colaborador'}
               quotesList={quotesList}
               handleUpdateSubEstado={handleUpdateSubEstado}
               autoExpandId={autoExpandCompraId}

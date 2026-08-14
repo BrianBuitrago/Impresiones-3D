@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP, estadoBadgeClass, type CalcEntry } from './shared';
 
 interface QuotesTabProps {
+  isColaborador?: boolean;
   quotesList: any[];
   quotesFetching: boolean;
   selectedQuote: any | null;
@@ -53,6 +54,7 @@ interface QuotesTabProps {
 }
 
 export default function QuotesTab({
+  isColaborador = false,
   quotesList,
   quotesFetching,
   selectedQuote,
@@ -207,7 +209,135 @@ export default function QuotesTab({
 
                 {/* ── Columna derecha: detalle + calculadora ── */}
                 <div className="lg:col-span-8 space-y-6">
-                  {selectedQuote ? (
+                  {selectedQuote ? isColaborador ? (
+                    <div className="space-y-6">
+                      {/* ── Vista de solo lectura para colaborador: sin precios/calculadora/acciones ── */}
+                      <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 backdrop-blur-md shadow-xl">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
+                          <div>
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">
+                              cotización
+                            </span>
+                            <h2 className="text-2xl font-extrabold text-white">{selectedQuote.cliente?.nombre}</h2>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-400 mt-2">
+                              <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {selectedQuote.cliente?.email}</span>
+                              <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {selectedQuote.cliente?.telefono}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-start sm:items-end gap-2">
+                            <span className="text-[10px] text-slate-500 font-bold uppercase">estado</span>
+                            <span className={`text-xs font-bold uppercase px-3 py-1 rounded-full border ${estadoBadgeClass(selectedQuote.estado)}`}>
+                              {selectedQuote.estado}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500 select-all">{selectedQuote.id}</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] text-slate-400 mt-4">
+                          <div>
+                            <span className="block text-slate-500 uppercase tracking-wider">fecha</span>
+                            <span className="font-semibold text-slate-200 block truncate">
+                              {selectedQuote.Fecha || selectedQuote.creadoEn || 'Sin fecha'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-slate-500 uppercase tracking-wider">piezas totales</span>
+                            <span className="font-semibold text-slate-200 block">
+                              {selectedQuote.Cantidad_Total_Piezas || selectedQuote.cantidadTotalPiezas || 0}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        {selectedQuote.productos.map((producto: any, idx: number) => (
+                          <div key={idx} className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+                            <div className="bg-slate-950/60 px-5 py-4 border-b border-slate-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {getProductImages(producto).length > 0 && (
+                                  <div className="flex -space-x-2 shrink-0">
+                                    {getProductImages(producto).slice(0, 4).map((img, i) => (
+                                      <button key={img.url} type="button" onClick={() => setLightbox({ images: getProductImages(producto), index: i })}
+                                        className="w-10 h-10 rounded-lg overflow-hidden border-2 border-slate-900 bg-slate-950 hover:border-cyan-500/60 hover:z-10 relative transition-all cursor-pointer">
+                                        <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <h4 className="text-sm font-bold text-white truncate">{producto.nombre}</h4>
+                                  <p className="text-xs text-slate-400 mt-0.5">
+                                    {producto.tamanoHorizontal} × {producto.tamanoVertical} cm ·{' '}
+                                    <span className="text-slate-300 font-semibold">{producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''}</span>
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-xs font-bold text-cyan-400 px-3 py-1 bg-cyan-950/20 border border-cyan-800/20 rounded-lg shrink-0">
+                                Producto #{idx + 1}
+                              </span>
+                            </div>
+
+                            <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-3">
+                                <div>
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">accesorios</span>
+                                  <p className="text-xs text-slate-300 mt-1">{producto.accesorios || 'Ninguno'}</p>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">personalización</span>
+                                  <div className="flex flex-wrap gap-1.5 mt-1">
+                                    {producto.personalizacion?.length > 0 ? (
+                                      producto.personalizacion.map((pz: string, pIdx: number) => (
+                                        <span key={pIdx} className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 capitalize">
+                                          {pz === 'otra' ? `Otra: ${producto.personalizacionOtraText || ''}` : pz}
+                                        </span>
+                                      ))
+                                    ) : (
+                                      <span className="text-xs text-slate-500">Sin personalización</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">empaque</span>
+                                  <p className="text-xs text-slate-300 mt-1 capitalize">
+                                    {producto.empaque === 'otra' ? `Otro: ${producto.empaqueOtraText || ''}` : producto.empaque}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-center border border-dashed border-slate-800 rounded-xl p-3">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">fotos</span>
+                                <div className="grid grid-cols-2 gap-1.5 w-full">
+                                  {['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'].map((f, i) => {
+                                    const imgUrl = producto[f];
+                                    const labels = ['Frontal', 'Lateral', 'Trasera', 'Diagonal'];
+                                    return imgUrl ? (
+                                      <button key={f} type="button"
+                                        onClick={() => {
+                                          const imgs = getProductImages(producto);
+                                          const clickedIdx = imgs.findIndex(img => img.url === imgUrl);
+                                          setLightbox({ images: imgs, index: clickedIdx >= 0 ? clickedIdx : 0 });
+                                        }}
+                                        className="relative w-full aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group transition-all cursor-pointer">
+                                        <img src={imgUrl} alt={labels[i]} className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[8px] font-bold gap-0.5">
+                                          <Eye className="w-3 h-3" /> {labels[i]}
+                                        </div>
+                                      </button>
+                                    ) : (
+                                      <div key={f} className="w-full aspect-square rounded-lg border border-dashed border-slate-800 bg-slate-950 flex flex-col items-center justify-center text-slate-600">
+                                        <ImageIcon className="w-3 h-3 mb-0.5 text-slate-700" />
+                                        <span className="text-[7px]">{labels[i]}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
                     <div className="space-y-6">
 
                       {/* Cabecera del cliente */}
