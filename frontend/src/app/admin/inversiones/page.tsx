@@ -19,11 +19,14 @@ const tipoBadgeClass = (tipo: TipoInversion) =>
     : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400';
 
 const emptyForm = (): InversionInput => ({
-  nombre: '',
+  elemento: '',
   tipo: 'insumo',
-  monto: 0,
+  proveedor: '',
+  cantidad: 1,
+  costo: 0,
+  valorUnitario: 0,
   fecha: new Date().toISOString().slice(0, 10),
-  notas: '',
+  observaciones: '',
 });
 
 export default function InversionesPage() {
@@ -74,21 +77,30 @@ export default function InversionesPage() {
     return inversiones.filter(i => bucketKey(i.fecha, granularidad) === periodoEfectivo);
   }, [inversiones, granularidad, periodoEfectivo]);
 
-  const totalInvertido = inversionesDelPeriodo.reduce((acc, i) => acc + i.monto, 0);
-  const totalInsumos = inversionesDelPeriodo.filter(i => i.tipo === 'insumo').reduce((acc, i) => acc + i.monto, 0);
-  const totalMaquinas = inversionesDelPeriodo.filter(i => i.tipo === 'maquina').reduce((acc, i) => acc + i.monto, 0);
+  const totalInvertido = inversionesDelPeriodo.reduce((acc, i) => acc + i.total, 0);
+  const totalInsumos = inversionesDelPeriodo.filter(i => i.tipo === 'insumo').reduce((acc, i) => acc + i.total, 0);
+  const totalMaquinas = inversionesDelPeriodo.filter(i => i.tipo === 'maquina').reduce((acc, i) => acc + i.total, 0);
 
   const openCreateModal = () => { setEditingId(null); setForm(emptyForm()); setShowModal(true); };
   const openEditModal = (inv: Inversion) => {
     setEditingId(inv.id);
-    setForm({ nombre: inv.nombre, tipo: inv.tipo, monto: inv.monto, fecha: inv.fecha, notas: inv.notas || '' });
+    setForm({
+      elemento: inv.elemento,
+      tipo: inv.tipo,
+      proveedor: inv.proveedor || '',
+      cantidad: inv.cantidad,
+      costo: inv.costo,
+      valorUnitario: inv.valorUnitario || 0,
+      fecha: inv.fecha,
+      observaciones: inv.observaciones || '',
+    });
     setShowModal(true);
   };
 
   const handleSave = async () => {
     if (!token) return;
-    if (!form.nombre.trim() || form.monto <= 0 || !form.fecha) {
-      setError('Completá nombre, monto (mayor a 0) y fecha.');
+    if (!form.elemento.trim() || form.cantidad <= 0 || form.costo < 0 || !form.fecha) {
+      setError('Completá elemento, cantidad (mayor a 0), costo y fecha.');
       return;
     }
     setSaving(true);
@@ -262,10 +274,14 @@ export default function InversionesPage() {
                   <thead>
                     <tr className="bg-slate-950/60 text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-800">
                       <th className="py-4 px-6">Fecha</th>
-                      <th className="py-4 px-6">Nombre</th>
+                      <th className="py-4 px-6">Elemento</th>
+                      <th className="py-4 px-6">Proveedor</th>
                       <th className="py-4 px-6">Tipo</th>
-                      <th className="py-4 px-6">Monto</th>
-                      <th className="py-4 px-6">Notas</th>
+                      <th className="py-4 px-6 text-right">Cantidad</th>
+                      <th className="py-4 px-6 text-right">Costo</th>
+                      <th className="py-4 px-6 text-right">Valor unit.</th>
+                      <th className="py-4 px-6 text-right">Total</th>
+                      <th className="py-4 px-6">Observaciones</th>
                       <th className="py-4 px-6 text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -278,15 +294,19 @@ export default function InversionesPage() {
                         transition={{ delay: Math.min(idx, 10) * 0.03 }}
                         className="hover:bg-slate-800/10 transition-colors"
                       >
-                        <td className="py-4 px-6 text-sm text-slate-300 font-mono">{inv.fecha}</td>
-                        <td className="py-4 px-6 text-sm font-semibold text-white">{inv.nombre}</td>
+                        <td className="py-4 px-6 text-sm text-slate-300 font-mono whitespace-nowrap">{inv.fecha}</td>
+                        <td className="py-4 px-6 text-sm font-semibold text-white">{inv.elemento}</td>
+                        <td className="py-4 px-6 text-sm text-slate-300">{inv.proveedor || '---'}</td>
                         <td className="py-4 px-6">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize border ${tipoBadgeClass(inv.tipo)}`}>
                             {inv.tipo}
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-sm font-bold text-emerald-400">{formatCOP(inv.monto)}</td>
-                        <td className="py-4 px-6 text-xs text-slate-400 max-w-[200px] truncate">{inv.notas || '---'}</td>
+                        <td className="py-4 px-6 text-sm text-slate-300 text-right">{inv.cantidad}</td>
+                        <td className="py-4 px-6 text-sm text-slate-300 text-right whitespace-nowrap">{formatCOP(inv.costo)}</td>
+                        <td className="py-4 px-6 text-sm text-slate-400 text-right whitespace-nowrap">{inv.valorUnitario ? formatCOP(inv.valorUnitario) : '---'}</td>
+                        <td className="py-4 px-6 text-sm font-bold text-emerald-400 text-right whitespace-nowrap">{formatCOP(inv.total)}</td>
+                        <td className="py-4 px-6 text-xs text-slate-400 max-w-[180px] truncate">{inv.observaciones || '---'}</td>
                         <td className="py-4 px-6 text-right">
                           <div className="inline-flex items-center gap-2 justify-end">
                             <button onClick={() => openEditModal(inv)}
@@ -320,15 +340,20 @@ export default function InversionesPage() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{inv.nombre}</p>
-                      <span className="text-xs text-slate-400">{inv.fecha}</span>
+                      <p className="text-sm font-semibold text-white truncate">{inv.elemento}</p>
+                      <span className="text-xs text-slate-400">{inv.fecha}{inv.proveedor ? ` · ${inv.proveedor}` : ''}</span>
                     </div>
                     <span className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize border ${tipoBadgeClass(inv.tipo)}`}>
                       {inv.tipo}
                     </span>
                   </div>
-                  <span className="block text-sm font-bold text-emerald-400">{formatCOP(inv.monto)}</span>
-                  {inv.notas && <p className="text-xs text-slate-400">{inv.notas}</p>}
+                  <div className="grid grid-cols-3 gap-2 text-xs text-slate-400">
+                    <span>Cant: <span className="text-slate-200 font-semibold">{inv.cantidad}</span></span>
+                    <span>Costo: <span className="text-slate-200 font-semibold">{formatCOP(inv.costo)}</span></span>
+                    {inv.valorUnitario ? <span>V. unit: <span className="text-slate-200 font-semibold">{formatCOP(inv.valorUnitario)}</span></span> : null}
+                  </div>
+                  <span className="block text-sm font-bold text-emerald-400">Total: {formatCOP(inv.total)}</span>
+                  {inv.observaciones && <p className="text-xs text-slate-400">{inv.observaciones}</p>}
                   <div className="pt-2 border-t border-slate-800 flex items-center justify-end gap-2">
                     <button onClick={() => openEditModal(inv)}
                       className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1">
@@ -352,9 +377,9 @@ export default function InversionesPage() {
             <h3 className="text-xl font-bold text-white mb-6">{editingId ? 'Editar inversión' : 'Agregar inversión'}</h3>
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">nombre</label>
-                <input type="text" value={form.nombre} onChange={e => setForm(prev => ({ ...prev, nombre: e.target.value }))}
-                  placeholder="Ej. Filamento PLA 1kg x10"
+                <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">elemento</label>
+                <input type="text" value={form.elemento} onChange={e => setForm(prev => ({ ...prev, elemento: e.target.value }))}
+                  placeholder="Ej. Filamento PLA 1kg"
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50" />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -367,22 +392,47 @@ export default function InversionesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">fecha</label>
-                  <input type="date" value={form.fecha} onChange={e => setForm(prev => ({ ...prev, fecha: e.target.value }))}
+                  <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">proveedor</label>
+                  <input type="text" value={form.proveedor} onChange={e => setForm(prev => ({ ...prev, proveedor: e.target.value }))}
+                    placeholder="Ej. 3DFilaments SAS"
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50" />
                 </div>
               </div>
-              <div>
-                <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">monto (COP)</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-xs font-bold">$</span>
-                  <input type="number" min="0" value={form.monto || ''} onChange={e => setForm(prev => ({ ...prev, monto: parseFloat(e.target.value) || 0 }))}
-                    className="w-full pl-7 pr-4 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm font-semibold outline-none focus:border-cyan-500/50" />
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">cantidad</label>
+                  <input type="number" min="0" step="any" value={form.cantidad || ''} onChange={e => setForm(prev => ({ ...prev, cantidad: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm font-semibold outline-none focus:border-cyan-500/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">costo (c/u)</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-xs font-bold">$</span>
+                    <input type="number" min="0" value={form.costo || ''} onChange={e => setForm(prev => ({ ...prev, costo: parseFloat(e.target.value) || 0 }))}
+                      className="w-full pl-7 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm font-semibold outline-none focus:border-cyan-500/50" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">valor unit.</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-xs font-bold">$</span>
+                    <input type="number" min="0" value={form.valorUnitario || ''} onChange={e => setForm(prev => ({ ...prev, valorUnitario: parseFloat(e.target.value) || 0 }))}
+                      className="w-full pl-7 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm font-semibold outline-none focus:border-cyan-500/50" />
+                  </div>
                 </div>
               </div>
+              <div className="flex items-center justify-between bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3">
+                <span className="text-xs text-slate-400 uppercase tracking-wider">Total (cantidad × costo)</span>
+                <span className="text-lg font-extrabold text-emerald-400">{formatCOP((form.cantidad || 0) * (form.costo || 0))}</span>
+              </div>
               <div>
-                <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">notas (opcional)</label>
-                <textarea value={form.notas} onChange={e => setForm(prev => ({ ...prev, notas: e.target.value }))} rows={2}
+                <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">fecha</label>
+                <input type="date" value={form.fecha} onChange={e => setForm(prev => ({ ...prev, fecha: e.target.value }))}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 uppercase tracking-wider mb-1 block">observaciones (opcional)</label>
+                <textarea value={form.observaciones} onChange={e => setForm(prev => ({ ...prev, observaciones: e.target.value }))} rows={2}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 resize-none" />
               </div>
             </div>
