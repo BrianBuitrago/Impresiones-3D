@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ShoppingCart, ChevronDown, ChevronLeft, Mail, Phone, IdCard, ImageIcon, Eye, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP } from './shared';
+import { GRANULARIDADES, bucketKey, bucketLabel, resolverPeriodo, type Granularidad } from './periodo';
 import ImageLightbox from '@/components/ui/ImageLightbox';
+
+const getFechaCompra = (q: any) => q.creadoEn || q.Fecha || '';
 
 const getProductImages = (producto: any) =>
   (['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal'] as const)
@@ -49,12 +52,26 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ images: { url: string; label?: string }[]; index: number } | null>(null);
+  const [granularidad, setGranularidad] = useState<Granularidad>('total');
+  const [periodoSeleccionado, setPeriodoSeleccionado] = useState<string>('');
 
-  const compras = quotesList.filter(q => q.estado === 'aceptado');
+  const comprasBase = quotesList.filter(q => q.estado === 'aceptado');
+
+  const { periodosAscendente, periodoEfectivo } = useMemo(
+    () => resolverPeriodo(comprasBase, getFechaCompra, granularidad, periodoSeleccionado),
+    [comprasBase, granularidad, periodoSeleccionado]
+  );
+  const periodosParaDropdown = useMemo(() => [...periodosAscendente].reverse(), [periodosAscendente]);
+
+  const compras = granularidad === 'total'
+    ? comprasBase
+    : comprasBase.filter(q => bucketKey(getFechaCompra(q), granularidad) === periodoEfectivo);
+
   const expandedQuote = compras.find(q => q.id === expandedId) || null;
 
   useEffect(() => {
     if (autoExpandId) {
+      setGranularidad('total'); // asegura que la compra recién aceptada no quede oculta por un filtro de período viejo
       setExpandedId(autoExpandId);
       onAutoExpandHandled?.();
     }
@@ -109,12 +126,49 @@ export default function ComprasTab({ quotesList, handleUpdateSubEstado, autoExpa
         </div>
       </div>
 
+      {/* Filtro de período */}
+      <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center gap-3">
+        <span className="text-xs text-slate-400 shrink-0">ver por:</span>
+        <select
+          value={granularidad}
+          onChange={e => setGranularidad(e.target.value as Granularidad)}
+          className="py-2 px-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 text-xs font-semibold cursor-pointer focus:outline-none"
+        >
+          {GRANULARIDADES.map(g => (
+            <option key={g.value} value={g.value}>{g.label}</option>
+          ))}
+        </select>
+
+        {granularidad !== 'total' && (
+          <div className="flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <select
+              value={periodoEfectivo}
+              onChange={e => setPeriodoSeleccionado(e.target.value)}
+              className="py-2 px-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 text-xs font-semibold cursor-pointer focus:outline-none"
+            >
+              {periodosParaDropdown.length === 0 ? (
+                <option value="">Sin datos</option>
+              ) : (
+                periodosParaDropdown.map(p => (
+                  <option key={p} value={p}>{bucketLabel(p, granularidad)}</option>
+                ))
+              )}
+            </select>
+          </div>
+        )}
+      </div>
+
       {compras.length === 0 ? (
         <div className="bg-slate-900/10 border border-slate-800 border-dashed rounded-3xl p-20 text-center text-slate-500">
           <ShoppingCart className="w-14 h-14 mx-auto mb-4 text-slate-800" />
-          <p className="text-base font-bold text-slate-400">ninguna compra en proceso</p>
+          <p className="text-base font-bold text-slate-400">
+            {comprasBase.length === 0 ? 'ninguna compra en proceso' : 'ninguna compra en este período'}
+          </p>
           <p className="text-xs text-slate-600 mt-1">
-            Las cotizaciones aceptadas aparecen acá automáticamente.
+            {comprasBase.length === 0
+              ? 'Las cotizaciones aceptadas aparecen acá automáticamente.'
+              : 'Probá con otro período o cambiá a "Total" para ver todas.'}
           </p>
         </div>
       ) : expandedQuote ? (

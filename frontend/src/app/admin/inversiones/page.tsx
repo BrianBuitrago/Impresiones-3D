@@ -9,53 +9,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatCOP } from '../components/shared';
+import { GRANULARIDADES, bucketKey, bucketLabel, resolverPeriodo, type Granularidad } from '../components/periodo';
 import { fetchInversiones, crearInversion, actualizarInversion, eliminarInversion } from '@/services/inversionService';
 import type { Inversion, InversionInput, TipoInversion } from '@/types/inversiones';
-
-const MONTHS = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-
-type Granularidad = 'mensual' | 'trimestral' | 'semestral' | 'anual' | 'total';
-
-const GRANULARIDADES: { value: Granularidad; label: string }[] = [
-  { value: 'mensual', label: 'Mensual' },
-  { value: 'trimestral', label: 'Trimestral' },
-  { value: 'semestral', label: 'Semestral' },
-  { value: 'anual', label: 'Anual' },
-  { value: 'total', label: 'Total' },
-];
-
-// Agrupa por fecha real en vez de reutilizar el formato de texto "Mes/AA" de
-// Reportes: ese formato no tiene parser inverso en ningún lado del código y
-// su único orden es alfabético, no cronológico — no alcanza para agrupar
-// por trimestre/semestre/año con un orden correcto.
-const bucketKey = (fecha: string, g: Granularidad): string => {
-  const d = new Date(`${fecha}T00:00:00`);
-  const year = d.getFullYear();
-  const month = d.getMonth();
-  if (g === 'total') return 'total';
-  if (g === 'anual') return `${year}`;
-  if (g === 'semestral') return `${year}-S${month < 6 ? 1 : 2}`;
-  if (g === 'trimestral') return `${year}-Q${Math.floor(month / 3) + 1}`;
-  return `${year}-${String(month + 1).padStart(2, '0')}`;
-};
-
-const bucketLabel = (key: string, g: Granularidad): string => {
-  if (g === 'total') return 'Todo el histórico';
-  if (g === 'anual') return key;
-  if (g === 'semestral') {
-    const [y, s] = key.split('-S');
-    return `${s === '1' ? '1er' : '2do'} semestre ${y}`;
-  }
-  if (g === 'trimestral') {
-    const [y, q] = key.split('-Q');
-    return `Trimestre ${q} · ${y}`;
-  }
-  const [y, m] = key.split('-');
-  return `${MONTHS[parseInt(m, 10) - 1]} ${y}`;
-};
 
 const tipoBadgeClass = (tipo: TipoInversion) =>
   tipo === 'maquina'
@@ -105,17 +61,12 @@ export default function InversionesPage() {
     fetchAll();
   }, [user, profile, token]);
 
-  const periodosAscendente = useMemo(() => {
-    if (granularidad === 'total') return ['total'];
-    const keys = new Set(inversiones.map(i => bucketKey(i.fecha, granularidad)));
-    return Array.from(keys).sort();
-  }, [inversiones, granularidad]);
+  const { periodosAscendente, periodoEfectivo } = useMemo(
+    () => resolverPeriodo(inversiones, i => i.fecha, granularidad, periodoSeleccionado),
+    [inversiones, granularidad, periodoSeleccionado]
+  );
 
   const periodosParaDropdown = useMemo(() => [...periodosAscendente].reverse(), [periodosAscendente]);
-
-  const periodoEfectivo = granularidad === 'total'
-    ? 'total'
-    : (periodosAscendente.includes(periodoSeleccionado) ? periodoSeleccionado : periodosAscendente[periodosAscendente.length - 1] || '');
 
   const inversionesDelPeriodo = useMemo(() => {
     if (granularidad === 'total') return inversiones;
@@ -229,30 +180,29 @@ export default function InversionesPage() {
           </div>
         )}
 
-        {/* Selector de granularidad + período */}
-        <div className="backdrop-blur-md bg-slate-900/40 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-          <div className="flex flex-wrap gap-1 border-b border-slate-800">
-            {GRANULARIDADES.map(g => (
-              <button
-                key={g.value}
-                onClick={() => setGranularidad(g.value)}
-                className={`py-2.5 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-                  granularidad === g.value ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
+        {/* Filtro de período */}
+        <div className="backdrop-blur-md bg-slate-900/40 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 shrink-0">ver por:</span>
+              <select
+                value={granularidad}
+                onChange={e => setGranularidad(e.target.value as Granularidad)}
+                className="py-2 px-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 text-sm cursor-pointer focus:outline-none"
               >
-                {g.label}
-              </button>
-            ))}
-          </div>
+                {GRANULARIDADES.map(g => (
+                  <option key={g.value} value={g.value}>{g.label}</option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            {granularidad !== 'total' ? (
+            {granularidad !== 'total' && (
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
                 <select
                   value={periodoEfectivo}
                   onChange={e => setPeriodoSeleccionado(e.target.value)}
-                  className="py-2 px-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 text-sm cursor-pointer focus:outline-none"
+                  className="py-2 px-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 text-sm cursor-pointer focus:outline-none"
                 >
                   {periodosParaDropdown.length === 0 ? (
                     <option value="">Sin datos</option>
@@ -263,19 +213,15 @@ export default function InversionesPage() {
                   )}
                 </select>
               </div>
-            ) : (
-              <p className="text-sm text-slate-400">
-                Mostrando: <span className="text-white font-semibold">todo el histórico</span>
-              </p>
             )}
-
-            <button
-              onClick={openCreateModal}
-              className="py-2.5 px-5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Agregar inversión
-            </button>
           </div>
+
+          <button
+            onClick={openCreateModal}
+            className="py-2.5 px-5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" /> Agregar inversión
+          </button>
         </div>
 
         {/* KPIs */}
