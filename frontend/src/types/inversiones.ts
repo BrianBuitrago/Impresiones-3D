@@ -2,19 +2,26 @@ export type TipoInversion = 'insumo' | 'maquina';
 
 export interface Inversion {
   id: string;
-  nombre: string;
+  elemento: string;
   tipo: TipoInversion;
-  monto: number;
+  proveedor?: string;
+  cantidad: number;
+  costo: number;
+  valorUnitario?: number;
+  total: number;
   fecha: string;
-  notas?: string;
+  observaciones?: string;
   creadoEn?: string;
   actualizadoEn?: string;
 }
 
 export interface InversionInput {
-  nombre: string;
+  elemento: string;
   tipo: TipoInversion;
-  monto: number;
+  proveedor?: string;
+  cantidad: number;
+  costo: number;
+  valorUnitario?: number;
   fecha: string;
-  notas?: string;
+  observaciones?: string;
 }
