@@ -202,6 +202,46 @@ SUB_ESTADOS_COMPRA = {
 }
 
 
+# Campos monetarios/de precio que un colaborador no debe ver (cubre los nombres
+# camelCase actuales y los alias legacy PascalCase/snake que coexisten en el modelo).
+MONETARY_PRODUCT_FIELDS = {
+    "costoDisenoUnitario", "costoAccesoriosUnitario", "valorEmpaqueUnitario",
+    "valorPersonalizacionUnitario", "costoProcesado", "precioKwhHora", "precioKwhMinuto",
+    "precioFilamentoKg", "precioFilamentoGramo", "costoFabricacionUnitario",
+    "precioUnitario", "precioConGananciaUnitario", "precioTotalUnitario",
+    "subtotalFabricacionTotal", "gananciaTotal", "precioTotal",
+    "Precio_Unitario", "Valor_Ganancia_Total", "Precio_Total", "Subtotal_Fabricacion_Total",
+    "subtotalEnergia", "subtotalMaterial", "precioLinealTotal",
+    "porcentajeGanancia", "porcentajeImprevistos",
+}
+
+MONETARY_QUOTE_FIELDS = {
+    "precioKwhHora", "precioFilamentoKg", "porcentajeGanancia",
+    "subtotalFabricacionTotal", "valorGananciaTotal", "precioTotal", "precioTotalCotizacion",
+    "Subtotal_Fabricacion_Total", "Valor_Ganancia_Total", "Precio_Total", "Precio_Total_Cotizacion",
+    "Porcentaje_Ganancia",
+}
+
+
+def strip_monetary_fields(quote_data: dict) -> dict:
+    """Quita precios/totales/subtotales de una cotización serializada, para colaboradores.
+
+    También excluye la cédula del cliente: el colaborador solo necesita datos de
+    contacto (nombre/teléfono/email), no el documento de identidad.
+    """
+    data = dict(quote_data)
+    for field in MONETARY_QUOTE_FIELDS:
+        data.pop(field, None)
+    if isinstance(data.get("cliente"), dict):
+        data["cliente"] = {k: v for k, v in data["cliente"].items() if k != "cedula"}
+    if "productos" in data:
+        data["productos"] = [
+            {k: v for k, v in p.items() if k not in MONETARY_PRODUCT_FIELDS}
+            for p in data["productos"]
+        ]
+    return data
+
+
 class QuoteUpdate(BaseModel):
     productos: List[ProductoItem] = Field(..., min_items=1, max_items=5, description="Lista de productos con cálculos actualizados")
     estado: str = Field(..., description="Estado de la cotización (pendiente, cotizado, aceptado, rechazado)")
@@ -249,6 +289,17 @@ class QuoteUpdate(BaseModel):
 
     class Config:
         extra = "allow"
+
+
+class SubEstadoUpdate(BaseModel):
+    subEstado: str = Field(..., description="Nuevo sub-estado de producción/entrega")
+
+    @validator("subEstado")
+    def validate_sub_estado(cls, value):
+        normalized = value.strip().lower()
+        if normalized not in SUB_ESTADOS_COMPRA:
+            raise ValueError("Sub-estado no permitido.")
+        return normalized
 
 
 # ─── FIX: QuoteResponse acepta DatetimeWithNanoseconds de Firestore ───────────
