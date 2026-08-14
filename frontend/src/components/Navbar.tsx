@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, User, LogOut, ShieldAlert } from "lucide-react";
+import { ShoppingCart, User, LogOut, ShieldAlert, FileText } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 
@@ -75,13 +75,22 @@ export default function Navbar() {
                       <p className="text-xs text-slate-500">Rol asignado</p>
                       <p className="text-sm font-semibold capitalize text-cyan-400">{profile?.rol || 'Cliente'}</p>
                     </div>
-                    {(profile?.rol === 'administrador' || profile?.rol === 'colaborador') && (
-                      <Link 
-                        href="/admin" 
+                    {(profile?.rol === 'administrador' || profile?.rol === 'colaborador') ? (
+                      <Link
+                        href="/admin"
                         onClick={() => setDropdownOpen(false)}
                         className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
                       >
                         Panel de Administración
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/mis-cotizaciones"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Mis Cotizaciones
                       </Link>
                     )}
                     <button
