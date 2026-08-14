@@ -21,6 +21,7 @@ def create_inversion(
         created_at = datetime.utcnow().isoformat()
         inversion_data = inversion_in.dict()
         inversion_data.update({
+            'total': round(inversion_data['cantidad'] * inversion_data['costo'], 2),
             'creadoEn': created_at,
             'actualizadoEn': created_at,
         })
@@ -77,10 +78,16 @@ def update_inversion(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Servicio de base de datos no disponible.')
     inversion_ref = db.collection('inversiones').document(inversion_id)
-    if not inversion_ref.get().exists:
+    current_doc = inversion_ref.get()
+    if not current_doc.exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Inversión no encontrada.')
+    current_data = current_doc.to_dict()
 
     update_data = inversion_update.dict(exclude_none=True)
+    if 'cantidad' in update_data or 'costo' in update_data:
+        cantidad = update_data.get('cantidad', current_data.get('cantidad', 0))
+        costo = update_data.get('costo', current_data.get('costo', 0))
+        update_data['total'] = round(cantidad * costo, 2)
     update_data['actualizadoEn'] = datetime.utcnow().isoformat()
 
     try:

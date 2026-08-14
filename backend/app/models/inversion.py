@@ -5,14 +5,17 @@ TIPOS_INVERSION = {"insumo", "maquina"}
 
 
 class InversionBase(BaseModel):
-    nombre: str = Field(..., min_length=2, max_length=150, description="Nombre del insumo o máquina")
+    elemento: str = Field(..., min_length=2, max_length=150, description="Nombre del insumo o máquina")
     tipo: str = Field(..., description="Tipo de inversión: insumo o maquina")
-    monto: float = Field(..., ge=0, description="Monto invertido")
+    proveedor: Optional[str] = Field("", max_length=150, description="Proveedor")
+    cantidad: float = Field(..., gt=0, description="Cantidad comprada")
+    costo: float = Field(..., ge=0, description="Costo por unidad")
+    valorUnitario: Optional[float] = Field(0.0, ge=0, description="Valor unitario de referencia (no interviene en el total)")
     fecha: str = Field(..., min_length=1, description="Fecha de la inversión (YYYY-MM-DD)")
-    notas: Optional[str] = Field("", max_length=500, description="Notas adicionales")
+    observaciones: Optional[str] = Field("", max_length=500, description="Observaciones")
 
-    @validator("nombre", pre=True)
-    def strip_nombre(cls, value):
+    @validator("elemento", pre=True)
+    def strip_elemento(cls, value):
         return value.strip() if isinstance(value, str) else value
 
     @validator("tipo")
@@ -32,11 +35,14 @@ class InversionCreate(InversionBase):
 
 
 class InversionUpdate(BaseModel):
-    nombre: Optional[str] = Field(None, min_length=2, max_length=150)
+    elemento: Optional[str] = Field(None, min_length=2, max_length=150)
     tipo: Optional[str] = None
-    monto: Optional[float] = Field(None, ge=0)
+    proveedor: Optional[str] = Field(None, max_length=150)
+    cantidad: Optional[float] = Field(None, gt=0)
+    costo: Optional[float] = Field(None, ge=0)
+    valorUnitario: Optional[float] = Field(None, ge=0)
     fecha: Optional[str] = Field(None, min_length=1)
-    notas: Optional[str] = Field(None, max_length=500)
+    observaciones: Optional[str] = Field(None, max_length=500)
 
     @validator("tipo")
     def validate_tipo(cls, value):
@@ -50,6 +56,7 @@ class InversionUpdate(BaseModel):
 
 class InversionResponse(InversionBase):
     id: str = Field(..., description="ID del documento en Firestore")
+    total: float = Field(0.0, description="Cantidad × Costo, calculado en servidor")
     creadoEn: Optional[str] = None
     actualizadoEn: Optional[str] = None
 
