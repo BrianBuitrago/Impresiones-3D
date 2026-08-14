@@ -10,6 +10,7 @@ import {
   BarChart3,
   ShoppingCart,
   DollarSign,
+  Wallet,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
@@ -1081,6 +1082,15 @@ export default function AdminPage() {
             >
               <BarChart3 className="w-4 h-4" />
               Reportes
+            </button>
+          )}
+          {profile?.rol === 'administrador' && (
+            <button
+              onClick={() => router.push('/admin/inversiones')}
+              className="py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer border-transparent text-slate-400 hover:text-slate-200"
+            >
+              <Wallet className="w-4 h-4" />
+              Inversiones
             </button>
           )}
         </div>
