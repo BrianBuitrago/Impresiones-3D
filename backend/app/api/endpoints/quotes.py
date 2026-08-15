@@ -1,5 +1,7 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from app.core.firebase import db, firebase_auth
+from app.core.limiter import limiter
 from app.models.quote import QuoteCreate, QuoteUpdate, QuoteResponse, SubEstadoUpdate, strip_monetary_fields
 from app.api.deps import RoleChecker, get_firebase_uid
 from app.utils.firestore import serialize_doc
@@ -7,6 +9,7 @@ from app.services.pricing import round_money, calculate_product, get_precios_glo
 from datetime import datetime
 from typing import List, Optional
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 def get_optional_uid(request: Request) -> Optional[str]:
@@ -23,14 +26,16 @@ def get_optional_uid(request: Request) -> Optional[str]:
         decoded_token = firebase_auth.verify_id_token(token)
         return decoded_token.get("uid")
     except Exception as e:
+        logger.warning("Token de autenticación inválido o vencido en get_optional_uid: %s", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token de autenticación inválido o vencido: {str(e)}"
+            detail="Token de autenticación inválido o vencido."
         )
 
 
 @router.post("", response_model=QuoteResponse, status_code=status.HTTP_201_CREATED)
-def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optional_uid)):
+@limiter.limit("10/minute")
+def create_quote(request: Request, quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optional_uid)):
     if db is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="Servicio de base de datos no disponible.")
@@ -115,8 +120,9 @@ def create_quote(quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optiona
         quote_doc["id"] = doc_ref.id
         return quote_doc
     except Exception as e:
+        logger.error("Fallo al guardar la cotización en Firestore: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error al guardar la cotización en Firestore: {str(e)}")
+                            detail="No se pudo guardar la cotización. Intenta nuevamente más tarde.")
 
 
 @router.get("", response_model=List[QuoteResponse])
@@ -151,8 +157,9 @@ def get_all_quotes(
             quotes_list.append(serialized)
         return quotes_list
     except Exception as e:
+        logger.error("Fallo al obtener cotizaciones: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error al obtener cotizaciones: {str(e)}")
+                            detail="No se pudieron obtener las cotizaciones.")
 
 
 @router.get("/my", response_model=List[QuoteResponse])
@@ -171,8 +178,9 @@ def get_my_quotes(uid: str = Depends(get_firebase_uid)):
         quotes_list.sort(key=lambda x: x.get("creadoEn", ""), reverse=True)
         return quotes_list
     except Exception as e:
+        logger.error("Fallo al obtener las cotizaciones del usuario %s: %s", uid, e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error al obtener tus cotizaciones: {str(e)}")
+                            detail="No se pudieron obtener tus cotizaciones.")
 
 
 @router.get("/{quote_id}", response_model=QuoteResponse)
@@ -260,8 +268,9 @@ def update_quote(
         serialize_doc(final_doc)  # ← FIX
         return final_doc
     except Exception as e:
+        logger.error("Fallo al actualizar la cotización %s: %s", quote_id, e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error al actualizar la cotización: {str(e)}")
+                            detail="No se pudo actualizar la cotización.")
 
 
 @router.patch("/{quote_id}/subestado", response_model=QuoteResponse)
@@ -292,5 +301,6 @@ def update_quote_subestado(
             final_doc = strip_monetary_fields(final_doc)
         return final_doc
     except Exception as e:
+        logger.error("Fallo al actualizar el sub-estado de la cotización %s: %s", quote_id, e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error al actualizar el sub-estado: {str(e)}")
+                            detail="No se pudo actualizar el sub-estado.")

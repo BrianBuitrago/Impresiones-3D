@@ -1,8 +1,10 @@
+import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.firebase import db, firebase_auth
 from typing import List
 
+logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 def get_firebase_uid(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
@@ -28,9 +30,10 @@ def get_firebase_uid(credentials: HTTPAuthorizationCredentials = Depends(securit
             )
         return uid
     except Exception as e:
+        logger.warning("Token de Firebase inválido o expirado: %s", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token inválido o expirado: {str(e)}"
+            detail="Token inválido o expirado."
         )
 
 def get_current_user(uid: str = Depends(get_firebase_uid)) -> dict:

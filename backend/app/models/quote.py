@@ -97,6 +97,17 @@ class ProductoItem(BaseModel):
             return ""
         return value.strip() if isinstance(value, str) else value
 
+    @validator("imagenFrontal", "imagenLateral", "imagenTrasera", "imagenDiagonal")
+    def validate_imagen_url(cls, value):
+        # Solo se aceptan URLs de Cloudinary (donde el frontend sube las fotos). Evita que se
+        # cuelen URLs de un servidor de terceros que el staff cargaría al ver la cotización
+        # (fingerprinting/IP-logging del staff vía una imagen externa).
+        if not value:
+            return value
+        if not value.startswith("https://res.cloudinary.com/"):
+            raise ValueError("La URL de la imagen debe ser de Cloudinary.")
+        return value
+
     @validator("personalizacion")
     def validate_personalizacion(cls, value):
         allowed = {"cosmeticos", "pintura base", "otra"}

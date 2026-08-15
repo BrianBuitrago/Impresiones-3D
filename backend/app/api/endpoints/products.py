@@ -50,7 +50,7 @@ def update_product(product_id: str, data: ProductUpdate, current_user: dict = De
 @router.delete("/{product_id}")
 def delete_product(product_id: str, current_user: dict = Depends(get_current_user)):
     role = current_user.get("rol", "")
-    if role not in ("administrador", "colaborador"):
+    if role != "administrador":
         raise HTTPException(status_code=403, detail="No tienes permisos")
     if db is None:
         raise HTTPException(status_code=503, detail="Base de datos no disponible")

@@ -1,15 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.core.firebase import db, firebase_auth
+from app.core.limiter import limiter
 from app.models.user import UserCreate, UserResponse, UserRoleUpdate, UserProfileUpdate, GoogleSyncRequest
 from app.api.deps import get_current_user, RoleChecker, get_firebase_uid
 from app.utils.firestore import serialize_doc
 from datetime import datetime
 from google.cloud.firestore_v1.base_query import FieldFilter # Importación útil si usas filtros modernos
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register_user(user_in: UserCreate):
+@limiter.limit("5/minute")
+def register_user(request: Request, user_in: UserCreate):
     """
     Registra un usuario nuevo en Firebase Auth y crea su documento de perfil
     adicional en Firestore con el rol 'cliente' por defecto.
@@ -28,9 +32,12 @@ def register_user(user_in: UserCreate):
             display_name=user_in.nombre
         )
     except Exception as e:
+        # No se reenvía el error crudo de Firebase (p. ej. "EMAIL_EXISTS"): permitiría
+        # enumerar qué correos ya están registrados. Se loguea en servidor únicamente.
+        logger.warning("Fallo al registrar usuario en Firebase Auth: %s", e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Error al registrar usuario en Firebase Auth: {str(e)}"
+            detail="No se pudo completar el registro. Verifica los datos ingresados e intenta nuevamente."
         )
 
     try:
@@ -46,22 +53,23 @@ def register_user(user_in: UserCreate):
             "categorias": user_in.categorias or [],
             "creado_en": datetime.utcnow().isoformat()
         }
-        
+
         db.collection("users").document(user_record.uid).set(user_profile)
-        
+
         user_profile["uid"] = user_record.uid
         return user_profile
-        
+
     except Exception as e:
         # En caso de error al guardar en Firestore, intentamos revertir la creación en Auth
         try:
             firebase_auth.delete_user(user_record.uid)
         except Exception:
             pass
-            
+
+        logger.error("Fallo al crear el perfil de usuario en Firestore tras registro: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al crear el perfil de usuario en la base de datos: {str(e)}"
+            detail="No se pudo completar el registro. Intenta nuevamente más tarde."
         )
 
 @router.post("/sync-google", response_model=UserResponse)
@@ -88,9 +96,10 @@ def sync_google_user(request: GoogleSyncRequest):
                 detail="Token de Google inválido o incompleto."
             )
     except Exception as e:
+        logger.warning("Autenticación de Google fallida: %s", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Autenticación de Google fallida: {str(e)}"
+            detail="Autenticación de Google fallida. Intenta nuevamente."
         )
 
     # Cargar correos de administradores permitidos por Google Login
@@ -136,9 +145,10 @@ def sync_google_user(request: GoogleSyncRequest):
             user_profile["uid"] = uid
             return user_profile
         except Exception as e:
+            logger.error("Fallo al crear el perfil de usuario de Google en Firestore: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error al crear el perfil de usuario de Google en la base de datos: {str(e)}"
+                detail="No se pudo completar el registro con Google. Intenta nuevamente más tarde."
             )
 
 @router.get("/me", response_model=UserResponse)
@@ -176,9 +186,10 @@ def update_my_profile(
         updated_doc["uid"] = uid
         return updated_doc
     except Exception as e:
+        logger.error("Fallo al actualizar el perfil de usuario %s: %s", uid, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al actualizar el perfil: {str(e)}"
+            detail="No se pudo actualizar el perfil. Intenta nuevamente más tarde."
         )
 
 @router.put("/users/{target_uid}/role", response_model=UserResponse)
@@ -210,9 +221,10 @@ def update_user_role(
         updated_user["rol"] = role_update.rol
         return updated_user
     except Exception as e:
+        logger.error("Fallo al actualizar el rol del usuario %s: %s", target_uid, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al actualizar el rol de usuario: {str(e)}"
+            detail="No se pudo actualizar el rol del usuario. Intenta nuevamente más tarde."
         )
 
 @router.get("/users", response_model=list[UserResponse])
@@ -242,7 +254,8 @@ def list_all_users(
             
         return users_list
     except Exception as e:
+        logger.error("Fallo al listar usuarios: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al obtener la lista de usuarios: {str(e)}"
+            detail="No se pudo obtener la lista de usuarios. Intenta nuevamente más tarde."
         )
