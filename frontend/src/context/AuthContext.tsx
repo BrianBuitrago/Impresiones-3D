@@ -1,11 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  signInWithPopup,
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
@@ -46,6 +47,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearExpiryTimer = () => {
+    if (expiryTimerRef.current) {
+      clearTimeout(expiryTimerRef.current);
+      expiryTimerRef.current = null;
+    }
+  };
+
+  // Cierra la sesión automáticamente cuando expira el token de Firebase y redirige al inicio
+  const forceLogoutByExpiry = async () => {
+    clearExpiryTimer();
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.error('Error al cerrar sesión por expiración de token:', e);
+    }
+    setUser(null);
+    setProfile(null);
+    setToken(null);
+    router.push('/');
+  };
+
+  const scheduleExpiryLogout = async (firebaseUser: FirebaseUser) => {
+    clearExpiryTimer();
+    try {
+      const result = await firebaseUser.getIdTokenResult();
+      const msUntilExpiry = new Date(result.expirationTime).getTime() - Date.now();
+      if (msUntilExpiry <= 0) {
+        await forceLogoutByExpiry();
+        return;
+      }
+      expiryTimerRef.current = setTimeout(forceLogoutByExpiry, msUntilExpiry);
+    } catch (e) {
+      console.error('Error al programar el cierre de sesión por expiración de token:', e);
+    }
+  };
 
   // Sincronizar perfil local con el backend usando el token de Firebase
   const fetchProfile = async (firebaseUser: FirebaseUser, idToken: string) => {
@@ -96,10 +135,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const idToken = await firebaseUser.getIdToken();
           setToken(idToken);
           await fetchProfile(firebaseUser, idToken);
+          await scheduleExpiryLogout(firebaseUser);
         } catch (e) {
           console.error("Error al obtener token de ID de Firebase:", e);
         }
       } else {
+        clearExpiryTimer();
         setUser(null);
         setProfile(null);
         setToken(null);
@@ -107,7 +148,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearExpiryTimer();
+      unsubscribe();
+    };
   }, []);
 
   // Login con Google
@@ -221,6 +265,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setLoading(true);
     try {
+      clearExpiryTimer();
       await signOut(auth);
       setUser(null);
       setProfile(null);
