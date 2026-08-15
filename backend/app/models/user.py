@@ -12,8 +12,8 @@ class UserBase(BaseModel):
     categorias: List[str] = Field(default_factory=list, description="Categorías de trabajo asignadas al colaborador")
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, description="Contraseña del usuario (mínimo 6 caracteres)")
-    confirm_password: str = Field(..., min_length=6, description="Confirmación de la contraseña")
+    password: str = Field(..., min_length=8, description="Contraseña del usuario (mínimo 8 caracteres)")
+    confirm_password: str = Field(..., min_length=8, description="Confirmación de la contraseña")
 
     @validator('confirm_password')
     def passwords_match(cls, v, values, **kwargs):

@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.firebase import db
 from app.api.deps import RoleChecker, get_current_user
@@ -7,12 +8,13 @@ from app.services.reports import calculate_totals
 from datetime import datetime
 from typing import List
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post('', response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
 def create_report(
     report_in: ReportCreate,
-    current_user: dict = Depends(RoleChecker(['administrador', 'colaborador']))
+    current_user: dict = Depends(RoleChecker(['administrador']))
 ):
     if db is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -31,8 +33,9 @@ def create_report(
         report_data['id'] = doc_ref.id
         return serialize_doc(report_data)
     except Exception as e:
+        logger.error('Fallo al crear reporte: %s', e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f'Error al crear reporte: {str(e)}')
+                            detail='No se pudo crear el reporte.')
 
 @router.get('', response_model=List[ReportResponse])
 def list_reports(
@@ -40,7 +43,7 @@ def list_reports(
     colaboradorUid: str | None = None,
     estado: str | None = None,
     tipo: str | None = None,
-    current_user: dict = Depends(RoleChecker(['administrador', 'colaborador']))
+    current_user: dict = Depends(RoleChecker(['administrador']))
 ):
     if db is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -63,8 +66,9 @@ def list_reports(
             reports.append(serialize_doc(data))
         return reports
     except Exception as e:
+        logger.error('Fallo al listar reportes: %s', e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f'Error al listar reportes: {str(e)}')
+                            detail='No se pudieron listar los reportes.')
 
 @router.get('/{report_id}', response_model=ReportResponse)
 def get_report(report_id: str, current_user: dict = Depends(RoleChecker(['administrador', 'colaborador']))):
@@ -83,7 +87,7 @@ def get_report(report_id: str, current_user: dict = Depends(RoleChecker(['admini
 def update_report(
     report_id: str,
     report_update: ReportUpdate,
-    current_user: dict = Depends(RoleChecker(['administrador', 'colaborador']))
+    current_user: dict = Depends(RoleChecker(['administrador']))
 ):
     if db is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -105,8 +109,9 @@ def update_report(
         updated['id'] = report_id
         return serialize_doc(updated)
     except Exception as e:
+        logger.error('Fallo al actualizar reporte %s: %s', report_id, e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f'Error al actualizar reporte: {str(e)}')
+                            detail='No se pudo actualizar el reporte.')
 
 @router.delete('/{report_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_report(
@@ -122,5 +127,6 @@ def delete_report(
     try:
         report_ref.delete()
     except Exception as e:
+        logger.error('Fallo al eliminar reporte %s: %s', report_id, e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f'Error al eliminar reporte: {str(e)}')
+                            detail='No se pudo eliminar el reporte.')

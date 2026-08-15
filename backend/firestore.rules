@@ -13,6 +13,13 @@ service cloud.firestore {
       return userDoc.rol in ['administrador', 'colaborador'];
     }
 
+    // Función para verificar si el usuario es exclusivamente ADMINISTRADOR
+    // (Inversiones, Reportes y Precios son solo para administrador, no para colaborador)
+    function isAdmin() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userDoc.rol == 'administrador';
+    }
+
     // Función para verificar si el usuario es el dueño del documento
     function isOwner(userId) {
       return request.auth.uid == userId;
@@ -50,22 +57,22 @@ service cloud.firestore {
       allow create, update, delete: if isStaff(); // Solo staff
     }
 
-    // --- COLECCIÓN: reports ---
+    // --- COLECCIÓN: reports (exclusivo administrador) ---
     match /reports/{reportId} {
-      allow read: if isAuthenticated() && isStaff();
-      allow create, update, delete: if isAuthenticated() && isStaff();
+      allow read: if isAuthenticated() && isAdmin();
+      allow create, update, delete: if isAuthenticated() && isAdmin();
     }
 
-    // --- COLECCIÓN: inversiones ---
+    // --- COLECCIÓN: inversiones (exclusivo administrador) ---
     match /inversiones/{inversionId} {
-      allow read: if isAuthenticated() && isStaff();
-      allow create, update, delete: if isAuthenticated() && isStaff();
+      allow read: if isAuthenticated() && isAdmin();
+      allow create, update, delete: if isAuthenticated() && isAdmin();
     }
 
-    // --- COLECCIÓN: settings ---
+    // --- COLECCIÓN: settings (precios globales, exclusivo administrador para escribir) ---
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if isStaff();
+      allow write: if isAdmin();
     }
   }
 }
