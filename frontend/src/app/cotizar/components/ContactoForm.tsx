@@ -1,0 +1,151 @@
+'use client';
+
+import { User, Phone, IdCard, Mail, Info } from 'lucide-react';
+import { motion } from 'framer-motion';
+import type { UserProfile } from '@/context/AuthContext';
+
+interface ContactoFormProps {
+  profile: UserProfile | null;
+  nombre: string;
+  setNombre: (v: string) => void;
+  telefono: string;
+  setTelefono: (v: string) => void;
+  cedula: string;
+  setCedula: (v: string) => void;
+  email: string;
+  setEmail: (v: string) => void;
+  notasCotizacion: string;
+  setNotasCotizacion: (v: string) => void;
+}
+
+export default function ContactoForm({
+  profile,
+  nombre, setNombre,
+  telefono, setTelefono,
+  cedula, setCedula,
+  email, setEmail,
+  notasCotizacion, setNotasCotizacion,
+}: ContactoFormProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="relative bg-slate-900/50 border border-slate-800/80 rounded-3xl p-7 md:p-9 backdrop-blur-md shadow-xl overflow-hidden"
+    >
+      <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
+
+      <div className="flex items-center gap-3 mb-7">
+        <div className="p-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400">
+          <User className="w-5 h-5" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-white">Información de Contacto</h2>
+          <p className="text-xs text-slate-500">
+            {profile
+              ? 'Tus datos se han precargado automáticamente desde tu perfil.'
+              : 'Ingresa tus datos para que podamos contactarte con la cotización.'}
+          </p>
+        </div>
+      </div>
+
+      {profile && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mb-6 p-3.5 bg-cyan-500/5 border border-cyan-500/15 rounded-xl text-xs text-cyan-300 flex items-center gap-2.5"
+        >
+          <Info className="w-4 h-4 text-cyan-400 shrink-0" />
+          <span>Datos precargados de tu cuenta. Puedes modificarlos si lo requieres.</span>
+        </motion.div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Nombre */}
+        <div className="space-y-2">
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Nombre Completo <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+            <input
+              type="text"
+              value={nombre}
+              onChange={e => setNombre(e.target.value)}
+              required
+              placeholder="Tu nombre completo"
+              className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Teléfono */}
+        <div className="space-y-2">
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Teléfono <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+            <input
+              type="tel"
+              value={telefono}
+              onChange={e => setTelefono(e.target.value)}
+              required
+              placeholder="+57 300 123 4567"
+              className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Cédula */}
+        <div className="space-y-2">
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Cédula <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+            <input
+              type="text"
+              value={cedula}
+              onChange={e => setCedula(e.target.value)}
+              required
+              placeholder="1234567890"
+              className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Correo */}
+        <div className="space-y-2">
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Correo Electrónico <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              placeholder="tu@correo.com"
+              className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-2">
+        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          Notas de cotización
+        </label>
+        <textarea
+          value={notasCotizacion}
+          onChange={e => setNotasCotizacion(e.target.value)}
+          rows={3}
+          placeholder="Agrega fechas objetivo, restricciones, acabado esperado o cualquier detalle general..."
+          className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all resize-none"
+        />
+      </div>
+    </motion.div>
+  );
+}
