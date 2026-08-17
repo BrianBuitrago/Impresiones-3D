@@ -83,7 +83,7 @@ export default function AssignColaboradorDialog({
 
                 <div className="space-y-3">
                   {selectedQuote?.productos.map((p: any, idx: number) => {
-                    const nombre = p.descripcionLineal || p.Descripcion_Lineal || p.nombre || `Producto #${idx + 1}`;
+                    const nombre = p.descripcionLineal || p.nombre || `Producto #${idx + 1}`;
                     return (
                       <div key={idx} className="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
                         <div className="flex items-center justify-between mb-2">

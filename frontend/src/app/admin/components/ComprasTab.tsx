@@ -210,9 +210,9 @@ export default function ComprasTab({ isColaborador = false, quotesList, handleUp
               </div>
             </div>
 
-            {(expandedQuote.notasCotizacion || expandedQuote.Notas_Cotizacion) && (
+            {expandedQuote.notasCotizacion && (
               <p className="text-xs text-slate-400 italic border-l-2 border-slate-700 pl-3">
-                "{expandedQuote.notasCotizacion || expandedQuote.Notas_Cotizacion}"
+                "{expandedQuote.notasCotizacion}"
               </p>
             )}
 
@@ -233,7 +233,7 @@ export default function ComprasTab({ isColaborador = false, quotesList, handleUp
                   <div className="bg-slate-900/60 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
                     <p className="text-sm font-bold text-white">{p.nombre || `Producto #${idx + 1}`}</p>
                     {!isColaborador && (
-                      <span className="text-sm font-extrabold text-emerald-400">{formatCOP(p.precioTotal || p.Precio_Total || 0)}</span>
+                      <span className="text-sm font-extrabold text-emerald-400">{formatCOP(p.precioTotal || 0)}</span>
                     )}
                   </div>
 

@@ -244,7 +244,7 @@ export default function QuotesTab({
                           <div>
                             <span className="block text-slate-500 uppercase tracking-wider">piezas totales</span>
                             <span className="font-semibold text-slate-200 block">
-                              {selectedQuote.Cantidad_Total_Piezas || selectedQuote.cantidadTotalPiezas || 0}
+                              {selectedQuote.cantidadTotalPiezas || 0}
                             </span>
                           </div>
                         </div>
@@ -373,7 +373,7 @@ export default function QuotesTab({
                           <div>
                             <span className="block text-slate-500 uppercase tracking-wider">id cliente</span>
                             <span className="font-semibold text-slate-200 block truncate">
-                              {selectedQuote.ID_Cliente || selectedQuote.cliente?.uid || 'No disponible'}
+                              {selectedQuote.cliente?.uid || 'No disponible'}
                             </span>
                           </div>
                           <div>
@@ -385,13 +385,13 @@ export default function QuotesTab({
                           <div>
                             <span className="block text-slate-500 uppercase tracking-wider">piezas totales</span>
                             <span className="font-semibold text-slate-200 block">
-                              {selectedQuote.Cantidad_Total_Piezas || selectedQuote.cantidadTotalPiezas || 0}
+                              {selectedQuote.cantidadTotalPiezas || 0}
                             </span>
                           </div>
                           <div>
                             <span className="block text-slate-500 uppercase tracking-wider">ganancia</span>
                             <span className="font-semibold text-slate-200 block">
-                              {selectedQuote.Porcentaje_Ganancia || selectedQuote.porcentajeGanancia || 30}%
+                              {selectedQuote.porcentajeGanancia || 30}%
                             </span>
                           </div>
                         </div>

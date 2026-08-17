@@ -246,13 +246,13 @@ export default function AdminPage() {
     selectedQuote.productos.forEach((p: any, idx: number) => {
       const duracion = Number(p.duracionImpresionUnidad || 0);
       init[idx] = {
-        tiempoHoras: (p.tiempoHoras ?? p.Tiempo_Horas ?? Math.floor(duracion / 60)).toString(),
-        tiempoMinutos: (p.tiempoMinutos ?? p.Tiempo_Minutos ?? duracion % 60).toString(),
-        pesoGramos: (p.pesoGramos ?? p.Peso_Gramos ?? p.filamentoUsadoUnidad ?? 0).toString(),
-        costoDiseno: (p.costoDisenoUnitario ?? p['Costo_Diseño'] ?? p.Costo_Diseno ?? 0).toString(),
-        costoAccesorios: (p.costoAccesoriosUnitario ?? p.Costo_Accesorios ?? 0).toString(),
-        costoEmpaque: (p.valorEmpaqueUnitario ?? p.Costo_Empaque ?? 0).toString(),
-        costoPersonalizado: (p.valorPersonalizacionUnitario ?? p.Costo_Personalizado ?? 0).toString(),
+        tiempoHoras: (p.tiempoHoras ?? Math.floor(duracion / 60)).toString(),
+        tiempoMinutos: (p.tiempoMinutos ?? duracion % 60).toString(),
+        pesoGramos: (p.pesoGramos ?? p.filamentoUsadoUnidad ?? 0).toString(),
+        costoDiseno: (p.costoDisenoUnitario ?? 0).toString(),
+        costoAccesorios: (p.costoAccesoriosUnitario ?? 0).toString(),
+        costoEmpaque: (p.valorEmpaqueUnitario ?? 0).toString(),
+        costoPersonalizado: (p.valorPersonalizacionUnitario ?? 0).toString(),
         horasPostProcesado: (p.horasPostProcesado ?? 0).toString(),
         costoProcesado: (p.costoProcesado ?? 0).toString(),
         porcentajeImprevistos: (p.porcentajeImprevistos ?? 0).toString(),
@@ -407,8 +407,8 @@ export default function AdminPage() {
     const c = calcProduct(idx, p.unidades);
     return {
       ...p,
-      idProducto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
-      descripcionLineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
+      idProducto: p.idProducto || `PROD-${String(idx + 1).padStart(3, '0')}`,
+      descripcionLineal: p.descripcionLineal || p.nombre,
       tiempoHoras: c.tiempoHoras,
       tiempoMinutos: c.tiempoMinutos,
       pesoGramos: c.filamento,
@@ -434,28 +434,9 @@ export default function AdminPage() {
       subtotalFabricacionTotal: Math.round(c.subtotalFabricacionTotal * 100) / 100,
       gananciaTotal: Math.round(c.gananciaTotal * 100) / 100,
       precioTotal: Math.round(c.precioTotalProducto * 100) / 100,
-      Precio_Unitario: Math.round(c.precioUnitario * 100) / 100,
-      Valor_Ganancia_Total: Math.round(c.gananciaTotal * 100) / 100,
-      Precio_Total: Math.round(c.precioTotalProducto * 100) / 100,
-      Subtotal_Fabricacion_Total: Math.round(c.subtotalFabricacionTotal * 100) / 100,
       subtotalEnergia: Math.round(c.subtotalEnergia * 100) / 100,
       subtotalMaterial: Math.round(c.subtotalMaterial * 100) / 100,
       precioLinealTotal: Math.round(c.precioTotalProducto * 100) / 100,
-      ID_Producto: p.idProducto || p.ID_Producto || `PROD-${String(idx + 1).padStart(3, '0')}`,
-      Descripcion_Lineal: p.descripcionLineal || p.Descripcion_Lineal || p.nombre,
-      Tiempo_Horas: Math.round(c.tiempoHoras * 100) / 100,
-      Tiempo_Minutos: Math.round(c.tiempoMinutos * 100) / 100,
-      Peso_Gramos: Math.round(c.filamento * 100) / 100,
-      Cantidad_Piezas: p.unidades,
-      'Costo_Diseño': Math.round(c.costoDiseno * 100) / 100,
-      Costo_Accesorios: Math.round(c.costoAccesorios * 100) / 100,
-      Costo_Personalizado: Math.round(c.valorPersonalizacion * 100) / 100,
-      Costo_Empaque: Math.round(c.valorEmpaque * 100) / 100,
-      Subtotal_Energia: Math.round(c.subtotalEnergia * 100) / 100,
-      Subtotal_Material: Math.round(c.subtotalMaterial * 100) / 100,
-      Subtotal_Fabricacion: Math.round(c.subtotalFabricacionTotal * 100) / 100,
-      Precio_Unitario_Con_Ganancia: Math.round(c.precioUnitario * 100) / 100,
-      Precio_Lineal_Total: Math.round(c.precioTotalProducto * 100) / 100,
     };
   };
 
@@ -500,13 +481,7 @@ export default function AdminPage() {
         porcentajeGanancia: updatedProductos.length > 0
           ? Math.round((updatedProductos.reduce((acc: number, p: any) => acc + (p.porcentajeGanancia || 0), 0) / updatedProductos.length) * 100) / 100
           : 30,
-        notasCotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
-        Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
-        Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
-        Precio_Total: Math.round(total * 100) / 100,
-        Precio_Total_Cotizacion: Math.round(total * 100) / 100,
-        Cantidad_Total_Piezas: updatedProductos.reduce((acc: number, p: any) => acc + (p.unidades || 0), 0),
-        Notas_Cotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
+        notasCotizacion: selectedQuote.notasCotizacion || '',
       });
       setSelectedQuote(updatedQuote);
       setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
@@ -549,7 +524,7 @@ export default function AdminPage() {
         const col = colsDisponibles.find(x => x.uid === uid);
         const item: ReportItem = {
           categoria: p.categoria || 'cotización-web',
-          descripcion: p.descripcionLineal || p.Descripcion_Lineal || p.nombre || 'Producto',
+          descripcion: p.descripcionLineal || p.nombre || 'Producto',
           cantidad: p.unidades || 1,
           valor: c.precioTotalProducto,
           actividad: 'Cotización web aceptada',
@@ -578,7 +553,7 @@ export default function AdminPage() {
           if (!t.colaboradorUid || !t.descripcion.trim() || t.valor <= 0) continue;
           const trabajoItem: ReportItem = {
             categoria: p.categoria || 'cotización-web',
-            descripcion: `${p.descripcionLineal || p.Descripcion_Lineal || p.nombre || 'Producto'} - ${t.descripcion}`,
+            descripcion: `${p.descripcionLineal || p.nombre || 'Producto'} - ${t.descripcion}`,
             cantidad: 1,
             valor: t.valor,
             actividad: t.descripcion,
@@ -608,13 +583,7 @@ export default function AdminPage() {
         porcentajeGanancia: updatedProductos.length > 0
           ? Math.round((updatedProductos.reduce((acc: number, p: any) => acc + (p.porcentajeGanancia || 0), 0) / updatedProductos.length) * 100) / 100
           : 30,
-        notasCotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
-        Subtotal_Fabricacion_Total: Math.round(subtotalFabricacion * 100) / 100,
-        Valor_Ganancia_Total: Math.round(ganancia * 100) / 100,
-        Precio_Total: Math.round(total * 100) / 100,
-        Precio_Total_Cotizacion: Math.round(total * 100) / 100,
-        Cantidad_Total_Piezas: updatedProductos.reduce((acc: number, p: any) => acc + (p.unidades || 0), 0),
-        Notas_Cotizacion: selectedQuote.notasCotizacion || selectedQuote.Notas_Cotizacion || '',
+        notasCotizacion: selectedQuote.notasCotizacion || '',
       });
       setSelectedQuote(updatedQuote);
       setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
@@ -844,12 +813,12 @@ export default function AdminPage() {
     for (let idx = 0; idx < selectedQuote.productos.length; idx++) {
       const p = selectedQuote.productos[idx];
       const nombreProducto = p.nombre || p.descripcionLineal || `Producto ${idx + 1}`;
-      const precioUnitario = p.precioUnitario || p.Precio_Unitario || 0;
+      const precioUnitario = p.precioUnitario || 0;
       const precioPintura = p.precioPintura || p.Precio_Pintura || 0;
       const precioPersonalizacion = p.precioPersonalizacion || p.Precio_Personalizacion || 0;
       const precioEmpaque = p.precioEmpaque || p.Precio_Empaque || 0;
       const unidades = p.unidades || 0;
-      const totalProducto = p.precioTotal || p.Precio_Total || 0;
+      const totalProducto = p.precioTotal || 0;
 
       const productImageUrl = imageFields.reduce<string | undefined>((url, f) => url || p[f], undefined);
       const productImageData = productImageUrl ? await fetchImageDataUrl(productImageUrl) : null;
