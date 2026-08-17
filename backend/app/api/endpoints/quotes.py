@@ -75,10 +75,8 @@ def create_quote(request: Request, quote_in: QuoteCreate, uid: Optional[str] = D
         calculado = calculate_product(prod, precio_kwh_hora, precio_filamento_kg)
         if not calculado.get("idProducto"):
             calculado["idProducto"] = f"PROD-{idx + 1:03d}"
-            calculado["ID_Producto"] = calculado["idProducto"]
         if not calculado.get("descripcionLineal"):
             calculado["descripcionLineal"] = calculado.get("nombre", "")
-            calculado["Descripcion_Lineal"] = calculado["descripcionLineal"]
         productos_dict.append(calculado)
 
     subtotal_fabricacion = round_money(sum(p["subtotalFabricacionTotal"] for p in productos_dict))
@@ -103,15 +101,6 @@ def create_quote(request: Request, quote_in: QuoteCreate, uid: Optional[str] = D
         "precioTotalCotizacion": precio_total,
         "cantidadTotalPiezas": cantidad_total_piezas,
         "notasCotizacion": notas_cotizacion,
-        "Fecha": fecha,
-        "ID_Cliente": cliente_data.get("uid"),
-        "Porcentaje_Ganancia": 30.0,
-        "Subtotal_Fabricacion_Total": subtotal_fabricacion,
-        "Valor_Ganancia_Total": valor_ganancia,
-        "Precio_Total": precio_total,
-        "Cantidad_Total_Piezas": cantidad_total_piezas,
-        "Notas_Cotizacion": notas_cotizacion,
-        "Precio_Total_Cotizacion": precio_total
     }
 
     try:
@@ -253,13 +242,6 @@ def update_quote(
             "precioTotalCotizacion": precio_total,
             "cantidadTotalPiezas": cantidad_total_piezas,
             "notasCotizacion": notas_cotizacion,
-            "Porcentaje_Ganancia": round_money(porcentaje_ganancia),
-            "Subtotal_Fabricacion_Total": subtotal_fabricacion,
-            "Valor_Ganancia_Total": valor_ganancia,
-            "Precio_Total": precio_total,
-            "Cantidad_Total_Piezas": cantidad_total_piezas,
-            "Notas_Cotizacion": notas_cotizacion,
-            "Precio_Total_Cotizacion": precio_total,
             "actualizadoEn": datetime.utcnow().isoformat()
         }
         if quote_up.subEstado is not None:

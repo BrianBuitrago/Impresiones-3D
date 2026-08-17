@@ -52,10 +52,6 @@ class ProductoItem(BaseModel):
     subtotalFabricacionTotal: Optional[float] = 0.0
     gananciaTotal: Optional[float] = 0.0
     precioTotal: Optional[float] = 0.0
-    Precio_Unitario: Optional[float] = 0.0
-    Valor_Ganancia_Total: Optional[float] = 0.0
-    Precio_Total: Optional[float] = 0.0
-    Subtotal_Fabricacion_Total: Optional[float] = 0.0
     subtotalEnergia: Optional[float] = 0.0
     subtotalMaterial: Optional[float] = 0.0
     precioLinealTotal: Optional[float] = 0.0
@@ -147,7 +143,6 @@ class ProductoItem(BaseModel):
         "precioKwhHora", "precioKwhMinuto",
         "precioUnitario", "precioConGananciaUnitario", "precioTotalUnitario",
         "subtotalFabricacionTotal", "gananciaTotal", "precioTotal",
-        "Precio_Unitario", "Valor_Ganancia_Total", "Precio_Total", "Subtotal_Fabricacion_Total",
         "subtotalEnergia", "subtotalMaterial", "precioLinealTotal",
         always=True,
     )
@@ -179,14 +174,6 @@ class QuoteCreate(BaseModel):
     valorGananciaTotal: Optional[float] = None
     porcentajeGanancia: Optional[float] = None
     cantidadTotalPiezas: Optional[int] = None
-    Fecha: Optional[str] = None
-    ID_Cliente: Optional[str] = None
-    Porcentaje_Ganancia: Optional[float] = None
-    Valor_Ganancia_Total: Optional[float] = None
-    Precio_Total_Cotizacion: Optional[float] = None
-    Subtotal_Fabricacion_Total: Optional[float] = None
-    Cantidad_Total_Piezas: Optional[int] = None
-    Notas_Cotizacion: Optional[str] = None
 
     @root_validator(pre=True)
     def normalize_quote_create_aliases(cls, values):
@@ -198,8 +185,6 @@ class QuoteCreate(BaseModel):
                 "Valor_Ganancia_Total": "valorGananciaTotal",
                 "Porcentaje_Ganancia": "porcentajeGanancia",
                 "Cantidad_Total_Piezas": "cantidadTotalPiezas",
-                "ID_Cliente": "ID_Cliente",
-                "Fecha": "Fecha",
             }
             for source, target in aliases.items():
                 if source in values and target not in values:
@@ -331,15 +316,6 @@ class QuoteResponse(BaseModel):
     precioTotalCotizacion: Optional[float] = None
     cantidadTotalPiezas: Optional[int] = None
     notasCotizacion: Optional[str] = None
-    Subtotal_Fabricacion_Total: Optional[float] = None
-    Valor_Ganancia_Total: Optional[float] = None
-    Precio_Total: Optional[float] = None
-    Precio_Total_Cotizacion: Optional[float] = None
-    Fecha: Optional[str] = None
-    ID_Cliente: Optional[str] = None
-    Porcentaje_Ganancia: Optional[float] = None
-    Cantidad_Total_Piezas: Optional[int] = None
-    Notas_Cotizacion: Optional[str] = None
 
     @validator("creadoEn", "actualizadoEn", pre=True, always=True)
     def parse_datetime_field(cls, v):
