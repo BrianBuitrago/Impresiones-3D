@@ -277,4 +277,14 @@ Auditoría completa (backend FastAPI, `firestore.rules`, frontend Next.js, subid
 - `firestore.rules` de `quotes`/`users` (Fase 1 + RBAC 2026-08-14) siguen siendo correctas: `create` en `quotes` bloqueado a nivel de reglas (solo el backend con Admin SDK escribe), auto-escalación de rol bloqueada en `users`.
 - Validación Pydantic estricta en `quote.py`/`product.py` (whitelists de `estado`/`subEstado`/`empaque`/`personalizacion`, límites numéricos) sigue vigente y bien aplicada.
 
+---
+
+## 8. Revisión de Procesos, Control de Datos y Diseño Web (2026-08-15)
+
+A pedido del usuario, ronda separada de la auditoría de seguridad, cubriendo las Fases 2-4 pendientes de `optimization_project` más hallazgos nuevos de esta revisión. Se acordaron 4 rondas; progreso:
+
+1. ✅ **Diseño web** — reemplazo de los 5 `alert()` nativos por el banner de error ya existente en cada pantalla; migración de los 10 `<img>` a `next/image` (`res.cloudinary.com` agregado a `remotePatterns`); `aria-label` en 13 botones de solo-ícono sin nombre accesible. Ver commits `frontend`.
+2. ✅ **Control de datos (paginación)** — límite defensivo (`.limit()`) en los 6 endpoints de listado que traían todos los documentos sin tope (`products`, `auth/users`, `quotes` ×2, `reports`, `inversiones`). No es paginación real con cursores/UI: Reportes/Inversiones necesitan el set completo para sus agregados, así que una paginación real requeriría rediseñar esa lógica primero.
+3. ✅ **Procesos (alias duplicados)** — `quote.py`, `pricing.py` y `quotes.py` escribían cada cotización dos veces (camelCase + PascalCase/snake legacy, ej. `precioTotal`/`Precio_Total`). Se dejó de **generar** el set legacy en escrituras nuevas (backend) y de **leer/enviar** esos campos en el frontend (68 referencias en 7 archivos). Se mantienen los alias de *entrada* (compatibilidad si algo externo los envía) y las listas de campos monetarios con los nombres legacy (para seguir ocultando precios a colaborador en documentos viejos). **No se migraron documentos existentes en Firestore** — quedan con los campos viejos sin uso, inofensivos, en vez de arriesgar una reescritura masiva de datos reales. Verificado con `TestClient` contra Firestore real: `POST`/`PUT /quotes` ya no generan las claves legacy.
+4. ⬜ **Dividir archivos grandes del frontend** — `admin/page.tsx` (1182 líneas), `admin/reportes/page.tsx` (1196), `QuotesTab.tsx` (1011), `cotizar/page.tsx` (1061) siguen sin dividir; `hooks/`/`utils/` casi vacíos pese a la convención declarada. Pendiente, es el ítem de mayor esfuerzo/riesgo (refactor grande sin cambios visibles, sin poder verificar visualmente el panel autenticado).
 
