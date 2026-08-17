@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Box, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Product } from '@/types/productos';
@@ -104,7 +105,7 @@ export default function CatalogoDestacado() {
                     <div className={`bg-slate-900/70 backdrop-blur-sm border rounded-2xl overflow-hidden shadow-xl h-full transition-all duration-700 ${isCenter ? 'border-cyan-500/30 shadow-cyan-500/10' : 'border-slate-800/50'}`}>
                       <div className="aspect-[4/3] bg-slate-800/60 relative overflow-hidden">
                         {prod.imagenUrl ? (
-                          <img src={prod.imagenUrl} alt={prod.nombre} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                          <Image src={prod.imagenUrl} alt={prod.nombre} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-110" />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
                             <Box className="w-16 h-16 text-slate-700" />
@@ -130,11 +131,11 @@ export default function CatalogoDestacado() {
 
           {productos.length > visibleCards && (
             <>
-              <button onClick={prev} disabled={current === 0}
+              <button onClick={prev} disabled={current === 0} aria-label="Producto anterior"
                 className="absolute left-1 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/50 rounded-full text-slate-300 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed backdrop-blur-md transition-all z-20 shadow-lg">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button onClick={next} disabled={current >= maxIndex}
+              <button onClick={next} disabled={current >= maxIndex} aria-label="Siguiente producto"
                 className="absolute right-1 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/50 rounded-full text-slate-300 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed backdrop-blur-md transition-all z-20 shadow-lg">
                 <ChevronRight className="w-4 h-4" />
               </button>

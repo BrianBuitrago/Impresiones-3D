@@ -70,6 +70,10 @@ export default function ImageLightbox({ images, index, onClose, onNavigate }: Im
           exit={{ opacity: 0, scale: 0.97 }}
           className="max-w-4xl w-full flex flex-col items-center gap-3"
         >
+          {/* next/image no encaja bien acá: tamaño natural desconocido (fotos de cualquier
+              proporción subidas por el cliente) y solo se monta al abrir el modal, nunca es
+              parte del LCP inicial de la página. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={current.url}
             alt={current.label || `Foto ${index + 1}`}

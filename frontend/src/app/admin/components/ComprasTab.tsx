@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { ShoppingCart, ChevronDown, ChevronLeft, Mail, Phone, IdCard, ImageIcon, Eye, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP } from './shared';
@@ -292,7 +293,7 @@ export default function ComprasTab({ isColaborador = false, quotesList, handleUp
                                   setLightbox({ images: imgs, index: clickedIdx >= 0 ? clickedIdx : 0 });
                                 }}
                                 className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group cursor-pointer">
-                                <img src={imgUrl} alt={f} className="w-full h-full object-cover" />
+                                <Image src={imgUrl} alt={f} fill sizes="120px" className="object-cover" />
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                   <Eye className="w-3.5 h-3.5 text-white" />
                                 </div>

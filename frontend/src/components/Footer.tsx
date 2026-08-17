@@ -29,7 +29,7 @@ export default function Footer() {
   return (
     <footer className="bg-slate-950 border-t border-slate-800 pt-12 pb-8 relative">
       {isAdmin && !editing && (
-        <button onClick={startEdit}
+        <button onClick={startEdit} aria-label="Editar pie de página"
           className="absolute top-4 right-4 p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-white cursor-pointer transition-colors z-10">
           <Pencil className="w-4 h-4" />
         </button>

@@ -54,7 +54,7 @@ export default function AssignColaboradorDialog({
               className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="sticky top-0 bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between z-10">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-400" /> Asignar Colaborador(es)</h2>
-                <button onClick={() => setShowAssignDialog(false)} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowAssignDialog(false)} aria-label="Cerrar diálogo" className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
 
               <div className="px-6 py-5 space-y-5">
@@ -116,6 +116,7 @@ export default function AssignColaboradorDialog({
                                     <button onClick={() => setPerItemTrabajos(prev => ({
                                       ...prev, [idx]: (prev[idx] || []).filter(x => x.tempId !== t.tempId)
                                     }))}
+                                      aria-label="Quitar trabajo"
                                       className="p-0.5 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300 cursor-pointer"><X className="w-2.5 h-2.5" /></button>
                                   </div>
                                   <div className="grid grid-cols-3 gap-1.5">

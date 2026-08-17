@@ -482,6 +482,7 @@ export default function AdminPage() {
     }
 
     setSaving(true);
+    setError(null);
     try {
       const updatedProductos = selectedQuote.productos.map(mapProductoConCalculo);
 
@@ -510,7 +511,7 @@ export default function AdminPage() {
       setSelectedQuote(updatedQuote);
       setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
     } catch (err: any) {
-      alert('Error al guardar: ' + err.message);
+      setError('Error al guardar: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -521,18 +522,20 @@ export default function AdminPage() {
   // es lo único que un colaborador puede modificar de una cotización.
   const handleUpdateSubEstado = async (quote: any, newSubEstado: string) => {
     if (!token) return;
+    setError(null);
     try {
       const updatedQuote = await actualizarSubEstado(token, quote.id, newSubEstado);
       setQuotesList(prev => prev.map(q => q.id === updatedQuote.id ? updatedQuote : q));
       if (selectedQuote?.id === updatedQuote.id) setSelectedQuote(updatedQuote);
     } catch (err: any) {
-      alert('Error al actualizar el sub-estado: ' + err.message);
+      setError('Error al actualizar el sub-estado: ' + err.message);
     }
   };
 
   const handleConfirmAssign = async () => {
     if (!selectedQuote || !token) return;
     setAssignSaving(true);
+    setError(null);
     try {
       const colsDisponibles = assignColaboradores;
       const itemsPorColaborador = new Map<string, ReportItem[]>();
@@ -636,7 +639,7 @@ export default function AdminPage() {
       setAutoExpandCompraId(updatedQuote.id);
       setActiveTab('compras');
     } catch (err: any) {
-      alert('Error al guardar: ' + err.message);
+      setError('Error al guardar: ' + err.message);
     } finally {
       setAssignSaving(false);
     }
@@ -688,9 +691,10 @@ export default function AdminPage() {
     const clienteTelefono = String(cliente.telefono || '').replace(/[^0-9]/g, '');
 
     if (!clienteTelefono) {
-      alert('El teléfono del cliente no es válido para WhatsApp. Verifica el número en la cotización.');
+      setError('El teléfono del cliente no es válido para WhatsApp. Verifica el número en la cotización.');
       return;
     }
+    setError(null);
 
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const pageWidth = 595;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -137,7 +138,7 @@ export default function MisCotizacionesPage() {
                             {imgs.slice(0, 4).map((img, i) => (
                               <button key={img.url} type="button" onClick={() => setLightbox({ images: imgs, index: i })}
                                 className="w-14 h-14 rounded-lg overflow-hidden border-2 border-slate-900 bg-slate-950 hover:border-cyan-500/60 hover:z-10 relative transition-all cursor-pointer">
-                                <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                                <Image src={img.url} alt={img.label} fill sizes="56px" className="object-cover" />
                               </button>
                             ))}
                           </div>

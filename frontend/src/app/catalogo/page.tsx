@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
@@ -174,7 +175,7 @@ export default function Catalogo() {
                 </button>
               )}
             </>)}
-            <button onClick={loadProductos} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-white cursor-pointer transition-colors" title="Recargar">
+            <button onClick={loadProductos} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-white cursor-pointer transition-colors" title="Recargar" aria-label="Recargar catálogo">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
@@ -197,7 +198,7 @@ export default function Catalogo() {
                         <div className="grid grid-cols-1 md:grid-cols-2">
                           <div className="aspect-square bg-slate-800/80 relative flex items-center justify-center overflow-hidden">
                             {prod.imagenUrl ? (
-                              <img src={prod.imagenUrl} alt={prod.nombre} className="w-full h-full object-cover" />
+                              <Image src={prod.imagenUrl} alt={prod.nombre} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
                             ) : (
                               <Box className="w-24 h-24 text-slate-600" />
                             )}
@@ -269,11 +270,11 @@ export default function Catalogo() {
 
               {productos.length > 1 && (
                 <>
-                  <button onClick={handlePrev} disabled={currentIndex === 0}
+                  <button onClick={handlePrev} disabled={currentIndex === 0} aria-label="Producto anterior"
                     className="absolute left-0 top-1/2 -translate-y-1/2 p-2 sm:p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-full text-slate-300 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed backdrop-blur-sm transition-all z-10 ml-1">
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                  <button onClick={handleNext} disabled={currentIndex >= productos.length - 1}
+                  <button onClick={handleNext} disabled={currentIndex >= productos.length - 1} aria-label="Siguiente producto"
                     className="absolute right-0 top-1/2 -translate-y-1/2 p-2 sm:p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-full text-slate-300 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed backdrop-blur-sm transition-all z-10 mr-1">
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -283,7 +284,7 @@ export default function Catalogo() {
 
             <div className="flex items-center justify-center gap-2 mt-6">
               {productos.map((_, idx) => (
-                <button key={idx} onClick={() => setCurrentIndex(idx)}
+                <button key={idx} onClick={() => setCurrentIndex(idx)} aria-label={`Ir al producto ${idx + 1}`}
                   className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${idx === currentIndex ? 'bg-cyan-400 w-6' : 'bg-slate-700 hover:bg-slate-500'}`} />
               ))}
             </div>
