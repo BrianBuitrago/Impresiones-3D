@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { crearQuote } from '@/services/quoteService';
@@ -237,7 +238,7 @@ export default function Cotizar() {
       }));
       return;
     }
-    if (!file.type.startsWith('image/')) { alert('Por favor selecciona un archivo de imagen válido.'); return; }
+    if (!file.type.startsWith('image/')) { setError('Por favor selecciona un archivo de imagen válido.'); return; }
     const reader = new FileReader();
     reader.onloadend = () =>
       setProductoActual(prev => ({
@@ -909,10 +910,10 @@ export default function Cotizar() {
                                     <span className="text-[9px] text-slate-500 group-hover:text-slate-300 transition-colors text-center">Subir</span>
                                   </label>
                                 ) : (
-                                  <div className="relative border border-slate-800 rounded-lg overflow-hidden bg-slate-950">
-                                    <img src={preview} alt={labels[angle]} className="w-full h-20 object-cover" />
+                                  <div className="relative h-20 border border-slate-800 rounded-lg overflow-hidden bg-slate-950">
+                                    <Image src={preview} alt={labels[angle]} fill unoptimized sizes="150px" className="object-cover" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
-                                    <button type="button" onClick={() => handleImageChange(angle, null)} className="absolute top-1 right-1 p-1 bg-slate-900/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-md transition-all cursor-pointer">
+                                    <button type="button" onClick={() => handleImageChange(angle, null)} aria-label="Quitar imagen" className="absolute top-1 right-1 p-1 bg-slate-900/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-md transition-all cursor-pointer">
                                       <X className="w-3 h-3" />
                                     </button>
                                     <span className="absolute bottom-1 left-1.5 text-[8px] text-slate-400 font-medium">{labels[angle]}</span>
@@ -979,7 +980,7 @@ export default function Cotizar() {
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3">
                               {p.imagePreviews.frontal || Object.values(p.imagePreviews).find(v => v) ? (
-                                <img src={p.imagePreviews.frontal || Object.values(p.imagePreviews).find(v => v) || ''} alt="mini" className="w-10 h-10 object-cover rounded-lg border border-slate-800 shrink-0" />
+                                <Image src={p.imagePreviews.frontal || Object.values(p.imagePreviews).find(v => v) || ''} alt="mini" unoptimized width={40} height={40} className="w-10 h-10 object-cover rounded-lg border border-slate-800 shrink-0" />
                               ) : (
                                 <div className="w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-700 shrink-0">
                                   <ImageIcon className="w-4 h-4" />

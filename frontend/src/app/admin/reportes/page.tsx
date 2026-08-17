@@ -411,7 +411,7 @@ export default function ReportesPage() {
               </button>
               <button onClick={loadData}
                 className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-white cursor-pointer transition-colors"
-                title="Recargar"><RefreshCw className="w-4 h-4" /></button>
+                title="Recargar" aria-label="Recargar reportes"><RefreshCw className="w-4 h-4" /></button>
             </div>
           </div>
         </div>
@@ -727,7 +727,7 @@ export default function ReportesPage() {
               <div className="flex gap-2 mb-3">
                 <input type="text" placeholder="Nueva categoría..." value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAgregarCategoria(); }} className={inputClass} />
-                <button onClick={handleAgregarCategoria} disabled={!nuevaCategoria.trim()}
+                <button onClick={handleAgregarCategoria} disabled={!nuevaCategoria.trim()} aria-label="Agregar categoría"
                   className="p-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl cursor-pointer disabled:cursor-not-allowed transition-colors">
                   <Plus className="w-4 h-4" />
                 </button>
@@ -993,7 +993,7 @@ function ManualPurchaseForm({
               {periodosDisponibles.map(p => (<option key={p} value={p}>{p}</option>))}
             </select>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} aria-label="Cerrar formulario" className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="px-6 py-5 space-y-6">

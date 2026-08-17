@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
+import Image from 'next/image';
 import {
   Search,
   Mail,
@@ -149,6 +150,7 @@ export default function QuotesTab({
                       onClick={fetchQuotes}
                       className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer"
                       title="Recargar cotizaciones"
+                      aria-label="Recargar cotizaciones"
                     >
                       <RefreshCw className="w-4 h-4" />
                     </button>
@@ -258,7 +260,7 @@ export default function QuotesTab({
                                     {getProductImages(producto).slice(0, 4).map((img, i) => (
                                       <button key={img.url} type="button" onClick={() => setLightbox({ images: getProductImages(producto), index: i })}
                                         className="w-10 h-10 rounded-lg overflow-hidden border-2 border-slate-900 bg-slate-950 hover:border-cyan-500/60 hover:z-10 relative transition-all cursor-pointer">
-                                        <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                                        <Image src={img.url} alt={img.label} fill sizes="40px" className="object-cover" />
                                       </button>
                                     ))}
                                   </div>
@@ -318,7 +320,7 @@ export default function QuotesTab({
                                           setLightbox({ images: imgs, index: clickedIdx >= 0 ? clickedIdx : 0 });
                                         }}
                                         className="relative w-full aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group transition-all cursor-pointer">
-                                        <img src={imgUrl} alt={labels[i]} className="w-full h-full object-cover" />
+                                        <Image src={imgUrl} alt={labels[i]} fill sizes="150px" className="object-cover" />
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[8px] font-bold gap-0.5">
                                           <Eye className="w-3 h-3" /> {labels[i]}
                                         </div>
@@ -512,7 +514,7 @@ export default function QuotesTab({
                                       {getProductImages(producto).slice(0, 4).map((img, i) => (
                                         <button key={img.url} type="button" onClick={() => setLightbox({ images: getProductImages(producto), index: i })}
                                           className="w-10 h-10 rounded-lg overflow-hidden border-2 border-slate-900 bg-slate-950 hover:border-cyan-500/60 hover:z-10 relative transition-all cursor-pointer">
-                                          <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                                          <Image src={img.url} alt={img.label} fill sizes="40px" className="object-cover" />
                                         </button>
                                       ))}
                                     </div>
@@ -592,7 +594,7 @@ export default function QuotesTab({
                                               setLightbox({ images: imgs, index: clickedIdx >= 0 ? clickedIdx : 0 });
                                             }}
                                             className="relative w-full aspect-square rounded-lg overflow-hidden border border-slate-700 hover:border-cyan-500/50 bg-slate-950 flex items-center justify-center group transition-all cursor-pointer">
-                                            <img src={imgUrl} alt={labels[i]} className="w-full h-full object-cover" />
+                                            <Image src={imgUrl} alt={labels[i]} fill sizes="150px" className="object-cover" />
                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[8px] font-bold gap-0.5">
                                               <Eye className="w-3 h-3" /> {labels[i]}
                                             </div>

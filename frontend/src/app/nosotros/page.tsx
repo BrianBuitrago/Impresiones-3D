@@ -59,7 +59,7 @@ export default function Nosotros() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-16 px-4 sm:px-6 lg:px-8 relative">
       {isAdmin && !editing && (
-        <button onClick={startEdit}
+        <button onClick={startEdit} aria-label="Editar contenido de la página"
           className="fixed top-24 right-4 p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-white cursor-pointer transition-colors z-10">
           <Pencil className="w-4 h-4" />
         </button>

@@ -124,6 +124,7 @@ export default function UsersTab({
                     onClick={fetchUsers}
                     className="p-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all cursor-pointer"
                     title="Recargar"
+                    aria-label="Recargar usuarios"
                   >
                     <RefreshCw className="w-4 h-4" />
                   </button>
