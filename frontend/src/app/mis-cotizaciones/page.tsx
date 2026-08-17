@@ -157,7 +157,7 @@ export default function MisCotizacionesPage() {
                           </div>
                           <div className="text-right shrink-0">
                             <span className="text-[10px] text-slate-500 uppercase block">precio unitario</span>
-                            <span className="text-sm font-bold text-slate-200">{formatCOP(p.precioUnitario || p.Precio_Unitario || 0)}</span>
+                            <span className="text-sm font-bold text-slate-200">{formatCOP(p.precioUnitario || 0)}</span>
                           </div>
                         </div>
                       </div>
@@ -167,7 +167,7 @@ export default function MisCotizacionesPage() {
 
                 <div className="border-t border-slate-800 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex gap-6 text-xs text-slate-400">
-                    <span>Subtotal: <span className="font-bold text-slate-200">{formatCOP(q.subtotalFabricacionTotal || q.Subtotal_Fabricacion_Total || 0)}</span></span>
+                    <span>Subtotal: <span className="font-bold text-slate-200">{formatCOP(q.subtotalFabricacionTotal || 0)}</span></span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-500 uppercase block">total</span>

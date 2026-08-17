@@ -227,7 +227,7 @@ export default function ReportesPage() {
           productoNombre: p.nombre || p.descripcionLineal || 'Producto',
           categoria: 'cotización-web',
           cantidad: p.unidades || 1,
-          valor: p.precioTotal || p.Precio_Total || p.precioLinealTotal || 0,
+          valor: p.precioTotal || p.precioLinealTotal || 0,
           estado: q.estado,
           fecha: q.Fecha || q.creadoEn || '',
         });

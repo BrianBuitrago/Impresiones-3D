@@ -294,14 +294,11 @@ export default function Cotizar() {
         ]);
         productosFinales.push({
           idProducto,
-          ID_Producto: idProducto,
           nombre:                  p.nombre,
           descripcionLineal:       p.descripcionLineal,
-          Descripcion_Lineal:      p.descripcionLineal || p.nombre,
           tamanoHorizontal:        parseFloat(p.tamanoHorizontal),
           tamanoVertical:          parseFloat(p.tamanoVertical),
           unidades:                p.unidades,
-          Cantidad_Piezas:         p.unidades,
           accesorios:              p.accesorios,
           personalizacion:         p.personalizacion,
           personalizacionOtraText: p.personalizacion.includes('otra') ? p.personalizacionOtraText : '',
@@ -315,14 +312,6 @@ export default function Cotizar() {
           tiempoHoras:             parseFloat(p.tiempoHoras) || 0,
           tiempoMinutos:           parseFloat(p.tiempoMinutos) || 0,
           pesoGramos:              parseFloat(p.pesoGramos) || 0,
-          Tiempo_Horas:            parseFloat(p.tiempoHoras) || 0,
-          Tiempo_Minutos:          parseFloat(p.tiempoMinutos) || 0,
-          Peso_Gramos:             parseFloat(p.pesoGramos) || 0,
-          Subtotal_Energia:        0,
-          Subtotal_Material:       0,
-          Subtotal_Fabricacion:    0,
-          Precio_Unitario_Con_Ganancia: 0,
-          Precio_Lineal_Total:      0,
         });
       }
 
