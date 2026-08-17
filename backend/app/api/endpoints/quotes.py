@@ -140,7 +140,9 @@ def get_all_quotes(
         if estado:
             query = query.where("estado", "==", estado.strip().lower())
         query = query.order_by("creadoEn", direction="DESCENDING")
-        docs = query.stream()
+        # Límite defensivo, no paginación real: Reportes/comparativas necesitan el set
+        # completo para sumar bien, así que se deja muy por encima del volumen actual.
+        docs = query.limit(2000).stream()
         quotes_list = []
         is_colaborador = current_user.get("rol") == "colaborador"
         for doc in docs:
@@ -169,7 +171,7 @@ def get_my_quotes(uid: str = Depends(get_firebase_uid)):
                             detail="Servicio de base de datos no disponible.")
     try:
         quotes_ref = db.collection("quotes").where("cliente.uid", "==", uid)
-        docs = quotes_ref.stream()
+        docs = quotes_ref.limit(200).stream()
         quotes_list = []
         for doc in docs:
             q_data = doc.to_dict()

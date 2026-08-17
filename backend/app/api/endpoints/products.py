@@ -13,7 +13,9 @@ def list_products(destacado: Optional[bool] = Query(None)):
     query = db.collection("products")
     if destacado is not None:
         query = query.where("destacado", "==", destacado)
-    docs = query.stream()
+    # Límite defensivo: evita que una consulta pública sin filtros traiga una colección
+    # ilimitada (costo/latencia). Muy por encima del catálogo real actual.
+    docs = query.limit(300).stream()
     results = []
     for d in docs:
         item = d.to_dict() or {}

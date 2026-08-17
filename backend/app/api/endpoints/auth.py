@@ -243,7 +243,9 @@ def list_all_users(
         query = db.collection("users")
         if rol:
             query = query.where("rol", "==", rol.strip().lower())
-        docs = query.stream()
+        # Límite defensivo, no paginación real: muy por encima de la base de usuarios
+        # actual, solo evita que la colección crezca sin control.
+        docs = query.limit(1000).stream()
         
         users_list = []
         for doc in docs:
