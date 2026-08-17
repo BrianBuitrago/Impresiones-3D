@@ -45,7 +45,9 @@ def list_inversiones(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Servicio de base de datos no disponible.')
     try:
-        docs = db.collection('inversiones').order_by('creadoEn', direction='DESCENDING').stream()
+        # Límite defensivo, no paginación real: las vistas por período necesitan el set
+        # completo, así que se deja muy por encima del volumen actual.
+        docs = db.collection('inversiones').order_by('creadoEn', direction='DESCENDING').limit(2000).stream()
         inversiones = []
         for doc in docs:
             data = doc.to_dict()

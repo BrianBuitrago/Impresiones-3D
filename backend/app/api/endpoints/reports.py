@@ -58,7 +58,9 @@ def list_reports(
             query = query.where('estado', '==', estado.strip().lower())
         if tipo:
             query = query.where('tipo', '==', tipo.strip().lower())
-        docs = query.order_by('creadoEn', direction='DESCENDING').stream()
+        # Límite defensivo, no paginación real: las comparativas de Reportes necesitan
+        # el set completo, así que se deja muy por encima del volumen actual.
+        docs = query.order_by('creadoEn', direction='DESCENDING').limit(2000).stream()
         reports = []
         for doc in docs:
             data = doc.to_dict()
