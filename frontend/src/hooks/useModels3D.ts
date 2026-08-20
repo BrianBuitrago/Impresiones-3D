@@ -10,10 +10,11 @@ const CLOUDINARY_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'i
 const MODELS_SETTINGS_ID = 'models3d';
 
 // Modelos 3D del hero de inicio: el administrador los sube desde la propia
-// página (sin tocar código ni redeploy). Se guardan en Cloudinary (resource_type
-// raw, ya que un .glb no es una imagen) y sus URLs en settings/models3d.
-// Hero3D elige uno al azar entre los subidos en cada carga de página; si no
-// hay ninguno, se usa la figura de respaldo (Scene3D).
+// página (sin tocar código ni redeploy). Admite .glb y .stl. Se guardan en
+// Cloudinary (resource_type raw, ya que ninguno de los dos es una imagen) y
+// sus URLs en settings/models3d. Hero3D elige uno al azar entre los subidos
+// en cada carga de página; si no hay ninguno, se usa la figura de respaldo
+// (Scene3D).
 export function useModels3D() {
   const { profile } = useAuth();
   const isAdmin = profile?.rol === 'administrador';
@@ -39,8 +40,8 @@ export function useModels3D() {
 
   const uploadModel = async (file: File) => {
     setError(null);
-    if (!file.name.toLowerCase().endsWith('.glb')) {
-      setError('Selecciona un archivo .glb válido.');
+    if (!/\.(glb|stl)$/i.test(file.name)) {
+      setError('Selecciona un archivo .glb o .stl válido.');
       return;
     }
     setUploading(true);
