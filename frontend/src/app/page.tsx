@@ -47,7 +47,14 @@ export default function Home() {
             </div>
 
             {/* Visualizador 3D Interactivo (Columna derecha) */}
-            <div className="lg:col-span-5 w-full h-[350px] sm:h-[450px] lg:h-[500px] relative bg-slate-900/30 rounded-3xl border border-slate-800/50 backdrop-blur-md overflow-hidden shadow-2xl shadow-cyan-500/5">
+            <div
+              className="lg:col-span-5 w-full h-[350px] sm:h-[450px] lg:h-[500px] relative bg-white rounded-3xl border border-slate-800/50 overflow-hidden shadow-2xl shadow-cyan-500/5"
+              style={{
+                backgroundImage:
+                  "linear-gradient(to right, #e5e7eb 1px, transparent 1px), linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)",
+                backgroundSize: "24px 24px",
+              }}
+            >
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-slate-950/80 px-3 py-1.5 rounded-full border border-slate-800 text-xs text-cyan-400 font-medium font-inter">
                 <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
                 Interactúa con el modelo 3D
