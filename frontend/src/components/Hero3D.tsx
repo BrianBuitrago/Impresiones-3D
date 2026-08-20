@@ -115,7 +115,11 @@ export default function Hero3D() {
             elegido al azar, con Scene3D como respaldo si no hay ninguno
             subido o si el archivo elegido falla al cargar */}
         {modelPath ? (
-          <ModelErrorBoundary fallback={<Scene3D />}>
+          // La key por modelPath fuerza a recrear el ErrorBoundary en cada
+          // cambio de modelo: si no, una vez que CUALQUIER modelo fallaba al
+          // cargar, "hasError" quedaba en true para siempre y ya no se volvía
+          // a intentar cargar ningún modelo más (ni siquiera los que sí sirven).
+          <ModelErrorBoundary key={modelPath} fallback={<Scene3D />}>
             <Suspense fallback={null}>
               <Model3D path={modelPath} />
             </Suspense>
