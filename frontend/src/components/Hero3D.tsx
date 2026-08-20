@@ -36,8 +36,8 @@ export default function Hero3D() {
     const camera = controls.object;
     const target = controls.target;
     const newPos = camera.position.clone().sub(target).multiplyScalar(factor).add(target);
-    const minDist = controls.minDistance ?? 1.8;
-    const maxDist = controls.maxDistance ?? 8;
+    const minDist = controls.minDistance ?? 1;
+    const maxDist = controls.maxDistance ?? 14;
     const dist = newPos.distanceTo(target);
     if (dist < minDist || dist > maxDist) return;
     camera.position.copy(newPos);
@@ -126,8 +126,8 @@ export default function Hero3D() {
           autoRotateSpeed={0.5}
           maxPolarAngle={Math.PI / 2}
           minPolarAngle={Math.PI / 3}
-          minDistance={1.8}
-          maxDistance={8}
+          minDistance={1}
+          maxDistance={14}
         />
       </Canvas>
     </div>
