@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { Shuffle } from "lucide-react";
+import { Shuffle, ZoomIn, ZoomOut } from "lucide-react";
 import Scene3D from "./Scene3D";
 import Model3D from "./Model3D";
 import ModelErrorBoundary from "./ModelErrorBoundary";
@@ -25,6 +25,24 @@ export default function Hero3D() {
   const [mounted, setMounted] = useState(false);
   const [modelPath, setModelPath] = useState<string | null>(null);
   const { modelUrls, loaded } = useModels3D();
+  const controlsRef = useRef<any>(null);
+
+  // Acerca/aleja la cámara manteniendo el punto al que mira OrbitControls,
+  // y le avisa a los controles que recalculen su estado interno a partir de
+  // la nueva posición (si no, en el próximo frame la pisan con la vieja).
+  const handleZoom = (factor: number) => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const camera = controls.object;
+    const target = controls.target;
+    const newPos = camera.position.clone().sub(target).multiplyScalar(factor).add(target);
+    const minDist = controls.minDistance ?? 1.8;
+    const maxDist = controls.maxDistance ?? 8;
+    const dist = newPos.distanceTo(target);
+    if (dist < minDist || dist > maxDist) return;
+    camera.position.copy(newPos);
+    controls.update();
+  };
 
   // Elige un modelo al azar entre los subidos por el administrador (ver
   // Models3DManager). Si todavía no hay ninguno, se queda sin modelPath y
@@ -58,6 +76,28 @@ export default function Hero3D() {
           Ver otro modelo
         </button>
       )}
+
+      {/* Acercar/alejar el modelo, sin depender del scroll de la rueda del mouse */}
+      <div className="absolute bottom-4 left-4 z-20 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => handleZoom(0.85)}
+          aria-label="Acercar modelo"
+          title="Acercar"
+          className="p-2 bg-slate-950/80 hover:bg-slate-800 rounded-full border border-slate-800 text-cyan-400 transition-colors cursor-pointer"
+        >
+          <ZoomIn className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => handleZoom(1.18)}
+          aria-label="Alejar modelo"
+          title="Alejar"
+          className="p-2 bg-slate-950/80 hover:bg-slate-800 rounded-full border border-slate-800 text-cyan-400 transition-colors cursor-pointer"
+        >
+          <ZoomOut className="w-3.5 h-3.5" />
+        </button>
+      </div>
       <Canvas camera={{ position: [0, 0, 3.5], fov: 45 }}>
         {/* Luces avanzadas para resaltar el material metálico */}
         <ambientLight intensity={0.4} />
@@ -79,12 +119,15 @@ export default function Hero3D() {
         )}
 
         {/* Controles para que el usuario pueda jugar con la figura */}
-        <OrbitControls 
-          enableZoom={false} // Evita que el scroll de la página haga zoom en el 3D
-          autoRotate 
-          autoRotateSpeed={0.5} 
+        <OrbitControls
+          ref={controlsRef}
+          enableZoom={false} // Evita que el scroll de la página haga zoom en el 3D; el acercar/alejar es manual con los botones
+          autoRotate
+          autoRotateSpeed={0.5}
           maxPolarAngle={Math.PI / 2}
           minPolarAngle={Math.PI / 3}
+          minDistance={1.8}
+          maxDistance={8}
         />
       </Canvas>
     </div>
