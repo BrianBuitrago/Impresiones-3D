@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { useAuth } from '@/context/AuthContext';
 
@@ -56,9 +56,10 @@ export function useModels3D() {
       if (!res.ok) throw new Error('Error al subir el modelo 3D.');
       const data = await res.json();
       const url = data.secure_url as string;
-      const nextUrls = [...modelUrls, url];
-      await setDoc(doc(db!, 'settings', MODELS_SETTINGS_ID), { urls: nextUrls });
-      setModelUrls(nextUrls);
+      // arrayUnion es atómico en el servidor: si dos subidas se solapan, ninguna
+      // pisa a la otra (a diferencia de leer+escribir el array completo desde acá).
+      await setDoc(doc(db!, 'settings', MODELS_SETTINGS_ID), { urls: arrayUnion(url) }, { merge: true });
+      setModelUrls((prev) => [...prev, url]);
     } catch (err: any) {
       setError(err.message || 'Error al subir el modelo 3D.');
     } finally {
@@ -68,10 +69,9 @@ export function useModels3D() {
 
   const deleteModel = async (url: string) => {
     setError(null);
-    const nextUrls = modelUrls.filter((u) => u !== url);
     try {
-      await setDoc(doc(db!, 'settings', MODELS_SETTINGS_ID), { urls: nextUrls });
-      setModelUrls(nextUrls);
+      await setDoc(doc(db!, 'settings', MODELS_SETTINGS_ID), { urls: arrayRemove(url) }, { merge: true });
+      setModelUrls((prev) => prev.filter((u) => u !== url));
     } catch {
       setError('Error al eliminar el modelo 3D.');
     }
