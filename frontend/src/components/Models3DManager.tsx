@@ -36,7 +36,7 @@ export default function Models3DManager() {
             </div>
 
             <p className="text-sm text-slate-400 mb-4">
-              Subí archivos .glb para que roten al azar en el modelo 3D de la página de inicio.
+              Subí archivos .glb o .stl para que roten al azar en el modelo 3D de la página de inicio.
               Si no hay ninguno subido, se muestra la figura de respaldo.
             </p>
 
@@ -46,12 +46,12 @@ export default function Models3DManager() {
               disabled={uploading}
               className="w-full mb-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-xl transition-colors cursor-pointer"
             >
-              {uploading ? 'Subiendo...' : '+ Subir modelo .glb'}
+              {uploading ? 'Subiendo...' : '+ Subir modelo .glb o .stl'}
             </button>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".glb"
+              accept=".glb,.stl"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
