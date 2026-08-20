@@ -21,8 +21,8 @@ _is_production = os.environ.get("ENVIRONMENT", "development").strip().lower() ==
 # En producción se deshabilitan /docs, /redoc y /openapi.json: no aportan valor a los
 # usuarios finales y sí facilitan que un atacante mapee toda la superficie de la API.
 app = FastAPI(
-    title="Impresiones 3D API",
-    description="Backend para la aplicación de Impresiones 3D",
+    title="RepliCars3D API",
+    description="Backend para la aplicación de RepliCars3D",
     version="1.0.0",
     docs_url=None if _is_production else "/docs",
     redoc_url=None if _is_production else "/redoc",
@@ -71,7 +71,7 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/")
 def read_root():
     return {
-        "message": "Bienvenido a la API de Impresiones 3D",
+        "message": "Bienvenido a la API de RepliCars3D",
         "status": "running",
         "docs": "/docs"
     }
