@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Box, Cpu, ShieldCheck } from "lucide-react";
 import Hero3D from "@/components/Hero3D";
+import Models3DManager from "@/components/Models3DManager";
 import CatalogoDestacado from "@/components/CatalogoDestacado";
 
 export default function Home() {
@@ -52,6 +53,7 @@ export default function Home() {
                 Interactúa con el modelo 3D
               </div>
               <Hero3D />
+              <Models3DManager />
             </div>
 
           </div>
