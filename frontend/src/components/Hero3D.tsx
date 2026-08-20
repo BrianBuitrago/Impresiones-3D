@@ -1,15 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import Scene3D from "./Scene3D";
+import Model3D from "./Model3D";
+import ModelErrorBoundary from "./ModelErrorBoundary";
+
+// Modelos 3D disponibles para el hero (archivos .glb en frontend/public/models/,
+// ver el README ahí). En cada carga de página se elige uno al azar; si el
+// archivo elegido no existe o falla al cargar, se usa Scene3D como respaldo.
+const AVAILABLE_MODELS = [
+  "/models/model-1.glb",
+  "/models/model-2.glb",
+  "/models/model-3.glb",
+  "/models/model-4.glb",
+  "/models/model-5.glb",
+];
 
 export default function Hero3D() {
   const [mounted, setMounted] = useState(false);
+  const [modelPath, setModelPath] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    const picked = AVAILABLE_MODELS[Math.floor(Math.random() * AVAILABLE_MODELS.length)];
+    setModelPath(picked);
   }, []);
 
   if (!mounted) {
@@ -32,9 +48,14 @@ export default function Hero3D() {
         <directionalLight position={[-5, 5, -5]} intensity={0.8} />
         <pointLight position={[0, -5, 0]} intensity={0.5} color="#06b6d4" />
         
-        {/* Figura en movimiento */}
-        <Scene3D />
-        
+        {/* Figura en movimiento: uno de los modelos .glb elegido al azar, con
+            Scene3D como respaldo si no existe o falla al cargar */}
+        <ModelErrorBoundary fallback={<Scene3D />}>
+          <Suspense fallback={null}>
+            {modelPath && <Model3D path={modelPath} />}
+          </Suspense>
+        </ModelErrorBoundary>
+
         {/* Controles para que el usuario pueda jugar con la figura */}
         <OrbitControls 
           enableZoom={false} // Evita que el scroll de la página haga zoom en el 3D
