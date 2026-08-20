@@ -69,7 +69,13 @@ export default function Hero3D() {
       {modelUrls.length > 1 && (
         <button
           type="button"
-          onClick={() => setModelPath((prev) => pickRandomModel(modelUrls, prev))}
+          onClick={() => {
+            setModelPath((prev) => pickRandomModel(modelUrls, prev));
+            // Vuelve la cámara a la posición inicial para que se note claro
+            // que cambió de modelo, en vez de seguir girando desde donde
+            // había quedado con el modelo anterior.
+            controlsRef.current?.reset();
+          }}
           className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 bg-slate-950/80 hover:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-800 text-xs text-cyan-400 font-medium transition-colors cursor-pointer"
         >
           <Shuffle className="w-3.5 h-3.5" />
