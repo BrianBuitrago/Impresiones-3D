@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Mail, MapPin, Pencil } from "lucide-react";
 import { useEditableSetting } from "@/hooks/useEditableSetting";
+import { useLogo } from "@/hooks/useLogo";
 import SettingsEditModal from "@/components/ui/SettingsEditModal";
 
 const SETTINGS_ID = 'footer';
@@ -25,6 +26,7 @@ const DEFAULTS: FooterData = {
 export default function Footer() {
   const { isAdmin, data, editing, form, setForm, startEdit, cancelEdit, saveEdit } =
     useEditableSetting<FooterData>(SETTINGS_ID, DEFAULTS);
+  const { logoUrl } = useLogo();
 
   return (
     <footer className="bg-slate-950 border-t border-slate-800 pt-12 pb-8 relative">
@@ -49,7 +51,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8">
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <Image src="/logo.png" alt="RepliCars3D" width={24} height={24} className="object-contain" />
+              <Image src={logoUrl} alt="RepliCars3D" width={24} height={24} className="object-contain" />
               <span className="text-xl font-bold text-slate-100">RepliCars3D</span>
             </div>
             <p className="text-slate-400 text-sm">{data.tagline}</p>

@@ -2,29 +2,62 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, User, LogOut, ShieldAlert, FileText } from "lucide-react";
+import { ShoppingCart, User, LogOut, ShieldAlert, FileText, Pencil } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from "react";
+import { useLogo } from "@/hooks/useLogo";
+import { useRef, useState } from "react";
 
 export default function Navbar() {
   const { user, profile, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { logoUrl, isAdmin, uploading, error, uploadNewLogo } = useLogo();
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          
+
           {/* Logo */}
-          <div className="flex items-center">
+          <div className="flex items-center relative">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="p-1 bg-cyan-500/10 rounded-lg group-hover:bg-cyan-500/20 transition-colors">
-                <Image src="/logo.png" alt="RepliCars3D" width={28} height={28} className="object-contain" />
+              <div className="p-1 bg-cyan-500/10 rounded-lg group-hover:bg-cyan-500/20 transition-colors relative">
+                <Image src={logoUrl} alt="RepliCars3D" width={28} height={28} className="object-contain" />
               </div>
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 font-sans">
                 RepliCars3D
               </span>
             </Link>
+            {isAdmin && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={uploading}
+                  aria-label="Cambiar logo del sitio"
+                  title="Cambiar logo del sitio"
+                  className="ml-2 p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadNewLogo(file);
+                    e.target.value = '';
+                  }}
+                />
+                {error && (
+                  <span className="absolute top-full left-0 mt-1 whitespace-nowrap text-[10px] text-red-400 bg-slate-900 border border-red-500/30 rounded-lg px-2 py-1 z-10">
+                    {error}
+                  </span>
+                )}
+              </>
+            )}
           </div>
 
           {/* Links Principales */}
