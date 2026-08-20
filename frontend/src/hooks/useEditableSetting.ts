@@ -16,7 +16,10 @@ export function useEditableSetting<T>(settingsId: string, defaults: T) {
     (async () => {
       try {
         const snap = await getDoc(doc(db!, 'settings', settingsId));
-        if (snap.exists()) setData(snap.data() as T);
+        // Combina con los valores por defecto en vez de reemplazarlos: si se agrega un
+        // campo nuevo despues de que el documento ya existia en Firestore, no queda
+        // undefined hasta que alguien lo edite y guarde por primera vez.
+        if (snap.exists()) setData({ ...defaults, ...(snap.data() as Partial<T>) } as T);
       } catch { /* usa defaults */ }
     })();
   }, [settingsId]);
