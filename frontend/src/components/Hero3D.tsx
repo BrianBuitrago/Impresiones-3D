@@ -3,10 +3,23 @@
 import { Suspense, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import { Shuffle } from "lucide-react";
 import Scene3D from "./Scene3D";
 import Model3D from "./Model3D";
 import ModelErrorBoundary from "./ModelErrorBoundary";
 import { useModels3D } from "@/hooks/useModels3D";
+
+// Elige un modelo al azar entre los subidos, evitando repetir el actual
+// cuando hay más de uno disponible.
+function pickRandomModel(urls: string[], exclude: string | null): string | null {
+  if (urls.length === 0) return null;
+  if (urls.length === 1) return urls[0];
+  let candidate: string;
+  do {
+    candidate = urls[Math.floor(Math.random() * urls.length)];
+  } while (candidate === exclude);
+  return candidate;
+}
 
 export default function Hero3D() {
   const [mounted, setMounted] = useState(false);
@@ -18,10 +31,7 @@ export default function Hero3D() {
   // se muestra directamente la figura de respaldo (Scene3D).
   useEffect(() => {
     if (!loaded) return;
-    const picked = modelUrls.length > 0
-      ? modelUrls[Math.floor(Math.random() * modelUrls.length)]
-      : null;
-    setModelPath(picked);
+    setModelPath(pickRandomModel(modelUrls, null));
     setMounted(true);
   }, [loaded, modelUrls]);
 
@@ -37,7 +47,17 @@ export default function Hero3D() {
   }
 
   return (
-    <div className="w-full h-full">
+    <div className="relative w-full h-full">
+      {modelUrls.length > 1 && (
+        <button
+          type="button"
+          onClick={() => setModelPath((prev) => pickRandomModel(modelUrls, prev))}
+          className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 bg-slate-950/80 hover:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-800 text-xs text-cyan-400 font-medium transition-colors cursor-pointer"
+        >
+          <Shuffle className="w-3.5 h-3.5" />
+          Ver otro modelo
+        </button>
+      )}
       <Canvas camera={{ position: [0, 0, 3.5], fov: 45 }}>
         {/* Luces avanzadas para resaltar el material metálico */}
         <ambientLight intensity={0.4} />
