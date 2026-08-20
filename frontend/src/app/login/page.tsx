@@ -67,7 +67,7 @@ export default function LoginPage() {
               Bienvenido de Nuevo
             </h1>
             <p className="mt-2 text-slate-400 text-sm">
-              Accede a tu cuenta de Impresiones 3D
+              Accede a tu cuenta de RepliCars3D
             </p>
           </div>
 

@@ -722,7 +722,7 @@ export default function AdminPage() {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
     doc.setTextColor(255, 255, 255);
-    doc.text('Impresiones 3D', titleX, 38);
+    doc.text('RepliCars3D', titleX, 38);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10.5);
     doc.setTextColor(224, 250, 255);
@@ -889,7 +889,7 @@ export default function AdminPage() {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
-      doc.text('Impresiones 3D · Cotización generada automáticamente', margin, pageHeight - 22);
+      doc.text('RepliCars3D · Cotización generada automáticamente', margin, pageHeight - 22);
       doc.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 22, { align: 'right' });
     }
 

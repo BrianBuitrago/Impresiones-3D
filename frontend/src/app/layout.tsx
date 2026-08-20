@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "Impresiones 3D | Tu Catálogo",
+  title: "RepliCars3D | Tu Catálogo",
   description: "Servicio profesional de impresión 3D y diseño",
   icons: {
     icon: "/logo.png",

@@ -19,7 +19,7 @@ const DEFAULTS: FooterData = {
   tagline: 'Materializamos tus ideas con precisión. Alta calidad en cada capa.',
   direccion: 'Colombia, Samacá',
   email: 'contacto@impresiones3d.com',
-  copyright: 'Impresiones 3D. Todos los derechos reservados.',
+  copyright: 'RepliCars3D. Todos los derechos reservados.',
 };
 
 export default function Footer() {
@@ -49,8 +49,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8">
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <Image src="/logo.png" alt="Impresiones 3D" width={24} height={24} className="object-contain" />
-              <span className="text-xl font-bold text-slate-100">Impresiones 3D</span>
+              <Image src="/logo.png" alt="RepliCars3D" width={24} height={24} className="object-contain" />
+              <span className="text-xl font-bold text-slate-100">RepliCars3D</span>
             </div>
             <p className="text-slate-400 text-sm">{data.tagline}</p>
           </div>

@@ -12,7 +12,7 @@ export default function Terminos() {
 
         <div className="space-y-6 text-sm text-slate-300 leading-relaxed font-sans">
           <p>
-            Bienvenido a Impresiones 3D. Al utilizar nuestros servicios de impresión 3D o adquirir productos de nuestro catálogo, aceptas regirte por los siguientes términos y condiciones.
+            Bienvenido a RepliCars3D. Al utilizar nuestros servicios de impresión 3D o adquirir productos de nuestro catálogo, aceptas regirte por los siguientes términos y condiciones.
           </p>
 
           <h3 className="text-lg font-semibold text-white mt-8 mb-2">1. Propiedad Intelectual</h3>

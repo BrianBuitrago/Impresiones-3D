@@ -229,4 +229,83 @@ Todos los commits del proyecto deberán seguir estrictamente la siguiente estruc
   * `fix(frontend): corregir alineación del layout en page.tsx`
   * `docs(backend): actualizar plan de implementacion con reglas de commits`
 
+---
+
+## 7. Auditoría de Seguridad Integral (2026-08-14)
+
+Auditoría completa (backend FastAPI, `firestore.rules`, frontend Next.js, subida de imágenes a Cloudinary, CORS, cabeceras HTTP) realizada a pedido del usuario, actuando como revisor de seguridad. Continúa el trabajo de la Fase 1 (2026-08-10, ver `optimization_project` en memoria) pero cubre huecos que quedaron fuera de esa ronda y de la ronda de RBAC de cotizaciones/compras (2026-08-14). **Estado: todo lo que es código ya está implementado y verificado (TestClient + tsc + browser); quedan 3 acciones pendientes que requieren que el usuario actúe en dashboards externos a los que no tengo acceso (marcadas ⏳ abajo).**
+
+### 🔴 Crítico
+
+1. ✅ **[Implementado]** Colaborador podía saltarse la restricción "solo administrador" en Inversiones/Reportes/Precios usando la consola del navegador o `curl` — la restricción solo existía en el frontend. `firestore.rules` (`isAdmin()` nuevo, reemplaza `isStaff()` en `inversiones`/`reports`/`settings`) y `backend/app/api/endpoints/inversiones.py` / `reports.py` (`RoleChecker(['administrador'])`) ahora exigen administrador tanto en Firestore como en el backend. Verificado con `TestClient`: colaborador → 403 en `GET/POST /inversiones` y `GET /reports`; administrador → 200.
+
+2. ⏳ **[Requiere tu acción — dashboard de Cloudinary]** Preset de subida "unsigned" usable por cualquiera en internet sin login, desde `/cotizar` (página pública) y `/catalogo`. No lo pude arreglar desde código porque la opción robusta (subida firmada) requiere que definas si querés invertir en ese endpoint nuevo, y la mitigación rápida requiere entrar al dashboard de Cloudinary, algo que no puedo hacer por vos. Recomendado, de más rápido a más robusto:
+   - **Ya, sin tocar código:** en el dashboard de Cloudinary → Settings → Upload → preset `impresiones3d_unsigned`: activar "Strict" (solo `image`), poner un tamaño máximo, fijar un folder, desactivar `overwrite`.
+   - **Robusto (requiere código nuevo, no incluido en esta ronda):** endpoint `POST /api/v1/uploads/sign` en el backend que firme la subida con `API_SECRET`, y el frontend deja de mandar `upload_preset` sin firma.
+
+3. ✅ **[Implementado, mitigación parcial]** `POST /quotes` público sin límite de tasa: se agregó `slowapi` (`backend/app/core/limiter.py`) con `10/minute` por IP en `POST /quotes` y `5/minute` en `POST /auth/register`. Verificado en aislamiento (429 tras superar el límite). **Limitación real:** el límite es en memoria; en un despliegue serverless (Vercel) no persiste entre invocaciones frías, así que es una mitigación de mejor esfuerzo contra ráfagas, no una defensa completa contra bots.
+   ⏳ **[Requiere tu acción — cuenta de reCAPTCHA/Turnstile]** La defensa robusta es un CAPTCHA en el formulario de `/cotizar`; necesita que crees una site key gratuita en Google reCAPTCHA o Cloudflare Turnstile — no es algo que pueda generar por vos. Avisame si querés que lo cablee en código una vez tengas la key.
+
+### 🟠 Alto
+
+4. ✅ **[Implementado]** Colaborador ya no puede eliminar productos del catálogo (`backend/app/api/endpoints/products.py: delete_product` ahora exige `rol == "administrador"`); conserva crear/editar, según tu confirmación. Verificado: colaborador → 403 en `DELETE /products/{id}`.
+5. ✅ **[Implementado]** Mensajes de error verbosos sanitizados en `auth.py`, `quotes.py`, `reports.py`, `inversiones.py` y `deps.py`: el detalle real ahora se loguea en servidor (`logger.error`/`logger.warning`) y al cliente se le devuelve un mensaje genérico. `register_user`/`sync_google_user` ya no reenvían el error crudo de Firebase (evita enumeración de cuentas por correo).
+6. ✅ **[Implementado]** `CORSMiddleware`: se cambió `allow_credentials=True` → `False` en `backend/app/main.py`. La app autentica con Bearer token (no cookies), así que no lo necesitaba — esto neutraliza el riesgo real de combinar el `allow_origin_regex` amplio (`*.vercel.app`) con credenciales habilitadas, sin tener que acotar el regex (que hubiera requerido saber el slug exacto del equipo/proyecto en Vercel).
+7. ✅ **[Implementado]** Rate limit de `5/minute` por IP en `POST /auth/register` (ver punto 3 sobre la limitación de estado en memoria en serverless).
+
+### 🟡 Medio
+
+8. ✅ **[Implementado, parcial]** Cabeceras `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` y `Strict-Transport-Security` (solo en producción) agregadas en `backend/app/main.py` (middleware) y `frontend/next.config.ts` (`headers()`). Verificado en el navegador (fetch a `/` devuelve las 5 cabeceras) y con `TestClient`.
+   ⏳ **No incluye CSP** (`Content-Security-Policy`): una CSP mal calibrada puede romper en silencio el login con Google (popup), la carga de imágenes de Cloudinary o el visor 3D de Three.js, y no puedo iniciar sesión para probar esos flujos autenticados en producción. Recomiendo construirla en una ronda aparte, probándola contigo en producción antes de confirmar.
+9. ✅ **[Implementado]** `/docs`, `/redoc`, `/openapi.json` deshabilitados cuando `ENVIRONMENT=production` (`backend/app/main.py`). Verificado: con `ENVIRONMENT=production`, `GET /docs` → 404.
+10. ✅ **[Implementado]** Contraseña mínima subida de 6 a 8 caracteres (`backend/app/models/user.py`). Verificado con Pydantic.
+11. ✅ **[Implementado]** `imagenFrontal/Lateral/Trasera/Diagonal` ahora exigen empezar con `https://res.cloudinary.com/` (o estar vacíos) — `backend/app/models/quote.py`. Verificado con Pydantic.
+
+### ⚪ Bajo / housekeeping
+
+12. ⏳ Las variables `ADMIN_1_PASSWORD`/`ADMIN_2_PASSWORD` (solo para el arranque inicial) quedan en texto plano en la config de entorno de Vercel indefinidamente — acción manual tuya: rotarlas ahí una vez confirmes que las 2 cuentas admin ya existen.
+13. Sigue sin haber CI/CD ni análisis automatizado de dependencias (ya señalado en la Fase 1 / `optimization_project`, aún pendiente, sin cambios en esta ronda).
+
+### Cómo verificar en producción
+- Iniciar sesión como colaborador y confirmar que las URLs `/admin/inversiones` y `/admin/reportes` (y las llamadas de red a `/api/v1/inversiones` y `/api/v1/reports`) devuelven 403 si se intenta acceder directamente.
+- Confirmar que colaborador ya no ve el botón de eliminar producto en `/catalogo` (o que un `DELETE` directo devuelve 403).
+- Revisar que el registro/login normal siga funcionando (los mensajes de error genéricos no deberían impedir el flujo, solo dejar de mostrar detalle interno).
+
+### No son hallazgos (controles ya correctos, verificados en esta auditoría)
+- No hay secretos (`.env`, `firebase-credentials.json`) en el historial de git — `.gitignore` los cubre correctamente en las 3 ubicaciones.
+- Autenticación basada en Bearer token (no cookies) → sin superficie de CSRF clásica en escrituras autenticadas.
+- `firestore.rules` de `quotes`/`users` (Fase 1 + RBAC 2026-08-14) siguen siendo correctas: `create` en `quotes` bloqueado a nivel de reglas (solo el backend con Admin SDK escribe), auto-escalación de rol bloqueada en `users`.
+- Validación Pydantic estricta en `quote.py`/`product.py` (whitelists de `estado`/`subEstado`/`empaque`/`personalizacion`, límites numéricos) sigue vigente y bien aplicada.
+
+---
+
+## 8. Revisión de Procesos, Control de Datos y Diseño Web (2026-08-15)
+
+A pedido del usuario, ronda separada de la auditoría de seguridad, cubriendo las Fases 2-4 pendientes de `optimization_project` más hallazgos nuevos de esta revisión. Se acordaron 4 rondas; progreso:
+
+1. ✅ **Diseño web** — reemplazo de los 5 `alert()` nativos por el banner de error ya existente en cada pantalla; migración de los 10 `<img>` a `next/image` (`res.cloudinary.com` agregado a `remotePatterns`); `aria-label` en 13 botones de solo-ícono sin nombre accesible. Ver commits `frontend`.
+2. ✅ **Control de datos (paginación)** — límite defensivo (`.limit()`) en los 6 endpoints de listado que traían todos los documentos sin tope (`products`, `auth/users`, `quotes` ×2, `reports`, `inversiones`). No es paginación real con cursores/UI: Reportes/Inversiones necesitan el set completo para sus agregados, así que una paginación real requeriría rediseñar esa lógica primero.
+3. ✅ **Procesos (alias duplicados)** — `quote.py`, `pricing.py` y `quotes.py` escribían cada cotización dos veces (camelCase + PascalCase/snake legacy, ej. `precioTotal`/`Precio_Total`). Se dejó de **generar** el set legacy en escrituras nuevas (backend) y de **leer/enviar** esos campos en el frontend (68 referencias en 7 archivos). Se mantienen los alias de *entrada* (compatibilidad si algo externo los envía) y las listas de campos monetarios con los nombres legacy (para seguir ocultando precios a colaborador en documentos viejos). **No se migraron documentos existentes en Firestore** — quedan con los campos viejos sin uso, inofensivos, en vez de arriesgar una reescritura masiva de datos reales. Verificado con `TestClient` contra Firestore real: `POST`/`PUT /quotes` ya no generan las claves legacy.
+4. 🔶 **Dividir archivos grandes del frontend** — en progreso, archivo por archivo (mayor riesgo de la ronda). `cotizar/page.tsx` ✅ dividido: de 1052 a 380 líneas (`types.ts`, `cloudinary.ts`, `components/SuccessScreen.tsx`, `ContactoForm.tsx`, `ProductoFormCard.tsx`, `ProductosTable.tsx`), verificado interactivamente en el navegador (único de los 4 que es público, sin login). Pendientes: `admin/page.tsx` (1182 líneas), `admin/reportes/page.tsx` (1196), `QuotesTab.tsx` (1011) — requieren sesión autenticada que no se puede simular, así que ahí la verificación depende más de `tsc`/lectura cuidadosa que de prueba visual real.
+
+---
+
+## 9. Cambio de Marca: Impresiones 3D → RepliCars3D (2026-08-15)
+
+El negocio cambia de nombre. Alcance acordado con el usuario (ver respuestas): sin dominio nuevo todavía (sigue el `*.vercel.app` automático), logo actual sin cambios, no se renombra el repo de GitHub ni la carpeta local, y el email/redes del footer quedan igual por ahora. Solo se actualiza el **nombre de marca visible**.
+
+**Hecho (código, rama `backend`/`frontend`):**
+- Backend: título/descripción de la API en `main.py` ("RepliCars3D API") y mensaje de bienvenida de `GET /`.
+- Frontend: `Navbar.tsx`, `Footer.tsx` (texto, no el logo), `layout.tsx` (`<title>`), `login/page.tsx`, `terminos/page.tsx`, y el PDF de cotización generado en `admin/page.tsx` (encabezado y pie de página).
+- Documento `settings/footer` en Firestore (contenido editable desde el panel, no vive en el código): campo `copyright` actualizado a "RepliCars3D. Todos los derechos reservados." — el email se dejó igual a propósito.
+
+**NO se tocó (identificadores de infraestructura, cambiar el texto rompería la app):**
+- `backend/app/core/firebase.py`: el bucket de Firebase Storage (`impresiones-3d-c9884.firebasestorage.app`) — está atado al ID real del proyecto de Firebase; renombrarlo requeriría migrar a un proyecto de Firebase nuevo, fuera de alcance de esta ronda.
+- El preset de Cloudinary `impresiones3d_unsigned` (usado en `cotizar/page.tsx` y `catalogo/page.tsx`) — es el nombre real configurado en el dashboard de Cloudinary; cambiarlo en código sin renombrarlo (o recrearlo) ahí rompería la subida de imágenes.
+
+**Pendiente — acciones que solo el usuario puede hacer:**
+1. **Renombrar los 2 proyectos de Vercel** (backend y frontend): Vercel Dashboard → seleccionar el proyecto → Settings → General → "Project Name" → guardar. Esto cambia automáticamente la URL `*.vercel.app` a una que incluya el nuevo nombre. Como el backend ya acepta cualquier origen `*.vercel.app` (ver auditoría de seguridad, sección 7), no hace falta tocar `ALLOWED_ORIGINS` — pero si el frontend nuevo apunta a una URL de backend distinta, hay que actualizar `NEXT_PUBLIC_API_URL` en las variables de entorno del proyecto de Vercel del frontend.
+2. Si en algún momento consiguen un dominio propio para RepliCars3D: avisar para actualizar `ALLOWED_ORIGINS` (backend) y cualquier URL absoluta de metadata (Open Graph, etc. — hoy no hay ninguna configurada).
+3. Cuando tengan logo nuevo: reemplazar `frontend/public/logo.png` (mismo nombre de archivo, no requiere tocar código).
+4. Cuando definan el email/redes nuevas: actualizar el documento `settings/footer` desde el propio panel (botón "Editar pie de página", ya funciona) — no hace falta tocar código.
 
