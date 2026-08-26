@@ -130,6 +130,12 @@ export default function AdminPage() {
   const [assignMode, setAssignMode] = useState<'all' | 'perItem'>('perItem');
   const [assignAllUid, setAssignAllUid] = useState('');
   const [perItemAssignments, setPerItemAssignments] = useState<Record<number, string>>({});
+  // Empaque/caja y personalización/pintura de un mismo producto pueden ser
+  // trabajo de colaboradores distintos al de fabricación (o del propio
+  // dueño, si se deja "sin asignar") — se registran aparte para que cada
+  // quien reciba el pago exacto de su parte, en vez de todo junto.
+  const [perItemEmpaqueAssignments, setPerItemEmpaqueAssignments] = useState<Record<number, string>>({});
+  const [perItemPersonalizacionAssignments, setPerItemPersonalizacionAssignments] = useState<Record<number, string>>({});
   const [perItemTrabajos, setPerItemTrabajos] = useState<Record<number, Array<{ tempId: string; descripcion: string; valor: number; colaboradorUid: string }>>>({});
   const [assignSaving, setAssignSaving] = useState(false);
 
@@ -453,9 +459,13 @@ export default function AdminPage() {
         setAssignMode('perItem');
         setAssignAllUid('');
         const init: Record<number, string> = {};
+        const initEmpaque: Record<number, string> = {};
+        const initPersonalizacion: Record<number, string> = {};
         const initTrab: Record<number, Array<{ tempId: string; descripcion: string; valor: number; colaboradorUid: string }>> = {};
-        selectedQuote.productos.forEach((_: any, idx: number) => { init[idx] = ''; initTrab[idx] = []; });
+        selectedQuote.productos.forEach((_: any, idx: number) => { init[idx] = ''; initEmpaque[idx] = ''; initPersonalizacion[idx] = ''; initTrab[idx] = []; });
         setPerItemAssignments(init);
+        setPerItemEmpaqueAssignments(initEmpaque);
+        setPerItemPersonalizacionAssignments(initPersonalizacion);
         setPerItemTrabajos(initTrab);
         setShowAssignDialog(true);
       } catch { /* si falla carga, proceder sin asignación */ }
@@ -521,12 +531,54 @@ export default function AdminPage() {
         const uid = rawUid || '__sin_asignar__';
         const p = selectedQuote.productos[idx];
         const c = calcProduct(idx, p.unidades);
-        const col = colsDisponibles.find(x => x.uid === uid);
+        const nombreProducto = p.descripcionLineal || p.nombre || 'Producto';
+
+        // Empaque/caja y personalización/pintura se pagan por separado (a quien
+        // corresponda, o "sin asignar" si lo hizo el dueño) y se descuentan del
+        // pago del producto completo para no pagarlos dos veces.
+        const montoEmpaque = c.valorEmpaque * (p.unidades || 1);
+        const montoPersonalizacion = c.valorPersonalizacion * (p.unidades || 1);
+        let valorProducto = c.precioTotalProducto;
+
+        if (montoEmpaque > 0) {
+          const empaqueUid = perItemEmpaqueAssignments[idx] || '__sin_asignar__';
+          const empaqueItem: ReportItem = {
+            categoria: 'cajas',
+            descripcion: `${nombreProducto} - Empaque`,
+            cantidad: p.unidades || 1,
+            valor: montoEmpaque,
+            actividad: 'Empaque',
+            clienteNombre: selectedQuote.cliente?.nombre || '',
+            clienteTelefono: selectedQuote.cliente?.telefono || '',
+            origen: 'web',
+          };
+          if (!itemsPorColaborador.has(empaqueUid)) itemsPorColaborador.set(empaqueUid, []);
+          itemsPorColaborador.get(empaqueUid)!.push(empaqueItem);
+          valorProducto -= montoEmpaque;
+        }
+
+        if (montoPersonalizacion > 0) {
+          const personalizacionUid = perItemPersonalizacionAssignments[idx] || '__sin_asignar__';
+          const personalizacionItem: ReportItem = {
+            categoria: 'pintura',
+            descripcion: `${nombreProducto} - Personalización/Pintura`,
+            cantidad: p.unidades || 1,
+            valor: montoPersonalizacion,
+            actividad: 'Personalización/Pintura',
+            clienteNombre: selectedQuote.cliente?.nombre || '',
+            clienteTelefono: selectedQuote.cliente?.telefono || '',
+            origen: 'web',
+          };
+          if (!itemsPorColaborador.has(personalizacionUid)) itemsPorColaborador.set(personalizacionUid, []);
+          itemsPorColaborador.get(personalizacionUid)!.push(personalizacionItem);
+          valorProducto -= montoPersonalizacion;
+        }
+
         const item: ReportItem = {
           categoria: p.categoria || 'cotización-web',
-          descripcion: p.descripcionLineal || p.nombre || 'Producto',
+          descripcion: nombreProducto,
           cantidad: p.unidades || 1,
-          valor: c.precioTotalProducto,
+          valor: valorProducto,
           actividad: 'Cotización web aceptada',
           clienteNombre: selectedQuote.cliente?.nombre || '',
           clienteTelefono: selectedQuote.cliente?.telefono || '',
@@ -1141,6 +1193,10 @@ export default function AdminPage() {
             setAssignAllUid={setAssignAllUid}
             perItemAssignments={perItemAssignments}
             setPerItemAssignments={setPerItemAssignments}
+            perItemEmpaqueAssignments={perItemEmpaqueAssignments}
+            setPerItemEmpaqueAssignments={setPerItemEmpaqueAssignments}
+            perItemPersonalizacionAssignments={perItemPersonalizacionAssignments}
+            setPerItemPersonalizacionAssignments={setPerItemPersonalizacionAssignments}
             perItemTrabajos={perItemTrabajos}
             setPerItemTrabajos={setPerItemTrabajos}
             assignSaving={assignSaving}
