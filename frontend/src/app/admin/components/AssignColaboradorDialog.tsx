@@ -22,6 +22,10 @@ interface AssignColaboradorDialogProps {
   setAssignAllUid: (v: string) => void;
   perItemAssignments: Record<number, string>;
   setPerItemAssignments: Dispatch<SetStateAction<Record<number, string>>>;
+  perItemEmpaqueAssignments: Record<number, string>;
+  setPerItemEmpaqueAssignments: Dispatch<SetStateAction<Record<number, string>>>;
+  perItemPersonalizacionAssignments: Record<number, string>;
+  setPerItemPersonalizacionAssignments: Dispatch<SetStateAction<Record<number, string>>>;
   perItemTrabajos: Record<number, TrabajoAdicional[]>;
   setPerItemTrabajos: Dispatch<SetStateAction<Record<number, TrabajoAdicional[]>>>;
   assignSaving: boolean;
@@ -39,6 +43,10 @@ export default function AssignColaboradorDialog({
   setAssignAllUid,
   perItemAssignments,
   setPerItemAssignments,
+  perItemEmpaqueAssignments,
+  setPerItemEmpaqueAssignments,
+  perItemPersonalizacionAssignments,
+  setPerItemPersonalizacionAssignments,
   perItemTrabajos,
   setPerItemTrabajos,
   assignSaving,
@@ -58,7 +66,7 @@ export default function AssignColaboradorDialog({
               </div>
 
               <div className="px-6 py-5 space-y-5">
-                <p className="text-xs text-slate-400">Asigna quién realizó el trabajo para que aparezca en los reportes mensuales. Los productos sin colaborador no se sumarán a ningún reporte.</p>
+                <p className="text-xs text-slate-400">Asigna quién realizó el trabajo para que aparezca en los reportes mensuales. Si un producto tiene empaque o personalización/pintura, se pagan por separado a quien corresponda (pueden ser personas distintas al de fabricación).</p>
 
                 <div className="flex gap-3">
                   <button onClick={() => setAssignMode('perItem')}
@@ -84,19 +92,45 @@ export default function AssignColaboradorDialog({
                 <div className="space-y-3">
                   {selectedQuote?.productos.map((p: any, idx: number) => {
                     const nombre = p.descripcionLineal || p.nombre || `Producto #${idx + 1}`;
+                    const c = calcProduct(idx, p.unidades);
+                    const montoEmpaque = c.valorEmpaque * (p.unidades || 1);
+                    const montoPersonalizacion = c.valorPersonalizacion * (p.unidades || 1);
                     return (
                       <div key={idx} className="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-white">{nombre}</span>
-                          <span className="text-xs text-slate-400">{p.unidades || 1} uds · {formatCOP(calcProduct(idx, p.unidades).precioTotalProducto)}</span>
+                          <span className="text-xs text-slate-400">{p.unidades || 1} uds · {formatCOP(c.precioTotalProducto)}</span>
                         </div>
                         {assignMode === 'perItem' && (
                           <>
+                            <label className="block text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-1">Fabricación (resto del producto)</label>
                             <select value={perItemAssignments[idx] || ''} onChange={e => setPerItemAssignments(prev => ({ ...prev, [idx]: e.target.value }))}
                               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer mb-2">
                               <option value="">Sin Asignar (aparecerá como ingreso sin colaborador)</option>
                               {assignColaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
                             </select>
+
+                            {montoEmpaque > 0 && (
+                              <div className="mb-2">
+                                <label className="block text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-1">Empaque/Caja ({formatCOP(montoEmpaque)})</label>
+                                <select value={perItemEmpaqueAssignments[idx] || ''} onChange={e => setPerItemEmpaqueAssignments(prev => ({ ...prev, [idx]: e.target.value }))}
+                                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer">
+                                  <option value="">Sin Asignar (lo hizo el dueño)</option>
+                                  {assignColaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
+                                </select>
+                              </div>
+                            )}
+
+                            {montoPersonalizacion > 0 && (
+                              <div className="mb-2">
+                                <label className="block text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-1">Personalización/Pintura ({formatCOP(montoPersonalizacion)})</label>
+                                <select value={perItemPersonalizacionAssignments[idx] || ''} onChange={e => setPerItemPersonalizacionAssignments(prev => ({ ...prev, [idx]: e.target.value }))}
+                                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm outline-none focus:border-cyan-500/50 cursor-pointer">
+                                  <option value="">Sin Asignar (lo hizo el dueño)</option>
+                                  {assignColaboradores.map(col => (<option key={col.uid} value={col.uid}>{col.nombre}</option>))}
+                                </select>
+                              </div>
+                            )}
 
                             <div className="border-t border-slate-800 pt-2 mt-2">
                               <div className="flex items-center justify-between mb-1.5">
