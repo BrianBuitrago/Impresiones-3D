@@ -80,6 +80,10 @@ export default function ReportesPage() {
     const now = new Date();
     return `${MONTHS[now.getMonth()]}/${String(now.getFullYear()).slice(-2)}`;
   });
+  // Granularidad del filtro de periodo: mes puntual (como siempre), un año
+  // completo, o todo el histórico sin filtrar por fecha.
+  const [filtroGranularidadReporte, setFiltroGranularidadReporte] = useState<'mensual' | 'anual' | 'todo'>('mensual');
+  const [filtroAnio, setFiltroAnio] = useState('');
   const [filtroColaboradores, setFiltroColaboradores] = useState<string[]>([]);
   const [filtroCategoria, setFiltroCategoria] = useState('');
 
@@ -139,8 +143,12 @@ export default function ReportesPage() {
   }, [loading, loadData]);
 
   const reportesFiltrados = useMemo(() =>
-    reportes.filter(r => !filtroPeriodo || r.periodo === filtroPeriodo),
-    [reportes, filtroPeriodo]
+    reportes.filter(r => {
+      if (filtroGranularidadReporte === 'todo') return true;
+      if (filtroGranularidadReporte === 'anual') return !filtroAnio || r.periodo.split('/')[1] === filtroAnio;
+      return !filtroPeriodo || r.periodo === filtroPeriodo;
+    }),
+    [reportes, filtroPeriodo, filtroGranularidadReporte, filtroAnio]
   );
 
   const itemsAplanados = useMemo(() => {
@@ -366,19 +374,45 @@ export default function ReportesPage() {
               <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">
                 <Calendar className="w-3 h-3 inline mr-1" /> Periodo
               </label>
-              <select value={filtroPeriodo} onChange={e => setFiltroPeriodo(e.target.value)} className={selectClass}>
-                {(() => {
-                  const periods = new Set(reportes.map(r => r.periodo));
-                  const start = new Date(2026, 0, 1);
-                  const now = new Date();
-                  const d = new Date(start);
-                  while (d <= now) {
-                    periods.add(`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(-2)}`);
-                    d.setMonth(d.getMonth() + 1);
-                  }
-                  return Array.from(periods).sort().map(p => (<option key={p} value={p}>{p}</option>));
-                })()}
-              </select>
+              <div className="flex gap-1 mb-1.5">
+                {([['mensual', 'Mensual'], ['anual', 'Anual'], ['todo', 'Todo']] as const).map(([g, label]) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setFiltroGranularidadReporte(g)}
+                    className={`flex-1 py-1 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${filtroGranularidadReporte === g ? 'bg-cyan-600/20 border-cyan-500/40 text-cyan-300' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {filtroGranularidadReporte === 'mensual' && (
+                <select value={filtroPeriodo} onChange={e => setFiltroPeriodo(e.target.value)} className={selectClass}>
+                  {(() => {
+                    const periods = new Set(reportes.map(r => r.periodo));
+                    const start = new Date(2026, 0, 1);
+                    const now = new Date();
+                    const d = new Date(start);
+                    while (d <= now) {
+                      periods.add(`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(-2)}`);
+                      d.setMonth(d.getMonth() + 1);
+                    }
+                    return Array.from(periods).sort().map(p => (<option key={p} value={p}>{p}</option>));
+                  })()}
+                </select>
+              )}
+              {filtroGranularidadReporte === 'anual' && (
+                <select value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)} className={selectClass}>
+                  <option value="">Todos los años</option>
+                  {(() => {
+                    const years = Array.from(new Set(reportes.map(r => r.periodo.split('/')[1]).filter(Boolean))).sort();
+                    return years.map(y => (<option key={y} value={y}>20{y}</option>));
+                  })()}
+                </select>
+              )}
+              {filtroGranularidadReporte === 'todo' && (
+                <div className="px-3 py-2 bg-slate-900/50 border border-slate-800 rounded-xl text-slate-500 text-sm">Todo el histórico</div>
+              )}
             </div>
             <div>
               <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">
