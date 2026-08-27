@@ -286,5 +286,49 @@ A pedido del usuario, ronda separada de la auditoría de seguridad, cubriendo la
 1. ✅ **Diseño web** — reemplazo de los 5 `alert()` nativos por el banner de error ya existente en cada pantalla; migración de los 10 `<img>` a `next/image` (`res.cloudinary.com` agregado a `remotePatterns`); `aria-label` en 13 botones de solo-ícono sin nombre accesible. Ver commits `frontend`.
 2. ✅ **Control de datos (paginación)** — límite defensivo (`.limit()`) en los 6 endpoints de listado que traían todos los documentos sin tope (`products`, `auth/users`, `quotes` ×2, `reports`, `inversiones`). No es paginación real con cursores/UI: Reportes/Inversiones necesitan el set completo para sus agregados, así que una paginación real requeriría rediseñar esa lógica primero.
 3. ✅ **Procesos (alias duplicados)** — `quote.py`, `pricing.py` y `quotes.py` escribían cada cotización dos veces (camelCase + PascalCase/snake legacy, ej. `precioTotal`/`Precio_Total`). Se dejó de **generar** el set legacy en escrituras nuevas (backend) y de **leer/enviar** esos campos en el frontend (68 referencias en 7 archivos). Se mantienen los alias de *entrada* (compatibilidad si algo externo los envía) y las listas de campos monetarios con los nombres legacy (para seguir ocultando precios a colaborador en documentos viejos). **No se migraron documentos existentes en Firestore** — quedan con los campos viejos sin uso, inofensivos, en vez de arriesgar una reescritura masiva de datos reales. Verificado con `TestClient` contra Firestore real: `POST`/`PUT /quotes` ya no generan las claves legacy.
-4. ⬜ **Dividir archivos grandes del frontend** — `admin/page.tsx` (1182 líneas), `admin/reportes/page.tsx` (1196), `QuotesTab.tsx` (1011), `cotizar/page.tsx` (1061) siguen sin dividir; `hooks/`/`utils/` casi vacíos pese a la convención declarada. Pendiente, es el ítem de mayor esfuerzo/riesgo (refactor grande sin cambios visibles, sin poder verificar visualmente el panel autenticado).
+4. 🔶 **Dividir archivos grandes del frontend** — en progreso, archivo por archivo (mayor riesgo de la ronda). `cotizar/page.tsx` ✅ dividido: de 1052 a 380 líneas (`types.ts`, `cloudinary.ts`, `components/SuccessScreen.tsx`, `ContactoForm.tsx`, `ProductoFormCard.tsx`, `ProductosTable.tsx`), verificado interactivamente en el navegador (único de los 4 que es público, sin login). Pendientes: `admin/page.tsx` (1182 líneas), `admin/reportes/page.tsx` (1196), `QuotesTab.tsx` (1011) — requieren sesión autenticada que no se puede simular, así que ahí la verificación depende más de `tsc`/lectura cuidadosa que de prueba visual real.
+
+---
+
+## 9. Cambio de Marca: Impresiones 3D → RepliCars3D (2026-08-15)
+
+El negocio cambia de nombre. Alcance acordado con el usuario (ver respuestas): sin dominio nuevo todavía (sigue el `*.vercel.app` automático), logo actual sin cambios, no se renombra el repo de GitHub ni la carpeta local, y el email/redes del footer quedan igual por ahora. Solo se actualiza el **nombre de marca visible**.
+
+**Hecho (código, rama `backend`/`frontend`):**
+- Backend: título/descripción de la API en `main.py` ("RepliCars3D API") y mensaje de bienvenida de `GET /`.
+- Frontend: `Navbar.tsx`, `Footer.tsx` (texto, no el logo), `layout.tsx` (`<title>`), `login/page.tsx`, `terminos/page.tsx`, y el PDF de cotización generado en `admin/page.tsx` (encabezado y pie de página).
+- Documento `settings/footer` en Firestore (contenido editable desde el panel, no vive en el código): campo `copyright` actualizado a "RepliCars3D. Todos los derechos reservados." — el email se dejó igual a propósito.
+
+**NO se tocó (identificadores de infraestructura, cambiar el texto rompería la app):**
+- `backend/app/core/firebase.py`: el bucket de Firebase Storage (`impresiones-3d-c9884.firebasestorage.app`) — está atado al ID real del proyecto de Firebase; renombrarlo requeriría migrar a un proyecto de Firebase nuevo, fuera de alcance de esta ronda.
+- El preset de Cloudinary `impresiones3d_unsigned` (usado en `cotizar/page.tsx` y `catalogo/page.tsx`) — es el nombre real configurado en el dashboard de Cloudinary; cambiarlo en código sin renombrarlo (o recrearlo) ahí rompería la subida de imágenes.
+
+**Pendiente — acciones que solo el usuario puede hacer:**
+1. **Renombrar los 2 proyectos de Vercel** (backend y frontend): Vercel Dashboard → seleccionar el proyecto → Settings → General → "Project Name" → guardar. Esto cambia automáticamente la URL `*.vercel.app` a una que incluya el nuevo nombre. Como el backend ya acepta cualquier origen `*.vercel.app` (ver auditoría de seguridad, sección 7), no hace falta tocar `ALLOWED_ORIGINS` — pero si el frontend nuevo apunta a una URL de backend distinta, hay que actualizar `NEXT_PUBLIC_API_URL` en las variables de entorno del proyecto de Vercel del frontend.
+2. Si en algún momento consiguen un dominio propio para RepliCars3D: avisar para actualizar `ALLOWED_ORIGINS` (backend) y cualquier URL absoluta de metadata (Open Graph, etc. — hoy no hay ninguna configurada).
+3. Cuando tengan logo nuevo: reemplazar `frontend/public/logo.png` (mismo nombre de archivo, no requiere tocar código).
+4. Cuando definan el email/redes nuevas: actualizar el documento `settings/footer` desde el propio panel (botón "Editar pie de página", ya funciona) — no hace falta tocar código.
+
+---
+
+## 10. Ajustes al Formulario de Cotización, Precios Base y Rechazo (2026-08-26)
+
+A pedido del usuario, ronda de ajustes puntuales sobre el flujo de cotización pública y el panel de administración.
+
+**Formulario público de cotización (`/cotizar`):**
+- Se quitó el campo **Cédula** (`ContactoForm.tsx`, `cotizar/page.tsx`). En el backend `ClienteInfo.cedula` ya era `Optional`, así que no hizo falta tocar el modelo — la cotización se guarda igual, solo que ese campo queda vacío.
+- El teléfono ahora tiene un **selector de código de país** (`+57` Colombia por defecto, ~33 países) separado del número local; ambos se combinan en el mismo string `telefono` de siempre, así que no cambió nada para el resto del sistema (WhatsApp, backend, etc.). Nuevo archivo: `cotizar/countryCodes.ts`.
+- Se quitaron los campos de **dimensiones (ancho/alto)** del formulario (`ProductoFormCard.tsx`, `types.ts`, `ProductosTable.tsx`). En el backend, `ProductoItem.tamanoHorizontal`/`tamanoVertical` pasaron de requeridos (`Field(..., gt=0)`) a opcionales (`Field(0.0, ge=0)`) — sin este cambio el backend hubiera rechazado toda cotización nueva por no traer esos campos. Verificado instanciando `QuoteCreate` directamente con un payload sin cédula ni dimensiones.
+- Título "Descripción lineal" → **"Descripción de los productos"**.
+- Se quitó la opción **"Cosméticos"** de personalización (`PERSONALIZACION_OPTIONS` en `types.ts`); el validador del backend sigue aceptando el valor `cosmeticos` si llegara (compatibilidad con cotizaciones viejas), simplemente ya no es seleccionable desde el formulario.
+
+**Precios base (`/admin` → pestaña Precios, `PreciosTab.tsx`):**
+- Se agregó **"Valor hora de trabajo"** como constante nueva (`valorHoraTrabajo`, default `9000` COP/hora), persistida en `settings/precios` igual que `precioKwhHora`/`precioFilamentoKg`. **No se conectó a ninguna fórmula de cálculo todavía** — no había un campo de "horas de trabajo" por producto al que aplicarla sin inventar comportamiento no pedido; queda disponible y visible en el panel, lista para cablearse en cuanto se defina dónde debe aplicarse.
+- El precio de energía (`precioKwhHora`) y su equivalente por minuto ya eran (y siguen siendo) una constante global en esa misma pestaña — se agregó el detalle "→ X COP/min" también ahí para que quede explícito.
+
+**Botón "Rechazada" (`QuotesTab.tsx`, `admin/page.tsx`):**
+- Ahora, al rechazar una cotización, se abre automáticamente un chat de WhatsApp hacia el cliente (mismo patrón que "Generar PDF y WhatsApp") con un mensaje avisando que la cotización no fue aprobada e invitando a escribir por ese mismo número ante dudas.
+
+**Archivos nuevos:** `cotizar/countryCodes.ts`.
+**Verificación:** `npx tsc --noEmit` y `python -m py_compile` limpios; formulario público probado interactivamente en el navegador (sin login, es público); validación del payload sin cédula/dimensiones probada directamente contra `QuoteCreate`.
 
