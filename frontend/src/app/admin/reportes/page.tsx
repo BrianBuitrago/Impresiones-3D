@@ -620,10 +620,13 @@ export default function ReportesPage() {
                           <th className="py-3 px-4 text-right">Cant</th>
                           <th className="py-3 px-4 text-right">Valor</th>
                           <th className="py-3 px-4">Origen</th>
+                          <th className="py-3 px-4 text-right">Acción</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/60">
-                        {itemsAplanados.map((item, i) => (
+                        {itemsAplanados.map((item, i) => {
+                          const report = reportesFiltrados.find(r => r.id === item.reportId);
+                          return (
                           <tr key={`manual-${item.reportId}-${i}`} className="hover:bg-slate-800/10 transition-colors">
                             <td className="py-3 px-4">
                               <div className="text-sm text-slate-200 font-medium">{item.descripcion}</div>
@@ -648,8 +651,25 @@ export default function ReportesPage() {
                                 </span>
                               )}
                             </td>
+                            <td className="py-3 px-4">
+                              {item.origen !== 'web' && report && (
+                                <div className="flex gap-1 justify-end">
+                                  <button onClick={() => handleEditReport(report)}
+                                    title="Edita el reporte completo al que pertenece esta compra"
+                                    className="text-[9px] px-2 py-0.5 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 text-cyan-400 rounded-lg cursor-pointer transition-colors whitespace-nowrap">
+                                    Editar
+                                  </button>
+                                  <button onClick={() => handleDeleteReport(report.id)} disabled={deletingId === report.id}
+                                    title="Elimina el reporte completo al que pertenece esta compra"
+                                    className="text-[9px] px-2 py-0.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 rounded-lg cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap">
+                                    {deletingId === report.id ? '...' : 'Eliminar'}
+                                  </button>
+                                </div>
+                              )}
+                            </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
