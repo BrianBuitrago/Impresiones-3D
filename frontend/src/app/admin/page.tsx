@@ -98,6 +98,9 @@ export default function AdminPage() {
 
   // Variables globales de fabricación (editables en el panel, ver también pestaña "Precios")
   const [precioKwhHora, setPrecioKwhHora] = useState<number>(900);
+  // Precio por minuto: constante propia (no derivada de precioKwhHora/60), se usa como
+  // costo de energía por defecto cuando el producto no trae un consumo (kW) específico.
+  const [precioKwhMinuto, setPrecioKwhMinuto] = useState<number>(15);
   const [precioFilamentoKg, setPrecioFilamentoKg] = useState<number>(85000);
   const [showGlobalConfig, setShowGlobalConfig] = useState(false);
 
@@ -107,8 +110,9 @@ export default function AdminPage() {
       try {
         const snap = await getDoc(doc(db!, 'settings', 'precios'));
         if (snap.exists()) {
-          const data = snap.data() as { precioKwhHora?: number; precioFilamentoKg?: number };
+          const data = snap.data() as { precioKwhHora?: number; precioKwhMinuto?: number; precioFilamentoKg?: number };
           if (typeof data.precioKwhHora === 'number') setPrecioKwhHora(data.precioKwhHora);
+          if (typeof data.precioKwhMinuto === 'number') setPrecioKwhMinuto(data.precioKwhMinuto);
           if (typeof data.precioFilamentoKg === 'number') setPrecioFilamentoKg(data.precioFilamentoKg);
         }
       } catch { /* usa los valores por defecto */ }
@@ -306,6 +310,9 @@ export default function AdminPage() {
     if (typeof quote.precioKwhHora === 'number') {
       setPrecioKwhHora(quote.precioKwhHora);
     }
+    if (typeof quote.precioKwhMinuto === 'number') {
+      setPrecioKwhMinuto(quote.precioKwhMinuto);
+    }
     if (typeof quote.precioFilamentoKg === 'number') {
       setPrecioFilamentoKg(quote.precioFilamentoKg);
     }
@@ -313,7 +320,7 @@ export default function AdminPage() {
 
   // ── Cálculos matemáticos por producto ─────────────────────────────────────
   //
-  //  precioKwhMinuto   = precioKwhHora / 60
+  //  precioKwhMinuto   = constante propia (Precios), no derivada de precioKwhHora
   //  costoEnergia/u    = duracion(min) × precioKwhMinuto
   //  costoFilamento/u  = filamento(g)  × (precioFilamentoKg / 1000)
   //  costoFabricacion/u= costoEnergia  + costoFilamento
@@ -355,7 +362,7 @@ export default function AdminPage() {
     const kwMin            = parseFloat(v.kwMin) || 0;
     const ganancia          = parseFloat(v.ganancia) || 0;
 
-    const precioKwhMinuto           = precioKwhHora / 60;
+    // precioKwhMinuto viene del estado global (constante propia en Precios), no de precioKwhHora/60
     const costoEnergiaUnitario      = (kwH > 0 || kwMin > 0)
       ? (kwH * tiempoHoras + kwMin * tiempoMinutos / 60) * precioKwhHora
       : duracion * precioKwhMinuto;
@@ -484,6 +491,7 @@ export default function AdminPage() {
         estado: newStatus,
         ...(subEstado ? { subEstado } : {}),
         precioKwhHora,
+        precioKwhMinuto,
         precioFilamentoKg,
         subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
         valorGananciaTotal: Math.round(ganancia * 100) / 100,
@@ -628,6 +636,7 @@ export default function AdminPage() {
         estado: 'aceptado',
         subEstado: 'diseñando',
         precioKwhHora,
+        precioKwhMinuto,
         precioFilamentoKg,
         subtotalFabricacionTotal: Math.round(subtotalFabricacion * 100) / 100,
         valorGananciaTotal: Math.round(ganancia * 100) / 100,
@@ -1153,6 +1162,8 @@ export default function AdminPage() {
               handleSelectQuote={handleSelectQuote}
               precioKwhHora={precioKwhHora}
               setPrecioKwhHora={setPrecioKwhHora}
+              precioKwhMinuto={precioKwhMinuto}
+              setPrecioKwhMinuto={setPrecioKwhMinuto}
               precioFilamentoKg={precioFilamentoKg}
               setPrecioFilamentoKg={setPrecioFilamentoKg}
               showGlobalConfig={showGlobalConfig}

@@ -39,6 +39,8 @@ interface QuotesTabProps {
   handleSelectQuote: (quote: Record<string, unknown>) => void;
   precioKwhHora: number;
   setPrecioKwhHora: (v: number) => void;
+  precioKwhMinuto: number;
+  setPrecioKwhMinuto: (v: number) => void;
   precioFilamentoKg: number;
   setPrecioFilamentoKg: (v: number) => void;
   showGlobalConfig: boolean;
@@ -70,6 +72,8 @@ export default function QuotesTab({
   handleSelectQuote,
   precioKwhHora,
   setPrecioKwhHora,
+  precioKwhMinuto,
+  setPrecioKwhMinuto,
   precioFilamentoKg,
   setPrecioFilamentoKg,
   showGlobalConfig,
@@ -410,7 +414,7 @@ export default function QuotesTab({
                             <Settings className="w-4 h-4 text-cyan-400" />
                             <span className="text-sm font-bold text-white">variables globales de fabricación</span>
                             <span className="text-[10px] text-slate-500 ml-1">
-                              (kw/h: ${precioKwhHora.toLocaleString('es-CO')} · Filamento: ${precioFilamentoKg.toLocaleString('es-CO')}/kg)
+                              (kw/h: ${precioKwhHora.toLocaleString('es-CO')} · kw/min: ${precioKwhMinuto.toLocaleString('es-CO')} · Filamento: ${precioFilamentoKg.toLocaleString('es-CO')}/kg)
                             </span>
                           </div>
                           {showGlobalConfig ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -424,7 +428,7 @@ export default function QuotesTab({
                               exit={{ height: 0, opacity: 0 }}
                               className="overflow-hidden"
                             >
-                              <div className="px-6 pb-6 pt-2 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                              <div className="px-6 pb-6 pt-2 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-5">
                                 {/* Precio Kw/h */}
                                 <div>
                     <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
@@ -439,8 +443,24 @@ export default function QuotesTab({
                                       className="w-full pl-7 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 text-sm font-semibold focus:outline-none focus:border-cyan-500/40"
                                     />
                                   </div>
+                                </div>
+
+                                {/* Precio Kw/min: constante propia, no derivada de precio Kw/h */}
+                                <div>
+                                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                    <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-yellow-400" /> precio energía (COP / Kw·min)</span>
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-xs font-bold">$</span>
+                                    <input
+                                      type="number"
+                                      value={precioKwhMinuto}
+                                      onChange={e => setPrecioKwhMinuto(parseFloat(e.target.value) || 0)}
+                                      className="w-full pl-7 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 text-sm font-semibold focus:outline-none focus:border-cyan-500/40"
+                                    />
+                                  </div>
                                   <p className="text-[10px] text-slate-500 mt-1.5">
-                                    → <span className="text-yellow-400/80 font-semibold">{(precioKwhHora / 60).toFixed(2)} COP/min</span> de impresión
+                                    Usado como costo de energía por defecto cuando el producto no trae kW específicos.
                                   </p>
                                 </div>
 

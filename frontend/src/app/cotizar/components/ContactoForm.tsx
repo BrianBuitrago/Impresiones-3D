@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { User, Phone, Mail, Info } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { User, Phone, Mail, Info, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { UserProfile } from '@/context/AuthContext';
-import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from '../countryCodes';
+import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE, type CountryCode } from '../countryCodes';
+
+const flagUrl = (iso2: string) => `https://flagcdn.com/24x18/${iso2}.png`;
 
 interface ContactoFormProps {
   profile: UserProfile | null;
@@ -29,6 +31,8 @@ export default function ContactoForm({
   // sigue siendo un solo string ("telefono") como siempre esperó el resto del form.
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [localNumber, setLocalNumber] = useState('');
+  const [countryOpen, setCountryOpen] = useState(false);
+  const countryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!telefono) { setLocalNumber(''); return; }
@@ -41,9 +45,21 @@ export default function ContactoForm({
     }
   }, [telefono]);
 
+  // Cierra el desplegable de país al hacer clic afuera
+  useEffect(() => {
+    if (!countryOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (countryRef.current && !countryRef.current.contains(e.target as Node)) setCountryOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [countryOpen]);
+
   const updateTelefono = (code: string, local: string) => {
     setTelefono(local.trim() ? `${code} ${local.trim()}` : '');
   };
+
+  const selectedCountry: CountryCode = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
 
   return (
     <motion.div
@@ -104,16 +120,42 @@ export default function ContactoForm({
             Teléfono <span className="text-red-400">*</span>
           </label>
           <div className="flex gap-2">
-            <select
-              value={countryCode}
-              onChange={e => { setCountryCode(e.target.value); updateTelefono(e.target.value, localNumber); }}
-              aria-label="Código de país"
-              className="w-[92px] shrink-0 px-2 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 text-sm outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 cursor-pointer transition-all"
-            >
-              {COUNTRY_CODES.map(c => (
-                <option key={c.code + c.country} value={c.code}>{c.flag} {c.code}</option>
-              ))}
-            </select>
+            <div className="relative shrink-0" ref={countryRef}>
+              <button
+                type="button"
+                onClick={() => setCountryOpen(v => !v)}
+                aria-label="Código de país"
+                aria-expanded={countryOpen}
+                className="flex items-center gap-1.5 h-full px-2.5 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 text-sm outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 cursor-pointer transition-all"
+              >
+                <img src={flagUrl(selectedCountry.iso2)} alt="" width={20} height={15} className="rounded-sm shrink-0" />
+                <span>{selectedCountry.code}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+              </button>
+
+              {countryOpen && (
+                <div className="absolute z-20 top-full left-0 mt-1.5 w-64 max-h-72 overflow-y-auto bg-slate-900 border border-slate-800 rounded-xl shadow-xl py-1.5">
+                  {COUNTRY_CODES.map(c => (
+                    <button
+                      key={c.code + c.country}
+                      type="button"
+                      onClick={() => {
+                        setCountryCode(c.code);
+                        updateTelefono(c.code, localNumber);
+                        setCountryOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm cursor-pointer transition-colors ${
+                        c.code === countryCode ? 'bg-cyan-500/10 text-cyan-300' : 'text-slate-300 hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <img src={flagUrl(c.iso2)} alt="" width={20} height={15} className="rounded-sm shrink-0" />
+                      <span className="flex-1 truncate">{c.country}</span>
+                      <span className="text-slate-500 text-xs">{c.code}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="relative flex-1">
               <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
               <input
