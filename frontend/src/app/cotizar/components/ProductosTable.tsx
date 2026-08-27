@@ -33,7 +33,6 @@ export default function ProductosTable({ productos, onRemove }: ProductosTablePr
           <thead className="bg-slate-950/60 text-[10px] uppercase tracking-wider text-slate-500">
             <tr>
               <th className="px-5 py-3 font-bold">Producto</th>
-              <th className="px-5 py-3 font-bold">Tamaño</th>
               <th className="px-5 py-3 font-bold">Unidades</th>
               <th className="px-5 py-3 font-bold">Personalización</th>
               <th className="px-5 py-3 font-bold">Empaque</th>
@@ -58,7 +57,6 @@ export default function ProductosTable({ productos, onRemove }: ProductosTablePr
                     </div>
                   </div>
                 </td>
-                <td className="px-5 py-3 font-mono">{p.tamanoHorizontal} × {p.tamanoVertical} cm</td>
                 <td className="px-5 py-3 font-bold text-cyan-300">{p.unidades}</td>
                 <td className="px-5 py-3">
                   {p.personalizacion.length > 0

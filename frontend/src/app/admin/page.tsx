@@ -666,6 +666,28 @@ export default function AdminPage() {
     }
   };
 
+  // Rechaza la cotización y le avisa al cliente por WhatsApp (mismo número
+  // desde el que se escribe, así que "cualquier duda, responde por acá" es
+  // literal: es la misma conversación).
+  const handleRejectQuote = () => {
+    if (!selectedQuote) return;
+    const cliente = selectedQuote.cliente || {};
+    const clienteNombre = cliente.nombre || 'Cliente';
+    const clienteTelefono = String(cliente.telefono || '').replace(/[^0-9]/g, '');
+
+    if (!clienteTelefono) {
+      setError('El teléfono del cliente no es válido para WhatsApp. Verifica el número en la cotización.');
+      return;
+    }
+    setError(null);
+
+    const message = `Hola ${clienteNombre}, te escribimos de RepliCars3D para contarte que tu cotización (Referencia: ${selectedQuote.id}) no pudo ser aprobada en esta ocasión. Cualquier duda, escríbenos por este mismo número. ¡Gracias por tu interés!`;
+    const waUrl = `https://wa.me/${clienteTelefono}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+
+    handleSaveQuote('rechazado');
+  };
+
   const fetchImageDataUrl = async (
     imageUrl: string,
     format: 'PNG' | 'JPEG' = 'JPEG',
@@ -1144,6 +1166,7 @@ export default function AdminPage() {
               saving={saving}
               handleSaveQuote={handleSaveQuote}
               handleGeneratePdfAndOpenWhatsApp={handleGeneratePdfAndOpenWhatsApp}
+              handleRejectQuote={handleRejectQuote}
             />
           )}
 

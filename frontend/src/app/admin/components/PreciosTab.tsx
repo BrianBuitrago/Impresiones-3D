@@ -1,6 +1,6 @@
 'use client';
 
-import { Zap, Weight, Pencil } from 'lucide-react';
+import { Zap, Weight, Clock, Pencil } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useEditableSetting } from '@/hooks/useEditableSetting';
 import SettingsEditModal from '@/components/ui/SettingsEditModal';
@@ -9,11 +9,13 @@ import { formatCOP } from './shared';
 interface PreciosData {
   precioKwhHora: number;
   precioFilamentoKg: number;
+  valorHoraTrabajo: number;
 }
 
 const DEFAULTS: PreciosData = {
   precioKwhHora: 900,
   precioFilamentoKg: 85000,
+  valorHoraTrabajo: 9000,
 };
 
 const SETTINGS_ID = 'precios';
@@ -46,10 +48,11 @@ export default function PreciosTab() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Precio energía', unit: 'COP / Kw·h', value: data.precioKwhHora, icon: Zap, color: 'text-yellow-400' },
-          { label: 'Precio filamento', unit: 'COP / kg', value: data.precioFilamentoKg, icon: Weight, color: 'text-blue-400' },
+          { label: 'Precio energía', unit: 'COP / Kw·h', extra: `→ ${formatCOP(data.precioKwhHora / 60)} COP/min`, value: data.precioKwhHora, icon: Zap, color: 'text-yellow-400' },
+          { label: 'Precio filamento', unit: 'COP / kg', extra: '', value: data.precioFilamentoKg, icon: Weight, color: 'text-blue-400' },
+          { label: 'Valor hora de trabajo', unit: 'COP / hora', extra: '', value: data.valorHoraTrabajo, icon: Clock, color: 'text-emerald-400' },
         ].map(stat => (
           <motion.div
             key={stat.label}
@@ -63,6 +66,7 @@ export default function PreciosTab() {
             </div>
             <p className="text-2xl font-extrabold text-white">{formatCOP(stat.value)}</p>
             <p className="text-[11px] text-slate-500 mt-1">{stat.unit}</p>
+            {stat.extra && <p className="text-[10px] text-yellow-400/80 font-semibold mt-1">{stat.extra}</p>}
           </motion.div>
         ))}
       </div>
@@ -94,6 +98,21 @@ export default function PreciosTab() {
                 type="number"
                 value={form.precioFilamentoKg}
                 onChange={e => setForm(prev => ({ ...prev, precioFilamentoKg: parseFloat(e.target.value) || 0 }))}
+                className="w-full pl-7 pr-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm font-semibold outline-none focus:border-cyan-500/50"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-400" /> valor hora de trabajo (COP / hora)</span>
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-xs font-bold">$</span>
+              <input
+                type="number"
+                value={form.valorHoraTrabajo}
+                onChange={e => setForm(prev => ({ ...prev, valorHoraTrabajo: parseFloat(e.target.value) || 0 }))}
                 className="w-full pl-7 pr-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-sm font-semibold outline-none focus:border-cyan-500/50"
               />
             </div>

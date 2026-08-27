@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { Ruler, Hash, Palette, Package, Camera, Upload, X } from 'lucide-react';
+import { Hash, Palette, Package, Camera, Upload, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PERSONALIZACION_OPTIONS, EMPAQUE_OPTIONS, type ProductForm } from '../types';
 
@@ -54,10 +54,7 @@ export default function ProductoFormCard({
               {producto.nombre || `Producto #${productosLength + 1}`}
             </span>
             <p className="text-[11px] text-slate-500">
-              {producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''} ·{' '}
-              {producto.tamanoHorizontal && producto.tamanoVertical
-                ? `${producto.tamanoHorizontal} × ${producto.tamanoVertical} cm`
-                : 'Sin dimensiones'}
+              {producto.unidades} unidad{producto.unidades !== 1 ? 'es' : ''}
             </p>
           </div>
         </div>
@@ -99,7 +96,7 @@ export default function ProductoFormCard({
 
         <div className="space-y-2">
           <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            Descripción lineal
+            Descripción de los productos
           </label>
           <textarea
             value={producto.descripcionLineal}
@@ -108,46 +105,6 @@ export default function ProductoFormCard({
             placeholder="Describe el uso, forma o detalle principal de esta pieza..."
             className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all resize-none"
           />
-        </div>
-
-        {/* Fila 2: Dimensiones */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Ruler className="w-4 h-4 text-slate-500" />
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              Dimensiones de la Pieza <span className="text-red-400">*</span>
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-5">
-            <div className="space-y-2">
-              <label className="block text-[11px] text-slate-500 font-semibold">Tamaño Horizontal — Ancho (cm)</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="1"
-                  value={producto.tamanoHorizontal}
-                  onChange={e => onFieldChange('tamanoHorizontal', e.target.value)}
-                  placeholder="Ej. 15"
-                  className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
-                />
-                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">cm</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-[11px] text-slate-500 font-semibold">Tamaño Vertical — Alto (cm)</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="1"
-                  value={producto.tamanoVertical}
-                  onChange={e => onFieldChange('tamanoVertical', e.target.value)}
-                  placeholder="Ej. 8"
-                  className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all font-mono"
-                />
-                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 text-xs font-semibold pointer-events-none">cm</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Fila 4: Personalización */}

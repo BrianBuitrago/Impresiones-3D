@@ -1,8 +1,10 @@
 'use client';
 
-import { User, Phone, IdCard, Mail, Info } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { User, Phone, Mail, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { UserProfile } from '@/context/AuthContext';
+import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from '../countryCodes';
 
 interface ContactoFormProps {
   profile: UserProfile | null;
@@ -10,8 +12,6 @@ interface ContactoFormProps {
   setNombre: (v: string) => void;
   telefono: string;
   setTelefono: (v: string) => void;
-  cedula: string;
-  setCedula: (v: string) => void;
   email: string;
   setEmail: (v: string) => void;
   notasCotizacion: string;
@@ -22,10 +22,29 @@ export default function ContactoForm({
   profile,
   nombre, setNombre,
   telefono, setTelefono,
-  cedula, setCedula,
   email, setEmail,
   notasCotizacion, setNotasCotizacion,
 }: ContactoFormProps) {
+  // El teléfono se maneja como código de país + número local, pero hacia afuera
+  // sigue siendo un solo string ("telefono") como siempre esperó el resto del form.
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [localNumber, setLocalNumber] = useState('');
+
+  useEffect(() => {
+    if (!telefono) { setLocalNumber(''); return; }
+    const match = COUNTRY_CODES.find(c => telefono.startsWith(c.code));
+    if (match) {
+      setCountryCode(match.code);
+      setLocalNumber(telefono.slice(match.code.length).trim());
+    } else {
+      setLocalNumber(telefono);
+    }
+  }, [telefono]);
+
+  const updateTelefono = (code: string, local: string) => {
+    setTelefono(local.trim() ? `${code} ${local.trim()}` : '');
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -84,34 +103,28 @@ export default function ContactoForm({
           <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Teléfono <span className="text-red-400">*</span>
           </label>
-          <div className="relative">
-            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-            <input
-              type="tel"
-              value={telefono}
-              onChange={e => setTelefono(e.target.value)}
-              required
-              placeholder="+57 300 123 4567"
-              className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
-            />
-          </div>
-        </div>
-
-        {/* Cédula */}
-        <div className="space-y-2">
-          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            Cédula <span className="text-red-400">*</span>
-          </label>
-          <div className="relative">
-            <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-            <input
-              type="text"
-              value={cedula}
-              onChange={e => setCedula(e.target.value)}
-              required
-              placeholder="1234567890"
-              className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
-            />
+          <div className="flex gap-2">
+            <select
+              value={countryCode}
+              onChange={e => { setCountryCode(e.target.value); updateTelefono(e.target.value, localNumber); }}
+              aria-label="Código de país"
+              className="w-[92px] shrink-0 px-2 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 text-sm outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 cursor-pointer transition-all"
+            >
+              {COUNTRY_CODES.map(c => (
+                <option key={c.code + c.country} value={c.code}>{c.flag} {c.code}</option>
+              ))}
+            </select>
+            <div className="relative flex-1">
+              <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+              <input
+                type="tel"
+                value={localNumber}
+                onChange={e => { setLocalNumber(e.target.value); updateTelefono(countryCode, e.target.value); }}
+                required
+                placeholder="300 123 4567"
+                className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 text-sm transition-all"
+              />
+            </div>
           </div>
         </div>
 

@@ -52,6 +52,7 @@ interface QuotesTabProps {
   saving: boolean;
   handleSaveQuote: (newStatus: string, subEstado?: string) => void;
   handleGeneratePdfAndOpenWhatsApp: () => void;
+  handleRejectQuote: () => void;
 }
 
 export default function QuotesTab({
@@ -82,6 +83,7 @@ export default function QuotesTab({
   saving,
   handleSaveQuote,
   handleGeneratePdfAndOpenWhatsApp,
+  handleRejectQuote,
 }: QuotesTabProps) {
   const [lightbox, setLightbox] = useState<{ images: { url: string; label?: string }[]; index: number } | null>(null);
 
@@ -976,7 +978,8 @@ export default function QuotesTab({
                               </button>
                               <button
                                 disabled={saving}
-                                onClick={() => handleSaveQuote('rechazado')}
+                                onClick={handleRejectQuote}
+                                title="Rechaza la cotización y abre WhatsApp para avisarle al cliente"
                                 className="flex-1 py-3 px-4 bg-red-900/40 hover:bg-red-900/60 border border-red-800/40 text-red-400 font-bold rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
                               >
                                 Rechazada
