@@ -309,3 +309,26 @@ El negocio cambia de nombre. Alcance acordado con el usuario (ver respuestas): s
 3. Cuando tengan logo nuevo: reemplazar `frontend/public/logo.png` (mismo nombre de archivo, no requiere tocar código).
 4. Cuando definan el email/redes nuevas: actualizar el documento `settings/footer` desde el propio panel (botón "Editar pie de página", ya funciona) — no hace falta tocar código.
 
+---
+
+## 10. Ajustes al Formulario de Cotización, Precios Base y Rechazo (2026-08-26)
+
+A pedido del usuario, ronda de ajustes puntuales sobre el flujo de cotización pública y el panel de administración.
+
+**Formulario público de cotización (`/cotizar`):**
+- Se quitó el campo **Cédula** (`ContactoForm.tsx`, `cotizar/page.tsx`). En el backend `ClienteInfo.cedula` ya era `Optional`, así que no hizo falta tocar el modelo — la cotización se guarda igual, solo que ese campo queda vacío.
+- El teléfono ahora tiene un **selector de código de país** (`+57` Colombia por defecto, ~33 países) separado del número local; ambos se combinan en el mismo string `telefono` de siempre, así que no cambió nada para el resto del sistema (WhatsApp, backend, etc.). Nuevo archivo: `cotizar/countryCodes.ts`.
+- Se quitaron los campos de **dimensiones (ancho/alto)** del formulario (`ProductoFormCard.tsx`, `types.ts`, `ProductosTable.tsx`). En el backend, `ProductoItem.tamanoHorizontal`/`tamanoVertical` pasaron de requeridos (`Field(..., gt=0)`) a opcionales (`Field(0.0, ge=0)`) — sin este cambio el backend hubiera rechazado toda cotización nueva por no traer esos campos. Verificado instanciando `QuoteCreate` directamente con un payload sin cédula ni dimensiones.
+- Título "Descripción lineal" → **"Descripción de los productos"**.
+- Se quitó la opción **"Cosméticos"** de personalización (`PERSONALIZACION_OPTIONS` en `types.ts`); el validador del backend sigue aceptando el valor `cosmeticos` si llegara (compatibilidad con cotizaciones viejas), simplemente ya no es seleccionable desde el formulario.
+
+**Precios base (`/admin` → pestaña Precios, `PreciosTab.tsx`):**
+- Se agregó **"Valor hora de trabajo"** como constante nueva (`valorHoraTrabajo`, default `9000` COP/hora), persistida en `settings/precios` igual que `precioKwhHora`/`precioFilamentoKg`. **No se conectó a ninguna fórmula de cálculo todavía** — no había un campo de "horas de trabajo" por producto al que aplicarla sin inventar comportamiento no pedido; queda disponible y visible en el panel, lista para cablearse en cuanto se defina dónde debe aplicarse.
+- El precio de energía (`precioKwhHora`) y su equivalente por minuto ya eran (y siguen siendo) una constante global en esa misma pestaña — se agregó el detalle "→ X COP/min" también ahí para que quede explícito.
+
+**Botón "Rechazada" (`QuotesTab.tsx`, `admin/page.tsx`):**
+- Ahora, al rechazar una cotización, se abre automáticamente un chat de WhatsApp hacia el cliente (mismo patrón que "Generar PDF y WhatsApp") con un mensaje avisando que la cotización no fue aprobada e invitando a escribir por ese mismo número ante dudas.
+
+**Archivos nuevos:** `cotizar/countryCodes.ts`.
+**Verificación:** `npx tsc --noEmit` y `python -m py_compile` limpios; formulario público probado interactivamente en el navegador (sin login, es público); validación del payload sin cédula/dimensiones probada directamente contra `QuoteCreate`.
+
