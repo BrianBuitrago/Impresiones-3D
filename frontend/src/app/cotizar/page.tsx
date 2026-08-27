@@ -21,7 +21,6 @@ export default function Cotizar() {
   const [nombre,   setNombre]   = useState('');
   const [telefono, setTelefono] = useState('');
   const [email,    setEmail]    = useState('');
-  const [cedula,   setCedula]   = useState('');
   const [notasCotizacion, setNotasCotizacion] = useState('');
 
   // Producto en edición y lista acumulada
@@ -40,7 +39,6 @@ export default function Cotizar() {
       setNombre(profile.nombre   || '');
       setTelefono(profile.telefono || '');
       setEmail(profile.email     || '');
-      setCedula(profile.cedula     || '');
     }
   }, [profile]);
 
@@ -48,8 +46,6 @@ export default function Cotizar() {
   const isFormDirty =
     productoActual.nombre.trim() !== '' ||
     productoActual.descripcionLineal.trim() !== '' ||
-    productoActual.tamanoHorizontal.trim() !== '' ||
-    productoActual.tamanoVertical.trim() !== '' ||
     productoActual.accesorios.trim() !== '' ||
     productoActual.personalizacion.length > 0 ||
     productoActual.empaque !== 'ninguno' ||
@@ -131,8 +127,8 @@ export default function Cotizar() {
     e.preventDefault();
     setError(null);
 
-    if (!nombre.trim() || !telefono.trim() || !email.trim() || !cedula.trim()) {
-      setError('Por favor completa todos los campos de contacto, incluida tu cédula.');
+    if (!nombre.trim() || !telefono.trim() || !email.trim()) {
+      setError('Por favor completa todos los campos de contacto.');
       return;
     }
 
@@ -172,8 +168,6 @@ export default function Cotizar() {
           idProducto,
           nombre:                  p.nombre,
           descripcionLineal:       p.descripcionLineal,
-          tamanoHorizontal:        parseFloat(p.tamanoHorizontal),
-          tamanoVertical:          parseFloat(p.tamanoVertical),
           unidades:                p.unidades,
           accesorios:              p.accesorios,
           personalizacion:         p.personalizacion,
@@ -202,7 +196,6 @@ export default function Cotizar() {
                 nombre,
                 telefono,
                 email,
-                cedula,
               },
             }),
       };
@@ -213,7 +206,7 @@ export default function Cotizar() {
       setProductos([]);
       setProductoActual(newProduct());
       setNotasCotizacion('');
-      if (!profile) { setNombre(''); setTelefono(''); setEmail(''); setCedula(''); }
+      if (!profile) { setNombre(''); setTelefono(''); setEmail(''); }
     } catch (err: any) {
       console.error('Error al guardar cotización:', err);
       setError(err.message || 'Ocurrió un error al enviar tu cotización. Inténtalo de nuevo.');
@@ -275,7 +268,6 @@ export default function Cotizar() {
             profile={profile}
             nombre={nombre} setNombre={setNombre}
             telefono={telefono} setTelefono={setTelefono}
-            cedula={cedula} setCedula={setCedula}
             email={email} setEmail={setEmail}
             notasCotizacion={notasCotizacion} setNotasCotizacion={setNotasCotizacion}
           />
