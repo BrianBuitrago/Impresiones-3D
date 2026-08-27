@@ -17,6 +17,7 @@ import { fetchQuotes } from '@/services/quoteService';
 import { fetchInversiones } from '@/services/inversionService';
 import { formatCOP } from '../components/shared';
 import { GRANULARIDADES, bucketKey, bucketLabel, type Granularidad } from '../components/periodo';
+import SettingsEditModal from '@/components/ui/SettingsEditModal';
 
 
 const MONTHS = [
@@ -90,6 +91,13 @@ export default function ReportesPage() {
   const [showManualForm, setShowManualForm] = useState(false);
   const [editingReport, setEditingReport] = useState<ReportData | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Edición/eliminación de UNA compra dentro de un reporte, sin afectar las demás
+  // que estén en ese mismo reporte.
+  const [editingItem, setEditingItem] = useState<{
+    reportId: string; itemIndex: number; descripcion: string; categoria: string; cantidad: number; valor: number;
+  } | null>(null);
+  const [deletingItemKey, setDeletingItemKey] = useState<string | null>(null);
+  const [savingItem, setSavingItem] = useState(false);
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState<string[]>(['cajas', 'pintura']);
   const [purchaseTab, setPurchaseTab] = useState<'manual' | 'web'>('manual');
@@ -138,6 +146,68 @@ export default function ReportesPage() {
     }
   };
 
+  // Elimina UNA compra dentro de un reporte sin tocar las demás. Si era la
+  // única compra del reporte, se elimina el reporte entero (no tiene sentido
+  // dejar un reporte con 0 items).
+  const handleDeleteManualItem = async (reportId: string, itemIndex: number) => {
+    if (!token) return;
+    const report = reportes.find(r => r.id === reportId);
+    if (!report) return;
+    const key = `${reportId}-${itemIndex}`;
+    setDeletingItemKey(key);
+    setError(null);
+    try {
+      const newItems = report.items.filter((_, idx) => idx !== itemIndex);
+      if (newItems.length === 0) {
+        await deleteReporte(token, reportId);
+        setReportes(prev => prev.filter(r => r.id !== reportId));
+      } else {
+        const updated = await updateReporte(token, reportId, { items: newItems });
+        setReportes(prev => prev.map(r => r.id === reportId ? updated : r));
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setDeletingItemKey(null);
+    }
+  };
+
+  const handleStartEditItem = (reportId: string, itemIndex: number) => {
+    const report = reportes.find(r => r.id === reportId);
+    const item = report?.items[itemIndex];
+    if (!report || !item) return;
+    setEditingItem({
+      reportId,
+      itemIndex,
+      descripcion: item.descripcion || '',
+      categoria: item.categoria || categoriasDisponibles[0] || '',
+      cantidad: item.cantidad || 1,
+      valor: item.valor || 0,
+    });
+  };
+
+  const handleSaveEditItem = async () => {
+    if (!token || !editingItem) return;
+    const report = reportes.find(r => r.id === editingItem.reportId);
+    if (!report) { setEditingItem(null); return; }
+    setSavingItem(true);
+    setError(null);
+    try {
+      const newItems = report.items.map((it, idx) =>
+        idx === editingItem.itemIndex
+          ? { ...it, descripcion: editingItem.descripcion, categoria: editingItem.categoria, cantidad: editingItem.cantidad, valor: editingItem.valor }
+          : it
+      );
+      const updated = await updateReporte(token, editingItem.reportId, { items: newItems });
+      setReportes(prev => prev.map(r => r.id === updated.id ? updated : r));
+      setEditingItem(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSavingItem(false);
+    }
+  };
+
   useEffect(() => {
     if (!loading) loadData();
   }, [loading, loadData]);
@@ -154,6 +224,7 @@ export default function ReportesPage() {
   const itemsAplanados = useMemo(() => {
     const items: Array<{
       reportId: string;
+      itemIndex: number;
       periodo: string;
       colaboradorNombre: string;
       categoria: string;
@@ -167,11 +238,12 @@ export default function ReportesPage() {
     }> = [];
 
     for (const r of reportesFiltrados) {
-      for (const it of r.items) {
-        if (filtroColaboradores.length > 0 && !filtroColaboradores.includes(r.colaboradorUid)) continue;
-        if (filtroCategoria && it.categoria !== filtroCategoria) continue;
+      r.items.forEach((it, idx) => {
+        if (filtroColaboradores.length > 0 && !filtroColaboradores.includes(r.colaboradorUid)) return;
+        if (filtroCategoria && it.categoria !== filtroCategoria) return;
         items.push({
           reportId: r.id,
+          itemIndex: idx,
           periodo: r.periodo,
           colaboradorNombre: r.colaboradorNombre,
           categoria: it.categoria,
@@ -183,7 +255,7 @@ export default function ReportesPage() {
           origen: it.origen,
           productoDetalle: it.productoDetalle,
         });
-      }
+      });
     }
     return items;
   }, [reportesFiltrados, filtroColaboradores, filtroCategoria]);
@@ -625,9 +697,9 @@ export default function ReportesPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-800/60">
                         {itemsAplanados.map((item, i) => {
-                          const report = reportesFiltrados.find(r => r.id === item.reportId);
+                          const itemKey = `${item.reportId}-${item.itemIndex}`;
                           return (
-                          <tr key={`manual-${item.reportId}-${i}`} className="hover:bg-slate-800/10 transition-colors">
+                          <tr key={`manual-${itemKey}-${i}`} className="hover:bg-slate-800/10 transition-colors">
                             <td className="py-3 px-4">
                               <div className="text-sm text-slate-200 font-medium">{item.descripcion}</div>
                               {(item.clienteNombre) && (
@@ -652,17 +724,17 @@ export default function ReportesPage() {
                               )}
                             </td>
                             <td className="py-3 px-4">
-                              {item.origen !== 'web' && report && (
+                              {item.origen !== 'web' && (
                                 <div className="flex gap-1 justify-end">
-                                  <button onClick={() => handleEditReport(report)}
-                                    title="Edita el reporte completo al que pertenece esta compra"
+                                  <button onClick={() => handleStartEditItem(item.reportId, item.itemIndex)}
+                                    title="Editar esta compra"
                                     className="text-[9px] px-2 py-0.5 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 text-cyan-400 rounded-lg cursor-pointer transition-colors whitespace-nowrap">
                                     Editar
                                   </button>
-                                  <button onClick={() => handleDeleteReport(report.id)} disabled={deletingId === report.id}
-                                    title="Elimina el reporte completo al que pertenece esta compra"
+                                  <button onClick={() => handleDeleteManualItem(item.reportId, item.itemIndex)} disabled={deletingItemKey === itemKey}
+                                    title="Eliminar esta compra"
                                     className="text-[9px] px-2 py-0.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 rounded-lg cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap">
-                                    {deletingId === report.id ? '...' : 'Eliminar'}
+                                    {deletingItemKey === itemKey ? '...' : 'Eliminar'}
                                   </button>
                                 </div>
                               )}
@@ -840,6 +912,57 @@ export default function ReportesPage() {
           />
         )}
       </AnimatePresence>
+
+      {editingItem && (
+        <SettingsEditModal
+          title="Editar compra"
+          onSave={handleSaveEditItem}
+          onCancel={() => setEditingItem(null)}
+        >
+          <div>
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Descripción</label>
+            <input
+              type="text"
+              value={editingItem.descripcion}
+              onChange={e => setEditingItem(prev => prev && { ...prev, descripcion: e.target.value })}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Categoría</label>
+            <select
+              value={editingItem.categoria}
+              onChange={e => setEditingItem(prev => prev && { ...prev, categoria: e.target.value })}
+              className={selectClass}
+            >
+              {categoriasDisponibles.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Cantidad</label>
+              <input
+                type="number"
+                min={1}
+                value={editingItem.cantidad}
+                onChange={e => setEditingItem(prev => prev && { ...prev, cantidad: parseInt(e.target.value) || 1 })}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Valor</label>
+              <input
+                type="number"
+                min={0}
+                value={editingItem.valor}
+                onChange={e => setEditingItem(prev => prev && { ...prev, valor: parseFloat(e.target.value) || 0 })}
+                className={inputClass}
+              />
+            </div>
+          </div>
+          {savingItem && <p className="text-xs text-slate-500">Guardando...</p>}
+        </SettingsEditModal>
+      )}
     </div>
   );
 }
