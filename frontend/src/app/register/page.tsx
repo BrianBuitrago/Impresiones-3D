@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { User, Mail, Lock, Phone, IdCard, Calendar, Award, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Spinner from '@/components/ui/Spinner';
 
 export default function RegisterPage() {
   const { user, registerWithEmail, loading } = useAuth();
@@ -284,7 +285,7 @@ export default function RegisterPage() {
               className="w-full flex items-center justify-center gap-2 mt-6 py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 text-white font-medium rounded-xl shadow-lg shadow-cyan-500/15 hover:shadow-cyan-500/25 transition-all cursor-pointer"
             >
               {submitting ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <Spinner size="md" color="white" />
               ) : (
                 'Registrarse'
               )}

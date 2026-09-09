@@ -21,6 +21,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import ImageLightbox from '@/components/ui/ImageLightbox';
+import Spinner from '@/components/ui/Spinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP, estadoBadgeClass, type CalcEntry } from './shared';
 
@@ -171,7 +172,7 @@ export default function QuotesTab({
                   <div className="border-t border-slate-800 pt-3 max-h-[520px] overflow-y-auto space-y-2 pr-1">
                     {quotesFetching ? (
                       <div className="py-10 flex flex-col items-center gap-2">
-                        <div className="w-5 h-5 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+                        <Spinner size="md" />
                         <p className="text-slate-500 text-xs">Cargando...</p>
                       </div>
                     ) : filteredQuotes.length === 0 ? (
@@ -972,7 +973,7 @@ export default function QuotesTab({
                               className="py-3 px-5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-cyan-500/10 disabled:opacity-50"
                             >
                               {saving ? (
-                                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                <Spinner size="sm" color="white" />
                               ) : (
                                 <CheckCircle2 className="w-4 h-4" />
                               )}

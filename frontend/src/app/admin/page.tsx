@@ -27,6 +27,7 @@ import { type CalcEntry } from './components/shared';
 import { calcProduct as calcProductPure, getQuoteTotals as getQuoteTotalsPure, mapProductoConCalculo as mapProductoConCalculoPure, type PricingContext } from '@/utils/quotePricing';
 import { generateQuotePdfAndOpenWhatsApp } from '@/utils/generateQuotePdf';
 import { buildQuoteReportItems } from '@/utils/buildQuoteReportItems';
+import Spinner from '@/components/ui/Spinner';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -507,7 +508,7 @@ export default function AdminPage() {
     return (
       <div className="min-h-[80vh] flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+          <Spinner size="2xl" />
           <p className="text-slate-400 text-sm">Verificando credenciales...</p>
         </div>
       </div>

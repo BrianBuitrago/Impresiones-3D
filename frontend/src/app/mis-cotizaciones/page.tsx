@@ -10,6 +10,7 @@ import {
 import { formatCOP, estadoBadgeClass } from '@/app/admin/components/shared';
 import { fetchMyQuotes } from '@/services/quoteService';
 import ImageLightbox from '@/components/ui/ImageLightbox';
+import Spinner from '@/components/ui/Spinner';
 
 const subEstadoBadgeClass = (subEstado: string) => {
   switch (subEstado) {
@@ -51,7 +52,7 @@ export default function MisCotizacionesPage() {
   if (loading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-slate-950">
-        <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+        <Spinner size="2xl" />
       </div>
     );
   }
@@ -91,7 +92,7 @@ export default function MisCotizacionesPage() {
 
         {fetching ? (
           <div className="bg-slate-900/40 border border-slate-800 rounded-3xl py-20 flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-3 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+            <Spinner size="xl" />
             <p className="text-slate-500 text-sm">Cargando tus cotizaciones...</p>
           </div>
         ) : quotes.length === 0 ? (

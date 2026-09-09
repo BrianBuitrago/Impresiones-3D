@@ -3,6 +3,7 @@
 import { Search, RefreshCw, Users, Mail, IdCard, Phone, Calendar, Check, ShieldCheck, UserCog } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { UserProfile } from '@/context/AuthContext';
+import Spinner from '@/components/ui/Spinner';
 
 interface UsersTabProps {
   usersList: UserProfile[];
@@ -139,7 +140,7 @@ export default function UsersTab({
 
               {usersFetching ? (
                 <div className="backdrop-blur-md bg-slate-900/40 border border-slate-800 rounded-3xl shadow-xl py-20 flex flex-col items-center gap-3">
-                  <div className="w-8 h-8 border-3 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+                  <Spinner size="xl" />
                   <p className="text-slate-500 text-sm">Cargando usuarios...</p>
                 </div>
               ) : filteredUsers.length === 0 ? (
@@ -212,7 +213,7 @@ export default function UsersTab({
                                   )}
                                   <RoleSelect u={u} updatingUid={updatingUid} handleRoleChange={handleRoleChange} />
                                   {updatingUid === u.uid && (
-                                    <div className="w-4 h-4 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+                                    <Spinner size="sm" />
                                   )}
                                 </div>
                               </td>
@@ -264,7 +265,7 @@ export default function UsersTab({
                             </span>
                           )}
                           {updatingUid === u.uid && (
-                            <div className="w-4 h-4 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin shrink-0" />
+                            <Spinner size="sm" className="shrink-0" />
                           )}
                         </div>
                       </motion.div>

@@ -5,6 +5,7 @@ import { CheckCircle2, X, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Colaborador } from '@/types/reportes';
 import { formatCOP } from './shared';
+import Spinner from '@/components/ui/Spinner';
 
 interface TrabajoAdicional {
   tempId: string;
@@ -180,7 +181,7 @@ export default function AssignColaboradorDialog({
                 <div className="flex gap-3 pt-2 border-t border-slate-800">
                   <button onClick={handleConfirmAssign} disabled={assignSaving}
                     className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-xl text-sm cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-                    {assignSaving ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    {assignSaving ? <Spinner size="sm" color="white" /> : <CheckCircle2 className="w-4 h-4" />}
                     {assignSaving ? 'Guardando...' : 'Aceptar y asignar'}
                   </button>
                   <button onClick={() => setShowAssignDialog(false)} className="py-3 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium rounded-xl text-sm cursor-pointer transition-colors">Cancelar</button>

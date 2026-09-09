@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { fetchProductos, actualizarProducto, crearProducto, eliminarProducto } from '@/services/productService';
 import type { Product, ProductFormData } from '@/types/productos';
+import Spinner from '@/components/ui/Spinner';
 
 const DEFAULT_PRODUCTOS: Product[] = [
   { id: 'default-1', nombre: 'Figura Articulada Dragón', descripcion: 'Figura de dragón con articulaciones móviles, ideal para coleccionistas.', material: 'Resina ABS-like', imagenUrl: '', categoria: 'figuras', destacado: true, orden: 1, activo: true },
@@ -127,7 +128,7 @@ export default function Catalogo() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+      <Spinner size="2xl" />
     </div>
   );
 

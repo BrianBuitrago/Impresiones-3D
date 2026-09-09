@@ -16,6 +16,7 @@ import { fetchQuotes } from '@/services/quoteService';
 import { fetchInversiones } from '@/services/inversionService';
 import { formatCOP } from '../components/shared';
 import { GRANULARIDADES, bucketKey, bucketLabel, type Granularidad } from '../components/periodo';
+import Spinner from '@/components/ui/Spinner';
 
 // Esta página es SOLO analítica (KPIs, comparativa por colaborador,
 // rentabilidad) — la gestión (crear/editar/eliminar) de compras manuales y
@@ -201,7 +202,7 @@ export default function ReportesPage() {
     return (
       <div className="min-h-[80vh] flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+          <Spinner size="2xl" />
           <p className="text-slate-400 text-sm">Cargando...</p>
         </div>
       </div>
@@ -424,7 +425,7 @@ export default function ReportesPage() {
               </div>
               {fetching ? (
                 <div className="p-12 flex flex-col items-center gap-2">
-                  <div className="w-6 h-6 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+                  <Spinner size="lg" />
                   <p className="text-slate-500 text-xs">Cargando...</p>
                 </div>
               ) : comparativa.length === 0 ? (
