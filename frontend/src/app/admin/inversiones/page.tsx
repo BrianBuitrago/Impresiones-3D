@@ -248,20 +248,20 @@ export default function InversionesPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <button
               onClick={handleSincronizar}
               disabled={syncing}
               title="Trae al panel lo que se haya agregado o borrado en la pestaña 'Inversiónes' del Google Sheet"
-              className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold rounded-xl text-sm cursor-pointer transition-colors border border-slate-700 flex items-center justify-center gap-1.5"
+              className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold rounded-xl text-sm cursor-pointer transition-colors border border-slate-700 flex items-center justify-center gap-1.5 whitespace-nowrap"
             >
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Sincronizando...' : 'Sincronizar con Google Sheet'}
+              <RefreshCw className={`w-4 h-4 shrink-0 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Sincronizando...' : 'Sincronizar con Google Sheet'}
             </button>
             <button
               onClick={openCreateModal}
-              className="py-2.5 px-5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+              className="py-2.5 px-5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" /> Agregar inversión
+              <Plus className="w-4 h-4 shrink-0" /> Agregar inversión
             </button>
           </div>
         </div>

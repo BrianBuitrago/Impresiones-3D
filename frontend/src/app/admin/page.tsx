@@ -1068,10 +1068,14 @@ export default function AdminPage() {
         </div>
 
         {/* ── Tabs ── */}
-        <div className="flex border-b border-slate-800">
+        {/* overflow-x-auto: con hasta 6 pestañas no entran en una pantalla de
+            celular sin esto — antes se salían del contenedor y provocaban
+            scroll horizontal de toda la página. shrink-0 en cada botón evita
+            que el navegador las achique/apriete en vez de dejarlas scrollear. */}
+        <div className="flex overflow-x-auto border-b border-slate-800">
           <button
             onClick={() => { setActiveTab('cotizaciones'); setError(null); }}
-            className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'cotizaciones'
                 ? 'border-cyan-500 text-cyan-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -1084,7 +1088,7 @@ export default function AdminPage() {
           {profile?.rol === 'administrador' && (
             <button
               onClick={() => { setActiveTab('usuarios'); setError(null); }}
-              className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+              className={`shrink-0 whitespace-nowrap py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'usuarios'
                   ? 'border-cyan-500 text-cyan-400'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -1097,7 +1101,7 @@ export default function AdminPage() {
           {profile?.rol === 'administrador' && (
             <button
               onClick={() => { setActiveTab('precios'); setError(null); }}
-              className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+              className={`shrink-0 whitespace-nowrap py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'precios'
                   ? 'border-cyan-500 text-cyan-400'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -1110,7 +1114,7 @@ export default function AdminPage() {
           {(profile?.rol === 'administrador' || profile?.rol === 'colaborador') && (
             <button
               onClick={() => { setActiveTab('compras'); setError(null); }}
-              className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+              className={`shrink-0 whitespace-nowrap py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'compras'
                   ? 'border-emerald-500 text-emerald-400'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -1123,7 +1127,7 @@ export default function AdminPage() {
           {profile?.rol === 'administrador' && (
             <button
               onClick={() => router.push('/admin/reportes')}
-              className="py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer border-transparent text-slate-400 hover:text-slate-200"
+              className="shrink-0 whitespace-nowrap py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer border-transparent text-slate-400 hover:text-slate-200"
             >
               <BarChart3 className="w-4 h-4" />
               Reportes
@@ -1132,7 +1136,7 @@ export default function AdminPage() {
           {profile?.rol === 'administrador' && (
             <button
               onClick={() => router.push('/admin/inversiones')}
-              className="py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer border-transparent text-slate-400 hover:text-slate-200"
+              className="shrink-0 whitespace-nowrap py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer border-transparent text-slate-400 hover:text-slate-200"
             >
               <Wallet className="w-4 h-4" />
               Inversiones

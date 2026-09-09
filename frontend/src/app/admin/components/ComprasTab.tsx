@@ -120,13 +120,13 @@ export default function ComprasTab({ isColaborador = false, quotesList, handleUp
       className="space-y-6"
     >
       {!isColaborador && (
-        <div className="flex border-b border-slate-800">
+        <div className="flex overflow-x-auto border-b border-slate-800">
           <button type="button" onClick={() => setSubTab('web')}
-            className={`py-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${subTab === 'web' ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+            className={`shrink-0 whitespace-nowrap py-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${subTab === 'web' ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
             <Globe className="w-3.5 h-3.5" /> Compras Web
           </button>
           <button type="button" onClick={() => setSubTab('manual')}
-            className={`py-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${subTab === 'manual' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+            className={`shrink-0 whitespace-nowrap py-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${subTab === 'manual' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
             <FileText className="w-3.5 h-3.5" /> Compras Manuales
           </button>
         </div>
