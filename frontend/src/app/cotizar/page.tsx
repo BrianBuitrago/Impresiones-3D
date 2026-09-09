@@ -11,6 +11,7 @@ import SuccessScreen from './components/SuccessScreen';
 import ContactoForm from './components/ContactoForm';
 import ProductoFormCard from './components/ProductoFormCard';
 import ProductosTable from './components/ProductosTable';
+import Spinner from '@/components/ui/Spinner';
 
 // ── Componente principal ───────────────────────────────────────────────────────
 
@@ -345,7 +346,7 @@ export default function Cotizar() {
             >
               {loading ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <Spinner size="md" color="white" />
                   <span>Procesando tu cotización...</span>
                 </>
               ) : (

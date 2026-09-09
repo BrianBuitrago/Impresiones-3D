@@ -13,6 +13,7 @@ import { GRANULARIDADES, bucketKey, bucketLabel, resolverPeriodo, type Granulari
 import { fetchInversiones, crearInversion, actualizarInversion, eliminarInversion } from '@/services/inversionService';
 import { sincronizarInversiones } from '@/services/syncService';
 import type { Inversion, InversionInput, TipoInversion } from '@/types/inversiones';
+import Spinner from '@/components/ui/Spinner';
 
 const tipoBadgeClass = (tipo: TipoInversion) =>
   tipo === 'maquina'
@@ -158,7 +159,7 @@ export default function InversionesPage() {
     return (
       <div className="min-h-[80vh] flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+          <Spinner size="2xl" />
           <p className="text-slate-400 text-sm">Cargando...</p>
         </div>
       </div>
@@ -287,7 +288,7 @@ export default function InversionesPage() {
         {/* Listado */}
         {fetching ? (
           <div className="backdrop-blur-md bg-slate-900/40 border border-slate-800 rounded-3xl shadow-xl py-20 flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-3 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+            <Spinner size="xl" />
             <p className="text-slate-500 text-sm">Cargando inversiones...</p>
           </div>
         ) : inversionesDelPeriodo.length === 0 ? (
@@ -346,7 +347,7 @@ export default function InversionesPage() {
                             <button onClick={() => handleDelete(inv.id)} disabled={deletingId === inv.id}
                               className="p-1.5 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 cursor-pointer disabled:opacity-50 transition-colors">
                               {deletingId === inv.id
-                                ? <div className="w-3.5 h-3.5 border-2 border-red-500/20 border-t-red-500 rounded-full animate-spin" />
+                                ? <Spinner size="xs" color="red" />
                                 : <Trash2 className="w-3.5 h-3.5" />}
                             </button>
                           </div>
@@ -469,7 +470,7 @@ export default function InversionesPage() {
             <div className="flex gap-3 mt-6">
               <button onClick={handleSave} disabled={saving}
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50">
-                {saving ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
+                {saving ? <Spinner size="sm" color="white" /> : <Check className="w-4 h-4" />}
                 Guardar
               </button>
               <button onClick={() => setShowModal(false)} disabled={saving}

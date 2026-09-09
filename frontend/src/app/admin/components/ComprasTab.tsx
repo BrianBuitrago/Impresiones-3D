@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP } from './shared';
 import { GRANULARIDADES, bucketKey, bucketLabel, resolverPeriodo, type Granularidad } from './periodo';
 import ImageLightbox from '@/components/ui/ImageLightbox';
+import Spinner from '@/components/ui/Spinner';
 import ComprasManualesPanel from './ComprasManualesPanel';
 
 const getFechaCompra = (q: any) => q.creadoEn || q.Fecha || '';
@@ -106,7 +107,7 @@ export default function ComprasTab({ isColaborador = false, quotesList, handleUp
         ))}
       </select>
       {updatingId === q.id && (
-        <div className="w-4 h-4 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin shrink-0" />
+        <Spinner size="sm" className="shrink-0" />
       )}
     </div>
   );

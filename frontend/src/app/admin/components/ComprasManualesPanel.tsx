@@ -8,6 +8,7 @@ import type { Colaborador, ReportData, ReportItem, ProductoDetalle } from '@/typ
 import { fetchColaboradores, fetchReportes, crearReporte, updateReporte, deleteReporte } from '@/services/reporteService';
 import { sincronizarPedidosConfirmados } from '@/services/syncService';
 import { formatCOP } from './shared';
+import Spinner from '@/components/ui/Spinner';
 import SettingsEditModal from '@/components/ui/SettingsEditModal';
 
 const MONTHS = [
@@ -364,7 +365,7 @@ export default function ComprasManualesPanel() {
 
         {fetching ? (
           <div className="p-10 flex flex-col items-center gap-2">
-            <div className="w-6 h-6 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+            <Spinner size="lg" />
             <p className="text-slate-500 text-xs">Cargando...</p>
           </div>
         ) : itemsAplanados.length === 0 ? (
@@ -897,7 +898,7 @@ function ManualPurchaseForm({
           <div className="flex gap-3 pt-2 border-t border-slate-800">
             <button onClick={handleSubmit} disabled={saving}
               className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-xl text-sm cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-              {saving ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <FileText className="w-4 h-4" />}
+              {saving ? <Spinner size="sm" color="white" /> : <FileText className="w-4 h-4" />}
               {saving ? 'Guardando...' : isEditing ? 'Guardar Cambios' : `Guardar ${productos.length > 0 ? `${productos.length} producto${productos.length > 1 ? 's' : ''}` : ''}`}
             </button>
             <button onClick={onClose} className="py-3 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium rounded-xl text-sm cursor-pointer transition-colors">Cancelar</button>
