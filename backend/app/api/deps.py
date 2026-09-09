@@ -7,6 +7,21 @@ from typing import List
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
+def get_db():
+    """
+    Inyecta el cliente de Firestore, o corta la petición con 503 si el
+    servicio no está disponible. Reemplaza el 'if db is None: raise
+    HTTPException(503, ...)' que estaba repetido al principio de ~23
+    funciones en products/quotes/reports/inversiones — mismo mensaje y
+    status en todos, ahora en un solo lugar.
+    """
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Servicio de base de datos no disponible."
+        )
+    return db
+
 def get_firebase_uid(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """
     Verifica el token de Firebase enviado en la cabecera Authorization: Bearer <token>

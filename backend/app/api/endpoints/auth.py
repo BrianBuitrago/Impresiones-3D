@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.core.firebase import db, firebase_auth
 from app.core.limiter import limiter
 from app.models.user import UserCreate, UserResponse, UserRoleUpdate, UserProfileUpdate, GoogleSyncRequest
-from app.api.deps import get_current_user, RoleChecker, get_firebase_uid
+from app.api.deps import get_current_user, RoleChecker, get_firebase_uid, get_db
 from app.utils.firestore import serialize_doc
 from datetime import datetime
 from google.cloud.firestore_v1.base_query import FieldFilter # Importación útil si usas filtros modernos
@@ -83,23 +83,29 @@ def sync_google_user(request: GoogleSyncRequest):
             detail="Servicios de Firebase no están disponibles."
         )
 
+    # 1. Verificar el token de ID enviado por el frontend. Fuera del try/except
+    #    de abajo a propósito: si el token es válido pero le faltan claims, es
+    #    un 400 específico, no el 401 genérico de "token inválido" — antes
+    #    este chequeo estaba dentro del try y el except Exception de abajo lo
+    #    atrapaba (HTTPException también es una Exception), así que ese 400
+    #    nunca llegaba a mostrarse, siempre terminaba en el 401 genérico.
     try:
-        # 1. Verificar el token de ID enviado por el frontend
         decoded_token = firebase_auth.verify_id_token(request.id_token)
-        uid = decoded_token.get("uid")
-        email = decoded_token.get("email")
-        nombre_google = decoded_token.get("name", "Usuario Google")
-        
-        if not uid or not email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Token de Google inválido o incompleto."
-            )
     except Exception as e:
         logger.warning("Autenticación de Google fallida: %s", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Autenticación de Google fallida. Intenta nuevamente."
+        )
+
+    uid = decoded_token.get("uid")
+    email = decoded_token.get("email")
+    nombre_google = decoded_token.get("name", "Usuario Google")
+
+    if not uid or not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token de Google inválido o incompleto."
         )
 
     # Cargar correos de administradores permitidos por Google Login
@@ -162,16 +168,14 @@ def get_my_profile(current_user: dict = Depends(get_current_user)):
 def update_my_profile(
     profile_update: UserProfileUpdate,
     uid: str = Depends(get_firebase_uid),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db)
 ):
     """
     Permite al usuario autenticado actualizar sus datos personales.
     Solo acepta los campos definidos en UserProfileUpdate (whitelist);
     rol y email nunca se pueden modificar desde este endpoint.
     """
-    if db is None:
-        raise HTTPException(status_code=503, detail="Base de datos no disponible")
-
     updated_fields = profile_update.dict(exclude_unset=True)
 
     if not updated_fields:
@@ -196,14 +200,12 @@ def update_my_profile(
 def update_user_role(
     target_uid: str,
     role_update: UserRoleUpdate,
-    admin_user: dict = Depends(RoleChecker(["administrador"]))
+    admin_user: dict = Depends(RoleChecker(["administrador"])),
+    db=Depends(get_db)
 ):
     """
     Permite únicamente a un Administrador cambiar el rol de cualquier usuario.
     """
-    if db is None:
-        raise HTTPException(status_code=503, detail="Base de datos no disponible")
-
     user_ref = db.collection("users").document(target_uid)
     user_doc = user_ref.get()
     
@@ -230,15 +232,13 @@ def update_user_role(
 @router.get("/users", response_model=list[UserResponse])
 def list_all_users(
     rol: str | None = None,
-    admin_user: dict = Depends(RoleChecker(["administrador"]))
+    admin_user: dict = Depends(RoleChecker(["administrador"])),
+    db=Depends(get_db)
 ):
     """
     Retorna la lista de usuarios registrados en Firestore.
     Opcionalmente filtra por rol (administrador, colaborador, cliente).
     """
-    if db is None:
-        raise HTTPException(status_code=503, detail="Base de datos no disponible")
-        
     try:
         query = db.collection("users")
         if rol:

@@ -1,9 +1,9 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from app.core.firebase import db, firebase_auth
+from app.core.firebase import firebase_auth
 from app.core.limiter import limiter
 from app.models.quote import QuoteCreate, QuoteUpdate, QuoteResponse, SubEstadoUpdate, strip_monetary_fields
-from app.api.deps import RoleChecker, get_firebase_uid
+from app.api.deps import RoleChecker, get_firebase_uid, get_db
 from app.utils.firestore import serialize_doc
 from app.services.pricing import round_money, calculate_product, get_precios_globales
 from datetime import datetime
@@ -35,10 +35,7 @@ def get_optional_uid(request: Request) -> Optional[str]:
 
 @router.post("", response_model=QuoteResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
-def create_quote(request: Request, quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optional_uid)):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="Servicio de base de datos no disponible.")
+def create_quote(request: Request, quote_in: QuoteCreate, uid: Optional[str] = Depends(get_optional_uid), db=Depends(get_db)):
     if uid:
         user_ref = db.collection("users").document(uid)
         user_doc = user_ref.get()
@@ -119,11 +116,9 @@ def get_all_quotes(
     estado: str | None = None,
     fecha_desde: str | None = None,
     fecha_hasta: str | None = None,
-    current_user: dict = Depends(RoleChecker(["administrador", "colaborador"]))
+    current_user: dict = Depends(RoleChecker(["administrador", "colaborador"])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="Servicio de base de datos no disponible.")
     try:
         query = db.collection("quotes")
         if estado:
@@ -154,10 +149,7 @@ def get_all_quotes(
 
 
 @router.get("/my", response_model=List[QuoteResponse])
-def get_my_quotes(uid: str = Depends(get_firebase_uid)):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="Servicio de base de datos no disponible.")
+def get_my_quotes(uid: str = Depends(get_firebase_uid), db=Depends(get_db)):
     try:
         quotes_ref = db.collection("quotes").where("cliente.uid", "==", uid)
         docs = quotes_ref.limit(200).stream()
@@ -165,7 +157,7 @@ def get_my_quotes(uid: str = Depends(get_firebase_uid)):
         for doc in docs:
             q_data = doc.to_dict()
             q_data["id"] = doc.id
-            quotes_list.append(serialize_doc(q_data))  # ← FIX
+            quotes_list.append(serialize_doc(q_data))
         quotes_list.sort(key=lambda x: x.get("creadoEn", ""), reverse=True)
         return quotes_list
     except Exception as e:
@@ -175,10 +167,7 @@ def get_my_quotes(uid: str = Depends(get_firebase_uid)):
 
 
 @router.get("/{quote_id}", response_model=QuoteResponse)
-def get_quote_by_id(quote_id: str, uid: str = Depends(get_firebase_uid)):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="Servicio de base de datos no disponible.")
+def get_quote_by_id(quote_id: str, uid: str = Depends(get_firebase_uid), db=Depends(get_db)):
     quote_ref = db.collection("quotes").document(quote_id)
     quote_doc = quote_ref.get()
     if not quote_doc.exists:
@@ -186,7 +175,7 @@ def get_quote_by_id(quote_id: str, uid: str = Depends(get_firebase_uid)):
                             detail="La cotización no existe.")
     q_data = quote_doc.to_dict()
     q_data["id"] = quote_doc.id
-    serialize_doc(q_data)  # ← FIX
+    serialize_doc(q_data)
 
     user_ref = db.collection("users").document(uid)
     user_doc = user_ref.get()
@@ -208,11 +197,9 @@ def get_quote_by_id(quote_id: str, uid: str = Depends(get_firebase_uid)):
 def update_quote(
     quote_id: str,
     quote_up: QuoteUpdate,
-    current_user: dict = Depends(RoleChecker(["administrador"]))
+    current_user: dict = Depends(RoleChecker(["administrador"])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="Servicio de base de datos no disponible.")
     quote_ref = db.collection("quotes").document(quote_id)
     quote_doc = quote_ref.get()
     if not quote_doc.exists:
@@ -249,7 +236,7 @@ def update_quote(
         quote_ref.update(update_data)
         final_doc = quote_ref.get().to_dict()
         final_doc["id"] = quote_id
-        serialize_doc(final_doc)  # ← FIX
+        serialize_doc(final_doc)
         return final_doc
     except Exception as e:
         logger.error("Fallo al actualizar la cotización %s: %s", quote_id, e)
@@ -261,14 +248,12 @@ def update_quote(
 def update_quote_subestado(
     quote_id: str,
     payload: SubEstadoUpdate,
-    current_user: dict = Depends(RoleChecker(["administrador", "colaborador"]))
+    current_user: dict = Depends(RoleChecker(["administrador", "colaborador"])),
+    db=Depends(get_db)
 ):
     """Actualiza únicamente el sub-estado de producción/entrega, sin tocar
     productos ni precios — es lo único que un colaborador puede modificar
     de una cotización, y no necesita ver ni reenviar datos de precio para usarlo."""
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="Servicio de base de datos no disponible.")
     quote_ref = db.collection("quotes").document(quote_id)
     if not quote_ref.get().exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
