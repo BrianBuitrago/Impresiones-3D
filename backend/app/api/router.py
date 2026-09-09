@@ -45,3 +45,12 @@ except Exception as e:
     print(f"ERROR: No se pudo registrar router de inversiones: {e}", file=sys.stderr)
     import traceback
     traceback.print_exc()
+
+# Importar sync (sincronización bajo demanda con Google Sheets) de forma segura
+try:
+    from app.api.endpoints import sync
+    api_router.include_router(sync.router, prefix="/sync", tags=["Sincronización"])
+except Exception as e:
+    print(f"ERROR: No se pudo registrar router de sync: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc()
