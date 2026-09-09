@@ -1,7 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.firebase import db
-from app.api.deps import RoleChecker, get_current_user
+from app.api.deps import RoleChecker, get_current_user, get_db
 from app.models.report import ReportCreate, ReportResponse, ReportUpdate
 from app.utils.firestore import serialize_doc
 from app.services.reports import calculate_totals
@@ -15,11 +14,9 @@ router = APIRouter()
 @router.post('', response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
 def create_report(
     report_in: ReportCreate,
-    current_user: dict = Depends(RoleChecker(['administrador']))
+    current_user: dict = Depends(RoleChecker(['administrador'])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
     try:
         created_at = datetime.utcnow().isoformat()
         report_data = report_in.dict()
@@ -44,11 +41,9 @@ def list_reports(
     colaboradorUid: str | None = None,
     estado: str | None = None,
     tipo: str | None = None,
-    current_user: dict = Depends(RoleChecker(['administrador']))
+    current_user: dict = Depends(RoleChecker(['administrador'])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
     try:
         query = db.collection('reports')
         if periodo:
@@ -74,10 +69,7 @@ def list_reports(
                             detail='No se pudieron listar los reportes.')
 
 @router.get('/{report_id}', response_model=ReportResponse)
-def get_report(report_id: str, current_user: dict = Depends(RoleChecker(['administrador', 'colaborador']))):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
+def get_report(report_id: str, current_user: dict = Depends(RoleChecker(['administrador', 'colaborador'])), db=Depends(get_db)):
     report_ref = db.collection('reports').document(report_id)
     report_doc = report_ref.get()
     if not report_doc.exists:
@@ -90,11 +82,9 @@ def get_report(report_id: str, current_user: dict = Depends(RoleChecker(['admini
 def update_report(
     report_id: str,
     report_update: ReportUpdate,
-    current_user: dict = Depends(RoleChecker(['administrador']))
+    current_user: dict = Depends(RoleChecker(['administrador'])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
     report_ref = db.collection('reports').document(report_id)
     if not report_ref.get().exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Reporte no encontrado.')
@@ -119,11 +109,9 @@ def update_report(
 @router.delete('/{report_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_report(
     report_id: str,
-    current_user: dict = Depends(RoleChecker(['administrador']))
+    current_user: dict = Depends(RoleChecker(['administrador'])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
     report_ref = db.collection('reports').document(report_id)
     existing_doc = report_ref.get()
     if not existing_doc.exists:

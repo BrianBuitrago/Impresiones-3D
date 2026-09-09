@@ -1,7 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.firebase import db
-from app.api.deps import RoleChecker
+from app.api.deps import RoleChecker, get_db
 from app.models.inversion import InversionCreate, InversionResponse, InversionUpdate
 from app.services.inversion_sheet_sync import sync_inversion_a_sheet, clear_inversion_row_en_sheet
 from app.utils.firestore import serialize_doc
@@ -15,11 +14,9 @@ router = APIRouter()
 @router.post('', response_model=InversionResponse, status_code=status.HTTP_201_CREATED)
 def create_inversion(
     inversion_in: InversionCreate,
-    current_user: dict = Depends(RoleChecker(['administrador']))
+    current_user: dict = Depends(RoleChecker(['administrador'])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
     try:
         created_at = datetime.utcnow().isoformat()
         inversion_data = inversion_in.dict()
@@ -40,11 +37,9 @@ def create_inversion(
 
 @router.get('', response_model=List[InversionResponse])
 def list_inversiones(
-    current_user: dict = Depends(RoleChecker(['administrador']))
+    current_user: dict = Depends(RoleChecker(['administrador'])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
     try:
         # Límite defensivo, no paginación real: las vistas por período necesitan el set
         # completo, así que se deja muy por encima del volumen actual.
@@ -62,10 +57,7 @@ def list_inversiones(
 
 
 @router.get('/{inversion_id}', response_model=InversionResponse)
-def get_inversion(inversion_id: str, current_user: dict = Depends(RoleChecker(['administrador', 'colaborador']))):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
+def get_inversion(inversion_id: str, current_user: dict = Depends(RoleChecker(['administrador', 'colaborador'])), db=Depends(get_db)):
     inversion_ref = db.collection('inversiones').document(inversion_id)
     inversion_doc = inversion_ref.get()
     if not inversion_doc.exists:
@@ -79,11 +71,9 @@ def get_inversion(inversion_id: str, current_user: dict = Depends(RoleChecker(['
 def update_inversion(
     inversion_id: str,
     inversion_update: InversionUpdate,
-    current_user: dict = Depends(RoleChecker(['administrador']))
+    current_user: dict = Depends(RoleChecker(['administrador'])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
     inversion_ref = db.collection('inversiones').document(inversion_id)
     current_doc = inversion_ref.get()
     if not current_doc.exists:
@@ -117,11 +107,9 @@ def update_inversion(
 @router.delete('/{inversion_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_inversion(
     inversion_id: str,
-    current_user: dict = Depends(RoleChecker(['administrador']))
+    current_user: dict = Depends(RoleChecker(['administrador'])),
+    db=Depends(get_db)
 ):
-    if db is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Servicio de base de datos no disponible.')
     inversion_ref = db.collection('inversiones').document(inversion_id)
     existing_doc = inversion_ref.get()
     if not existing_doc.exists:
