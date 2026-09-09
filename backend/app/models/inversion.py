@@ -57,6 +57,7 @@ class InversionUpdate(BaseModel):
 class InversionResponse(InversionBase):
     id: str = Field(..., description="ID del documento en Firestore")
     total: float = Field(0.0, description="Cantidad × Costo, calculado en servidor")
+    sheetRow: Optional[int] = Field(None, description="Fila en Google Sheets de origen (si se importó de ahí); al editar, esa fila se actualiza también")
     creadoEn: Optional[str] = None
     actualizadoEn: Optional[str] = None
 

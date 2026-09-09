@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.firebase import db
 from app.api.deps import RoleChecker
 from app.models.inversion import InversionCreate, InversionResponse, InversionUpdate
+from app.services.inversion_sheet_sync import sync_inversion_a_sheet
 from app.utils.firestore import serialize_doc
 from datetime import datetime
 from typing import List
@@ -100,6 +101,12 @@ def update_inversion(
         inversion_ref.update(update_data)
         updated = inversion_ref.get().to_dict()
         updated['id'] = inversion_id
+        try:
+            sync_inversion_a_sheet(updated)
+        except Exception as sync_err:
+            # El Sheet es secundario: si falla la sincronización no se debe
+            # perder la edición ya guardada en la app.
+            logger.warning('No se pudo sincronizar la inversión %s con el Sheet: %s', inversion_id, sync_err)
         return serialize_doc(updated)
     except Exception as e:
         logger.error('Fallo al actualizar inversión %s: %s', inversion_id, e)
