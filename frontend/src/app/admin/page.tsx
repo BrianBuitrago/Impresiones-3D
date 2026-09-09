@@ -13,7 +13,6 @@ import {
   Wallet,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { jsPDF } from 'jspdf';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { Colaborador, ReportItem } from '@/types/reportes';
@@ -24,7 +23,9 @@ import UsersTab from './components/UsersTab';
 import PreciosTab from './components/PreciosTab';
 import ComprasTab from './components/ComprasTab';
 import AssignColaboradorDialog from './components/AssignColaboradorDialog';
-import { formatCOP, type CalcEntry } from './components/shared';
+import { type CalcEntry } from './components/shared';
+import { calcProduct as calcProductPure, getQuoteTotals as getQuoteTotalsPure, mapProductoConCalculo as mapProductoConCalculoPure, type PricingContext } from '@/utils/quotePricing';
+import { generateQuotePdfAndOpenWhatsApp } from '@/utils/generateQuotePdf';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -319,139 +320,15 @@ export default function AdminPage() {
   };
 
   // ── Cálculos matemáticos por producto ─────────────────────────────────────
-  //
-  //  precioKwhMinuto   = constante propia (Precios), no derivada de precioKwhHora
-  //  costoEnergia/u    = duracion(min) × precioKwhMinuto
-  //  costoFilamento/u  = filamento(g)  × (precioFilamentoKg / 1000)
-  //  costoFabricacion/u= costoEnergia  + costoFilamento
-  //  precioConGanancia/u = costoFabricacion × (1 + ganancia/100)
-  //  precioTotal/u     = precioConGanancia + valorEmpaque + valorPersonalizacion
-  //  subtotalFabTotal  = precioConGanancia × unidades  (sin empaque ni personaliz.)
-  //  gananciaTotal     = (precioConGanancia - costoFabricacion) × unidades
-  //  precioTotal Prod  = precioTotal/u × unidades
-
-  const calcProduct = (idx: number, unidades: number) => {
-    const v = calcValues[idx] || {
-      tiempoHoras: '0',
-      tiempoMinutos: '0',
-      pesoGramos: '0',
-      costoDiseno: '0',
-      costoAccesorios: '0',
-      costoEmpaque: '0',
-      costoPersonalizado: '0',
-      horasPostProcesado: '0',
-      costoProcesado: '0',
-      porcentajeImprevistos: '0',
-      kwH: '0',
-      kwMin: '0',
-      ganancia: '30',
-    };
-
-    const tiempoHoras      = parseFloat(v.tiempoHoras) || 0;
-    const tiempoMinutos    = parseFloat(v.tiempoMinutos) || 0;
-    const duracion         = tiempoHoras * 60 + tiempoMinutos;
-    const filamento        = parseFloat(v.pesoGramos) || 0;
-    const costoDiseno      = parseFloat(v.costoDiseno) || 0;
-    const costoAccesorios  = parseFloat(v.costoAccesorios) || 0;
-    const valorEmpaque     = parseFloat(v.costoEmpaque) || 0;
-    const valorPersonalizacion = parseFloat(v.costoPersonalizado) || 0;
-    const horasProcesado   = parseFloat(v.horasPostProcesado) || 0;
-    const costoProcesado   = parseFloat(v.costoProcesado) || 0;
-    const imprevistos      = parseFloat(v.porcentajeImprevistos) || 0;
-    const kwH              = parseFloat(v.kwH) || 0;
-    const kwMin            = parseFloat(v.kwMin) || 0;
-    const ganancia          = parseFloat(v.ganancia) || 0;
-
-    // precioKwhMinuto viene del estado global (constante propia en Precios), no de precioKwhHora/60
-    const costoEnergiaUnitario      = (kwH > 0 || kwMin > 0)
-      ? (kwH * tiempoHoras + kwMin * tiempoMinutos / 60) * precioKwhHora
-      : duracion * precioKwhMinuto;
-    const costoFilamentoUnitario    = filamento * (precioFilamentoKg / 1000);
-    // El subtotal de fabricación incluye empaque y personalización (igual que la hoja de cálculo
-    // original del negocio), para que imprevistos y ganancia se apliquen también sobre esos costos.
-    const costoFabricacionUnitario  = costoEnergiaUnitario + costoFilamentoUnitario + costoDiseno + costoAccesorios + costoProcesado + valorEmpaque + valorPersonalizacion;
-
-    const valorImprevistos          = costoFabricacionUnitario * (imprevistos / 100);
-    const baseConImprevistos        = costoFabricacionUnitario + valorImprevistos;
-    const gananciaUnitaria          = baseConImprevistos * (ganancia / 100);
-
-    const precioUnitario            = costoFabricacionUnitario + gananciaUnitaria;
-    const precioTotalUnitario       = precioUnitario;
-
-    const subtotalEnergia           = costoEnergiaUnitario * unidades;
-    const subtotalMaterial          = costoFilamentoUnitario * unidades;
-    const subtotalFabricacionTotal  = costoFabricacionUnitario * unidades;
-    const gananciaTotal             = gananciaUnitaria * unidades;
-    const precioTotalProducto       = precioTotalUnitario * unidades;
-
-    return {
-      tiempoHoras, tiempoMinutos, duracion, filamento, costoDiseno, costoAccesorios,
-      valorEmpaque, valorPersonalizacion, ganancia,
-      horasProcesado, costoProcesado, imprevistos, valorImprevistos,
-      precioKwhMinuto,
-      costoEnergiaUnitario,
-      costoFilamentoUnitario,
-      costoFabricacionUnitario,
-      precioUnitario,
-      precioConGananciaUnitario: precioUnitario,
-      precioTotalUnitario,
-      subtotalEnergia,
-      subtotalMaterial,
-      subtotalFabricacionTotal,
-      gananciaTotal,
-      precioTotalProducto,
-    };
-  };
-
-  const getQuoteTotals = () => {
-    if (!selectedQuote) return { subtotalFabricacion: 0, ganancia: 0, total: 0 };
-    let subtotalFabricacion = 0, ganancia = 0, total = 0;
-    selectedQuote.productos.forEach((p: any, idx: number) => {
-      const c = calcProduct(idx, p.unidades);
-      subtotalFabricacion += c.subtotalFabricacionTotal;
-      ganancia            += c.gananciaTotal;
-      total               += c.precioTotalProducto;
-    });
-    return { subtotalFabricacion, ganancia, total };
-  };
-
-  // Recalcula todos los campos de precio de un producto de la cotización a partir de calcProduct
-  const mapProductoConCalculo = (p: any, idx: number) => {
-    const c = calcProduct(idx, p.unidades);
-    return {
-      ...p,
-      idProducto: p.idProducto || `PROD-${String(idx + 1).padStart(3, '0')}`,
-      descripcionLineal: p.descripcionLineal || p.nombre,
-      tiempoHoras: c.tiempoHoras,
-      tiempoMinutos: c.tiempoMinutos,
-      pesoGramos: c.filamento,
-      costoDisenoUnitario: c.costoDiseno,
-      costoAccesoriosUnitario: c.costoAccesorios,
-      duracionImpresionUnidad: c.duracion,
-      filamentoUsadoUnidad: c.filamento,
-      valorEmpaqueUnitario: c.valorEmpaque,
-      valorPersonalizacionUnitario: c.valorPersonalizacion,
-      horasPostProcesado: c.horasProcesado,
-      costoProcesado: c.costoProcesado,
-      porcentajeImprevistos: c.imprevistos,
-      valorImprevistos: Math.round(c.valorImprevistos * 100) / 100,
-      porcentajeGanancia: c.ganancia,
-      precioKwhHora,
-      precioKwhMinuto: Math.round(c.precioKwhMinuto * 100) / 100,
-      precioFilamentoKg,
-      precioFilamentoGramo: Math.round((precioFilamentoKg / 1000) * 100) / 100,
-      costoFabricacionUnitario: Math.round(c.costoFabricacionUnitario * 100) / 100,
-      precioUnitario: Math.round(c.precioUnitario * 100) / 100,
-      precioConGananciaUnitario: Math.round(c.precioConGananciaUnitario * 100) / 100,
-      precioTotalUnitario: Math.round(c.precioTotalUnitario * 100) / 100,
-      subtotalFabricacionTotal: Math.round(c.subtotalFabricacionTotal * 100) / 100,
-      gananciaTotal: Math.round(c.gananciaTotal * 100) / 100,
-      precioTotal: Math.round(c.precioTotalProducto * 100) / 100,
-      subtotalEnergia: Math.round(c.subtotalEnergia * 100) / 100,
-      subtotalMaterial: Math.round(c.subtotalMaterial * 100) / 100,
-      precioLinealTotal: Math.round(c.precioTotalProducto * 100) / 100,
-    };
-  };
+  // La matemática vive en utils/quotePricing.ts (extraída para acortar este
+  // archivo y poder probarla aparte); acá solo se arma el contexto con el
+  // estado del panel y se envuelve con las firmas originales (idx, unidades)
+  // para no tener que tocar QuotesTab/AssignColaboradorDialog, que reciben
+  // estas funciones como props.
+  const pricingCtx: PricingContext = { calcValues, precioKwhHora, precioKwhMinuto, precioFilamentoKg };
+  const calcProduct = (idx: number, unidades: number) => calcProductPure(idx, unidades, pricingCtx);
+  const getQuoteTotals = () => getQuoteTotalsPure(selectedQuote, pricingCtx);
+  const mapProductoConCalculo = (p: any, idx: number) => mapProductoConCalculoPure(p, idx, pricingCtx);
 
   // ── Guardar cotización ────────────────────────────────────────────────────
 
@@ -697,291 +574,17 @@ export default function AdminPage() {
     handleSaveQuote('rechazado');
   };
 
-  const fetchImageDataUrl = async (
-    imageUrl: string,
-    format: 'PNG' | 'JPEG' = 'JPEG',
-  ): Promise<{ dataUrl: string; width: number; height: number; format: 'PNG' | 'JPEG' } | null> => {
-    try {
-      return await new Promise<{ dataUrl: string; width: number; height: number; format: 'PNG' | 'JPEG' }>((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return reject(new Error('No se puede acceder al canvas.'));
-          ctx.drawImage(img, 0, 0);
-          const dataUrl = format === 'PNG' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.85);
-          resolve({ dataUrl, width: img.naturalWidth, height: img.naturalHeight, format });
-        };
-        img.onerror = () => reject(new Error('No se pudo cargar la imagen.'));
-        img.src = imageUrl;
-      });
-    } catch {
-      return null;
-    }
-  };
-
-  const formatQuoteDate = (isoDate?: string) => {
-    if (!isoDate) return 'N/A';
-    const date = new Date(isoDate);
-    if (Number.isNaN(date.getTime())) return 'N/A';
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = String(date.getFullYear()).slice(-2);
-    return `${day}/${month}/${year}`;
-  };
-
+  // La generación del PDF (jsPDF, layout, imágenes de productos) vive en
+  // utils/generateQuotePdf.ts — acá solo se arma el mensaje de error si el
+  // cliente no tiene teléfono válido (el util lanza un Error con ese texto).
   const handleGeneratePdfAndOpenWhatsApp = async () => {
     if (!selectedQuote) return;
-
-    const totals = getQuoteTotals();
-    const cliente = selectedQuote.cliente || {};
-    const clienteNombre = cliente.nombre || 'Cliente';
-    const clienteCedula = cliente.cedula || 'No disponible';
-    const clienteTelefono = String(cliente.telefono || '').replace(/[^0-9]/g, '');
-
-    if (!clienteTelefono) {
-      setError('El teléfono del cliente no es válido para WhatsApp. Verifica el número en la cotización.');
-      return;
-    }
     setError(null);
-
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pageWidth = 595;
-    const pageHeight = 842;
-    const margin = 40;
-    const contentWidth = pageWidth - margin * 2;
-    let y = 0;
-
-    const drawField = (
-      x: number,
-      yPos: number,
-      label: string,
-      value: string,
-      opts: { size?: number } = {},
-    ) => {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text(label.toUpperCase(), x, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(opts.size || 10.5);
-      doc.setTextColor(15, 23, 42);
-      doc.text(value, x, yPos + 13);
-    };
-
-    const drawImageFit = (dataUrl: string, format: 'PNG' | 'JPEG', natW: number, natH: number, boxX: number, boxY: number, boxW: number, boxH: number) => {
-      const scale = Math.min(boxW / natW, boxH / natH);
-      const w = natW * scale;
-      const h = natH * scale;
-      doc.addImage(dataUrl, format, boxX + (boxW - w) / 2, boxY + (boxH - h) / 2, w, h);
-    };
-
-    const ensureSpace = (needed: number) => {
-      if (y + needed > pageHeight - 50) {
-        doc.addPage();
-        y = 40;
-      }
-    };
-
-    // ── Encabezado ──────────────────────────────────────────
-    const headerH = 90;
-    doc.setFillColor(6, 182, 212);
-    doc.rect(0, 0, pageWidth, headerH, 'F');
-
-    let logoW = 0;
-    const logoData = await fetchImageDataUrl('/logo.png', 'PNG');
-    if (logoData) {
-      const logoBox = 46;
-      const scale = Math.min(logoBox / logoData.width, logoBox / logoData.height);
-      logoW = logoData.width * scale;
-      const logoH = logoData.height * scale;
-      doc.addImage(logoData.dataUrl, 'PNG', margin, (headerH - logoH) / 2, logoW, logoH);
+    try {
+      await generateQuotePdfAndOpenWhatsApp(selectedQuote, getQuoteTotals());
+    } catch (err: any) {
+      setError(err.message || 'No se pudo generar el PDF.');
     }
-
-    const titleX = margin + (logoW > 0 ? logoW + 14 : 0);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.setTextColor(255, 255, 255);
-    doc.text('RepliCars3D', titleX, 38);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10.5);
-    doc.setTextColor(224, 250, 255);
-    doc.text('Cotización de fabricación 3D', titleX, 55);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(255, 255, 255);
-    doc.text('COTIZACIÓN', pageWidth - margin, 50, { align: 'right' });
-
-    y = headerH + 26;
-
-    // ── Tarjeta de datos del cliente ─────────────────────────
-    const infoBoxH = 118;
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.75);
-    doc.roundedRect(margin, y, contentWidth, infoBoxH, 6, 6, 'FD');
-
-    const col1 = margin + 18;
-    const col2 = margin + contentWidth / 2 + 10;
-    let fy = y + 24;
-    drawField(col1, fy, 'Referencia', selectedQuote.id);
-    drawField(col2, fy, 'Fecha', formatQuoteDate(selectedQuote.Fecha || selectedQuote.creadoEn || ''));
-    fy += 32;
-    drawField(col1, fy, 'Cédula', clienteCedula);
-    drawField(col2, fy, 'Teléfono', selectedQuote.cliente?.telefono || 'No disponible');
-    fy += 32;
-    drawField(col1, fy, 'Email', selectedQuote.cliente?.email || 'No disponible');
-
-    y += infoBoxH + 24;
-
-    // ── Resumen ───────────────────────────────────────────────
-    const totalPersonalizacion = selectedQuote.productos?.reduce(
-      (acc: number, p: any) => acc + (p.precioPersonalizacion || p.Precio_Personalizacion || 0),
-      0,
-    ) || 0;
-    const totalEmpaque = selectedQuote.productos?.reduce(
-      (acc: number, p: any) => acc + (p.precioEmpaque || p.Precio_Empaque || 0),
-      0,
-    ) || 0;
-
-    doc.setFillColor(14, 165, 233);
-    doc.rect(margin, y, contentWidth, 24, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(255, 255, 255);
-    doc.text('RESUMEN DE LA COTIZACIÓN', margin + 12, y + 16);
-    y += 24;
-
-    const summaryBodyH = 118;
-    doc.setFillColor(255, 255, 255);
-    doc.setDrawColor(226, 232, 240);
-    doc.rect(margin, y, contentWidth, summaryBodyH, 'FD');
-
-    fy = y + 24;
-    drawField(col1, fy, 'Subtotal fabricación', formatCOP(totals.subtotalFabricacion));
-    drawField(col2, fy, 'Personalización', formatCOP(totalPersonalizacion));
-    fy += 32;
-    drawField(col1, fy, 'Empaque', formatCOP(totalEmpaque));
-    fy += 34;
-
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.75);
-    doc.line(margin + 18, fy, margin + contentWidth - 18, fy);
-    fy += 26;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('TOTAL COTIZACIÓN', col1, fy - 4);
-    doc.setFontSize(17);
-    doc.setTextColor(6, 182, 212);
-    doc.text(formatCOP(totals.total), margin + contentWidth - 18, fy, { align: 'right' });
-
-    y += summaryBodyH + 26;
-
-    // ── Productos ─────────────────────────────────────────────
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(15, 23, 42);
-    doc.text('Productos cotizados', margin, y);
-    y += 16;
-
-    const IMG_BOX = 80;
-    const CARD_PAD = 16;
-    const imageFields = ['imagenFrontal', 'imagenLateral', 'imagenTrasera', 'imagenDiagonal', 'imagenUrl'];
-
-    for (let idx = 0; idx < selectedQuote.productos.length; idx++) {
-      const p = selectedQuote.productos[idx];
-      const nombreProducto = p.nombre || p.descripcionLineal || `Producto ${idx + 1}`;
-      const precioUnitario = p.precioUnitario || 0;
-      const precioPintura = p.precioPintura || p.Precio_Pintura || 0;
-      const precioPersonalizacion = p.precioPersonalizacion || p.Precio_Personalizacion || 0;
-      const precioEmpaque = p.precioEmpaque || p.Precio_Empaque || 0;
-      const unidades = p.unidades || 0;
-      const totalProducto = p.precioTotal || 0;
-
-      const productImageUrl = imageFields.reduce<string | undefined>((url, f) => url || p[f], undefined);
-      const productImageData = productImageUrl ? await fetchImageDataUrl(productImageUrl) : null;
-      const hasImg = !!productImageData;
-
-      const textX = margin + CARD_PAD + (hasImg ? IMG_BOX + 16 : 0);
-      const textW = contentWidth - CARD_PAD * 2 - (hasImg ? IMG_BOX + 16 : 0);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      const nameLines = doc.splitTextToSize(`${idx + 1}. ${nombreProducto}`, textW);
-      const nameH = nameLines.length * 13;
-      const contentH = 18 + nameH + 8 + 52 + 12 + 18 + 14;
-      const cardH = Math.max(contentH, IMG_BOX + CARD_PAD * 2);
-
-      ensureSpace(cardH + 12);
-
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.75);
-      doc.roundedRect(margin, y, contentWidth, cardH, 6, 6, 'FD');
-
-      if (hasImg && productImageData) {
-        doc.setDrawColor(226, 232, 240);
-        doc.roundedRect(margin + CARD_PAD, y + CARD_PAD, IMG_BOX, IMG_BOX, 4, 4, 'S');
-        drawImageFit(productImageData.dataUrl, productImageData.format, productImageData.width, productImageData.height, margin + CARD_PAD, y + CARD_PAD, IMG_BOX, IMG_BOX);
-      }
-
-      let cy = y + 18;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(30, 41, 59);
-      nameLines.forEach((line: string) => {
-        doc.text(line, textX, cy);
-        cy += 13;
-      });
-      cy += 8;
-
-      const dCol1 = textX;
-      const dCol2 = textX + textW / 2;
-      drawField(dCol1, cy, 'Cantidad', String(unidades), { size: 9.5 });
-      drawField(dCol2, cy, 'Precio unitario', formatCOP(precioUnitario), { size: 9.5 });
-      cy += 26;
-      drawField(dCol1, cy, 'Pintura + Personalización', formatCOP(precioPintura + precioPersonalizacion), { size: 9.5 });
-      drawField(dCol2, cy, 'Empaque', formatCOP(precioEmpaque), { size: 9.5 });
-      cy += 26 + 12;
-
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.5);
-      doc.line(textX, cy, margin + contentWidth - CARD_PAD, cy);
-      cy += 18;
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(6, 182, 212);
-      doc.text(`Total por producto: ${formatCOP(totalProducto)}`, margin + contentWidth - CARD_PAD, cy, { align: 'right' });
-
-      y += cardH + 12;
-    }
-
-    // ── Pie de página (todas las páginas) ────────────────────
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.5);
-      doc.line(margin, pageHeight - 36, pageWidth - margin, pageHeight - 36);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184);
-      doc.text('RepliCars3D · Cotización generada automáticamente', margin, pageHeight - 22);
-      doc.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 22, { align: 'right' });
-    }
-
-    const filename = `cotizacion-${selectedQuote.id}.pdf`;
-    doc.save(filename);
-
-    const message = `Hola ${clienteNombre}, te envío la cotización final. Cédula: ${clienteCedula}. Total: ${formatCOP(totals.total)}. Referencia: ${selectedQuote.id}.`;
-    const waUrl = `https://wa.me/${clienteTelefono}?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, '_blank');
   };
 
   // ── Guards ────────────────────────────────────────────────────────────────
