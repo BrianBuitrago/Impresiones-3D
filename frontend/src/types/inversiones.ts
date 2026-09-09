@@ -11,6 +11,7 @@ export interface Inversion {
   total: number;
   fecha: string;
   observaciones?: string;
+  sheetRow?: number;
   creadoEn?: string;
   actualizadoEn?: string;
 }
