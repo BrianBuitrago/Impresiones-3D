@@ -276,7 +276,7 @@ export default function ComprasManualesPanel() {
       {error && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-300 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
+          <button onClick={() => setError(null)} aria-label="Cerrar mensaje de error" className="text-red-300 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -795,7 +795,7 @@ function ManualPurchaseForm({
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Producto #{idx + 1}</span>
                   {productos.length > 1 && (
-                    <button onClick={() => handleRemoveProducto(prod.tempId)}
+                    <button onClick={() => handleRemoveProducto(prod.tempId)} aria-label="Quitar producto"
                       className="p-1 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                   )}
                 </div>
@@ -853,7 +853,7 @@ function ManualPurchaseForm({
                     <div key={trab.tempId} className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 mb-2">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Trabajo #{tidx + 1}</span>
-                        <button onClick={() => handleRemoveTrabajo(prod.tempId, trab.tempId)}
+                        <button onClick={() => handleRemoveTrabajo(prod.tempId, trab.tempId)} aria-label="Quitar trabajo"
                           className="p-0.5 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300 cursor-pointer"><X className="w-3 h-3" /></button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
