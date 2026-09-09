@@ -10,6 +10,7 @@ import { sincronizarPedidosConfirmados } from '@/services/syncService';
 import { formatCOP } from './shared';
 import Spinner from '@/components/ui/Spinner';
 import SettingsEditModal from '@/components/ui/SettingsEditModal';
+import { ToastContainer, type ToastData } from '@/components/ui/Toast';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -90,6 +91,7 @@ export default function ComprasManualesPanel() {
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState<string[]>(['cajas', 'pintura']);
   const [syncing, setSyncing] = useState(false);
+  const [toast, setToast] = useState<ToastData | null>(null);
 
   const loadData = useCallback(async () => {
     if (!token) return;
@@ -114,13 +116,13 @@ export default function ComprasManualesPanel() {
     try {
       const r = await sincronizarPedidosConfirmados(token);
       if (r.creados === 0 && r.eliminados === 0) {
-        alert('Sin cambios: el Sheet y la app ya están sincronizados.');
+        setToast({ message: 'Sin cambios: el Sheet y la app ya están sincronizados.', variant: 'info' });
       } else {
-        alert(`Sincronizado: ${r.creados} compra(s) nueva(s) traída(s) del Sheet, ${r.eliminados} eliminada(s) porque ya no están ahí.`);
+        setToast({ message: `Sincronizado: ${r.creados} compra(s) nueva(s) traída(s) del Sheet, ${r.eliminados} eliminada(s) porque ya no están ahí.`, variant: 'success' });
       }
       await loadData();
     } catch (err: any) {
-      alert(`No se pudo sincronizar: ${err.message}`);
+      setToast({ message: `No se pudo sincronizar: ${err.message}`, variant: 'error' });
     } finally {
       setSyncing(false);
     }
@@ -273,6 +275,7 @@ export default function ComprasManualesPanel() {
 
   return (
     <div className="space-y-6">
+      <ToastContainer toast={toast} onDismiss={() => setToast(null)} />
       {error && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm flex items-center justify-between">
           <span>{error}</span>
