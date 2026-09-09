@@ -15,7 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/services/firebase';
-import { Colaborador, ReportItem } from '@/types/reportes';
+import { Colaborador } from '@/types/reportes';
 import { fetchColaboradores, crearReporte } from '@/services/reporteService';
 import { fetchQuotes as fetchQuotesApi, actualizarQuote, actualizarSubEstado } from '@/services/quoteService';
 import QuotesTab from './components/QuotesTab';
@@ -26,6 +26,7 @@ import AssignColaboradorDialog from './components/AssignColaboradorDialog';
 import { type CalcEntry } from './components/shared';
 import { calcProduct as calcProductPure, getQuoteTotals as getQuoteTotalsPure, mapProductoConCalculo as mapProductoConCalculoPure, type PricingContext } from '@/utils/quotePricing';
 import { generateQuotePdfAndOpenWhatsApp } from '@/utils/generateQuotePdf';
+import { buildQuoteReportItems } from '@/utils/buildQuoteReportItems';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -408,100 +409,13 @@ export default function AdminPage() {
     setError(null);
     try {
       const colsDisponibles = assignColaboradores;
-      const itemsPorColaborador = new Map<string, ReportItem[]>();
-
-      // Build assignments: either all to one, or per item
-      for (let idx = 0; idx < selectedQuote.productos.length; idx++) {
-        const rawUid = assignMode === 'all' ? assignAllUid : (perItemAssignments[idx] || '');
-        const uid = rawUid || '__sin_asignar__';
-        const p = selectedQuote.productos[idx];
-        const c = calcProduct(idx, p.unidades);
-        const nombreProducto = p.descripcionLineal || p.nombre || 'Producto';
-
-        // Empaque/caja y personalización/pintura se pagan por separado (a quien
-        // corresponda, o "sin asignar" si lo hizo el dueño) y se descuentan del
-        // pago del producto completo para no pagarlos dos veces.
-        const montoEmpaque = c.valorEmpaque * (p.unidades || 1);
-        const montoPersonalizacion = c.valorPersonalizacion * (p.unidades || 1);
-        let valorProducto = c.precioTotalProducto;
-
-        if (montoEmpaque > 0) {
-          const empaqueUid = perItemEmpaqueAssignments[idx] || '__sin_asignar__';
-          const empaqueItem: ReportItem = {
-            categoria: 'cajas',
-            descripcion: `${nombreProducto} - Empaque`,
-            cantidad: p.unidades || 1,
-            valor: montoEmpaque,
-            actividad: 'Empaque',
-            clienteNombre: selectedQuote.cliente?.nombre || '',
-            clienteTelefono: selectedQuote.cliente?.telefono || '',
-            origen: 'web',
-          };
-          if (!itemsPorColaborador.has(empaqueUid)) itemsPorColaborador.set(empaqueUid, []);
-          itemsPorColaborador.get(empaqueUid)!.push(empaqueItem);
-          valorProducto -= montoEmpaque;
-        }
-
-        if (montoPersonalizacion > 0) {
-          const personalizacionUid = perItemPersonalizacionAssignments[idx] || '__sin_asignar__';
-          const personalizacionItem: ReportItem = {
-            categoria: 'pintura',
-            descripcion: `${nombreProducto} - Personalización/Pintura`,
-            cantidad: p.unidades || 1,
-            valor: montoPersonalizacion,
-            actividad: 'Personalización/Pintura',
-            clienteNombre: selectedQuote.cliente?.nombre || '',
-            clienteTelefono: selectedQuote.cliente?.telefono || '',
-            origen: 'web',
-          };
-          if (!itemsPorColaborador.has(personalizacionUid)) itemsPorColaborador.set(personalizacionUid, []);
-          itemsPorColaborador.get(personalizacionUid)!.push(personalizacionItem);
-          valorProducto -= montoPersonalizacion;
-        }
-
-        const item: ReportItem = {
-          categoria: p.categoria || 'cotización-web',
-          descripcion: nombreProducto,
-          cantidad: p.unidades || 1,
-          valor: valorProducto,
-          actividad: 'Cotización web aceptada',
-          clienteNombre: selectedQuote.cliente?.nombre || '',
-          clienteTelefono: selectedQuote.cliente?.telefono || '',
-          origen: 'web',
-          productoDetalle: {
-            nombre: p.nombre,
-            pesoGramos: c.filamento,
-            tiempoHoras: c.tiempoHoras,
-            tiempoMinutos: c.tiempoMinutos,
-            costoDiseno: c.costoDiseno,
-            costoAccesorios: c.costoAccesorios,
-            costoEmpaque: c.valorEmpaque,
-            costoPersonalizacion: c.valorPersonalizacion,
-            filamentoUsado: c.filamento,
-            valorUnitario: c.precioTotalUnitario,
-          },
-        };
-        if (!itemsPorColaborador.has(uid)) itemsPorColaborador.set(uid, []);
-        itemsPorColaborador.get(uid)!.push(item);
-
-        // Trabajos (sub-items) for this product
-        const trabajos = perItemTrabajos[idx] || [];
-        for (const t of trabajos) {
-          if (!t.colaboradorUid || !t.descripcion.trim() || t.valor <= 0) continue;
-          const trabajoItem: ReportItem = {
-            categoria: p.categoria || 'cotización-web',
-            descripcion: `${p.descripcionLineal || p.nombre || 'Producto'} - ${t.descripcion}`,
-            cantidad: 1,
-            valor: t.valor,
-            actividad: t.descripcion,
-            clienteNombre: selectedQuote.cliente?.nombre || '',
-            clienteTelefono: selectedQuote.cliente?.telefono || '',
-            origen: 'web',
-          };
-          if (!itemsPorColaborador.has(t.colaboradorUid)) itemsPorColaborador.set(t.colaboradorUid, []);
-          itemsPorColaborador.get(t.colaboradorUid)!.push(trabajoItem);
-        }
-      }
+      // El reparto de productos entre colaboradores (empaque/personalización
+      // aparte, trabajos sueltos) es pura lógica, sin llamadas a la API ni
+      // setState — vive en utils/buildQuoteReportItems.ts.
+      const itemsPorColaborador = buildQuoteReportItems(selectedQuote, {
+        assignMode, assignAllUid, perItemAssignments,
+        perItemEmpaqueAssignments, perItemPersonalizacionAssignments, perItemTrabajos,
+      }, pricingCtx);
 
       // Save quote as aceptado
       const updatedProductos = selectedQuote.productos.map(mapProductoConCalculo);
