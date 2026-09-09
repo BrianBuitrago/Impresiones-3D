@@ -502,6 +502,45 @@ export default function AdminPage() {
     }
   };
 
+  // ── Filtros ───────────────────────────────────────────────────────────────
+  // OJO: tienen que estar ANTES de los early return de "Guards" — son hooks
+  // (useMemo), y los hooks no pueden llamarse condicionalmente ni después de
+  // un return temprano (violaría las Reglas de los Hooks: si "loading" es
+  // true el componente vuelve antes de llegar acá, así que en ese render
+  // estos hooks nunca se ejecutarían, cambiando la cantidad/orden de hooks
+  // entre renders -> React tira el error #310 "Rendered more hooks than
+  // during the previous render". Estaban puestos después de los guards
+  // cuando eran simples const, lo cual no importaba porque no eran hooks;
+  // al envolverlos en useMemo había que moverlos para acá.
+
+  // Este componente tiene mucho estado (inputs de cálculo, formulario de
+  // reportes, diálogo de asignación) que cambia con cada tecla; sin useMemo,
+  // estos tres cálculos se repetían en cada uno de esos renders aunque sus
+  // propias dependencias no hubieran cambiado (usersList/quotesList pueden
+  // tener hasta 1000/2000 registros por el límite defensivo del backend).
+  const filteredUsers = useMemo(() => usersList.filter(u => {
+    const q = userSearchTerm.toLowerCase();
+    return (
+      (u.nombre?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.cedula?.includes(q)) &&
+      (userRoleFilter === 'todos' || u.rol === userRoleFilter)
+    );
+  }), [usersList, userSearchTerm, userRoleFilter]);
+
+  const filteredQuotes = useMemo(() => quotesList.filter(q =>
+    (q.cliente?.nombre?.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
+     q.cliente?.email?.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
+     q.id?.toLowerCase().includes(quoteSearchTerm.toLowerCase())) &&
+    (quoteStatusFilter === 'todos' || q.estado === quoteStatusFilter)
+  ), [quotesList, quoteSearchTerm, quoteStatusFilter]);
+
+  // El contexto se arma acá adentro (no se reutiliza el `pricingCtx` ya
+  // declarado arriba) para que las dependencias del memo sean los valores
+  // primitivos reales, no un objeto que de por sí es distinto en cada render.
+  const totals = useMemo(
+    () => getQuoteTotalsPure(selectedQuote, { calcValues, precioKwhHora, precioKwhMinuto, precioFilamentoKg }),
+    [selectedQuote, calcValues, precioKwhHora, precioKwhMinuto, precioFilamentoKg]
+  );
+
   // ── Guards ────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -541,36 +580,6 @@ export default function AdminPage() {
       </div>
     );
   }
-
-  // ── Filtros ───────────────────────────────────────────────────────────────
-
-  // Este componente tiene mucho estado (inputs de cálculo, formulario de
-  // reportes, diálogo de asignación) que cambia con cada tecla; sin useMemo,
-  // estos tres cálculos se repetían en cada uno de esos renders aunque sus
-  // propias dependencias no hubieran cambiado (usersList/quotesList pueden
-  // tener hasta 1000/2000 registros por el límite defensivo del backend).
-  const filteredUsers = useMemo(() => usersList.filter(u => {
-    const q = userSearchTerm.toLowerCase();
-    return (
-      (u.nombre?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.cedula?.includes(q)) &&
-      (userRoleFilter === 'todos' || u.rol === userRoleFilter)
-    );
-  }), [usersList, userSearchTerm, userRoleFilter]);
-
-  const filteredQuotes = useMemo(() => quotesList.filter(q =>
-    (q.cliente?.nombre?.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
-     q.cliente?.email?.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
-     q.id?.toLowerCase().includes(quoteSearchTerm.toLowerCase())) &&
-    (quoteStatusFilter === 'todos' || q.estado === quoteStatusFilter)
-  ), [quotesList, quoteSearchTerm, quoteStatusFilter]);
-
-  // El contexto se arma acá adentro (no se reutiliza el `pricingCtx` ya
-  // declarado arriba) para que las dependencias del memo sean los valores
-  // primitivos reales, no un objeto que de por sí es distinto en cada render.
-  const totals = useMemo(
-    () => getQuoteTotalsPure(selectedQuote, { calcValues, precioKwhHora, precioKwhMinuto, precioFilamentoKg }),
-    [selectedQuote, calcValues, precioKwhHora, precioKwhMinuto, precioFilamentoKg]
-  );
 
   // ── Render ────────────────────────────────────────────────────────────────
 
