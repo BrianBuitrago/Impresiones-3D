@@ -83,8 +83,6 @@ def fila_a_reporte(fila: list) -> dict | None:
         notas_extra.append(f"Destino: {destino}")
     if str(placa).strip():
         notas_extra.append(f"Placa: {placa}")
-    if str(rentabilidad).strip():
-        notas_extra.append(f"Rentabilidad (Sheet): {rentabilidad}")
 
     item = {
         "quote_id": "",
@@ -94,6 +92,7 @@ def fila_a_reporte(fila: list) -> dict | None:
         "actividad": f"Importado desde Google Sheets (fila Sheet #{item_num})",
         "cantidad": max(cantidad, 1),
         "valor": valor_total,
+        "rentabilidad": parse_cop(rentabilidad),
         "notas": " | ".join(notas_extra),
         "clienteNombre": str(cliente).strip(),
         "clienteTelefono": "",
