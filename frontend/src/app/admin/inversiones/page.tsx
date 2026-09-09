@@ -14,6 +14,7 @@ import { fetchInversiones, crearInversion, actualizarInversion, eliminarInversio
 import { sincronizarInversiones } from '@/services/syncService';
 import type { Inversion, InversionInput, TipoInversion } from '@/types/inversiones';
 import Spinner from '@/components/ui/Spinner';
+import { ToastContainer, type ToastData } from '@/components/ui/Toast';
 
 const tipoBadgeClass = (tipo: TipoInversion) =>
   tipo === 'maquina'
@@ -48,6 +49,7 @@ export default function InversionesPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [toast, setToast] = useState<ToastData | null>(null);
 
   const fetchAll = async () => {
     if (!token) return;
@@ -73,13 +75,13 @@ export default function InversionesPage() {
     try {
       const r = await sincronizarInversiones(token);
       if (r.creados === 0 && r.eliminados === 0) {
-        alert('Sin cambios: el Sheet y la app ya están sincronizados.');
+        setToast({ message: 'Sin cambios: el Sheet y la app ya están sincronizados.', variant: 'info' });
       } else {
-        alert(`Sincronizado: ${r.creados} inversión(es) nueva(s) traída(s) del Sheet, ${r.eliminados} eliminada(s) porque ya no están ahí.`);
+        setToast({ message: `Sincronizado: ${r.creados} inversión(es) nueva(s) traída(s) del Sheet, ${r.eliminados} eliminada(s) porque ya no están ahí.`, variant: 'success' });
       }
       await fetchAll();
     } catch (err: any) {
-      alert(`No se pudo sincronizar: ${err.message}`);
+      setToast({ message: `No se pudo sincronizar: ${err.message}`, variant: 'error' });
     } finally {
       setSyncing(false);
     }
@@ -186,6 +188,7 @@ export default function InversionesPage() {
 
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-100 py-6 px-4 sm:px-6 lg:px-8">
+      <ToastContainer toast={toast} onDismiss={() => setToast(null)} />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(6,182,212,0.05),transparent)] -z-10" />
 
       <div className="relative max-w-7xl mx-auto space-y-6">
