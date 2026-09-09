@@ -38,6 +38,7 @@ export interface ReportItem {
   actividad?: string;
   cantidad: number;
   valor: number;
+  rentabilidad?: number;
   notas?: string;
   clienteNombre?: string;
   clienteTelefono?: string;
