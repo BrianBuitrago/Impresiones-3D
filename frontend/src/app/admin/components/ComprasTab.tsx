@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { ShoppingCart, ChevronDown, ChevronLeft, Mail, Phone, IdCard, ImageIcon, Eye, Calendar } from 'lucide-react';
+import { ShoppingCart, ChevronDown, ChevronLeft, Mail, Phone, IdCard, ImageIcon, Eye, Calendar, Globe, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCOP } from './shared';
 import { GRANULARIDADES, bucketKey, bucketLabel, resolverPeriodo, type Granularidad } from './periodo';
 import ImageLightbox from '@/components/ui/ImageLightbox';
+import ComprasManualesPanel from './ComprasManualesPanel';
 
 const getFechaCompra = (q: any) => q.creadoEn || q.Fecha || '';
 
@@ -51,6 +52,9 @@ interface ComprasTabProps {
 }
 
 export default function ComprasTab({ isColaborador = false, quotesList, handleUpdateSubEstado, autoExpandId, onAutoExpandHandled }: ComprasTabProps) {
+  // "Compras Manuales" es exclusiva de administrador (datos financieros:
+  // abono/restante/rentabilidad) — colaborador solo ve Compras Web.
+  const [subTab, setSubTab] = useState<'web' | 'manual'>('web');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ images: { url: string; label?: string }[]; index: number } | null>(null);
@@ -115,6 +119,23 @@ export default function ComprasTab({ isColaborador = false, quotesList, handleUp
       exit={{ opacity: 0, y: -10 }}
       className="space-y-6"
     >
+      {!isColaborador && (
+        <div className="flex border-b border-slate-800">
+          <button type="button" onClick={() => setSubTab('web')}
+            className={`py-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${subTab === 'web' ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+            <Globe className="w-3.5 h-3.5" /> Compras Web
+          </button>
+          <button type="button" onClick={() => setSubTab('manual')}
+            className={`py-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${subTab === 'manual' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+            <FileText className="w-3.5 h-3.5" /> Compras Manuales
+          </button>
+        </div>
+      )}
+
+      {subTab === 'manual' && !isColaborador ? (
+        <ComprasManualesPanel />
+      ) : (
+      <>
       <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-bold text-white">Compras en proceso</h2>
@@ -391,6 +412,8 @@ export default function ComprasTab({ isColaborador = false, quotesList, handleUp
           onClose={() => setLightbox(null)}
           onNavigate={i => setLightbox(prev => (prev ? { ...prev, index: i } : prev))}
         />
+      )}
+      </>
       )}
     </motion.div>
   );
