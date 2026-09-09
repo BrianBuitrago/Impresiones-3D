@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Plus, FileText, ShoppingCart, User, Phone, X, Box, DollarSign, Users, Globe, Tag, Calendar } from 'lucide-react';
+import { Plus, FileText, ShoppingCart, User, Phone, X, Box, DollarSign, Users, Globe, Tag, Calendar, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import type { Colaborador, ReportData, ReportItem, ProductoDetalle } from '@/types/reportes';
 import { fetchColaboradores, fetchReportes, crearReporte, updateReporte, deleteReporte } from '@/services/reporteService';
+import { sincronizarPedidosConfirmados } from '@/services/syncService';
 import { formatCOP } from './shared';
 import SettingsEditModal from '@/components/ui/SettingsEditModal';
 
@@ -87,6 +88,7 @@ export default function ComprasManualesPanel() {
   const [savingItem, setSavingItem] = useState(false);
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState<string[]>(['cajas', 'pintura']);
+  const [syncing, setSyncing] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!token) return;
@@ -104,6 +106,24 @@ export default function ComprasManualesPanel() {
   }, [token]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const handleSincronizar = async () => {
+    if (!token || syncing) return;
+    setSyncing(true);
+    try {
+      const r = await sincronizarPedidosConfirmados(token);
+      if (r.creados === 0 && r.eliminados === 0) {
+        alert('Sin cambios: el Sheet y la app ya están sincronizados.');
+      } else {
+        alert(`Sincronizado: ${r.creados} compra(s) nueva(s) traída(s) del Sheet, ${r.eliminados} eliminada(s) porque ya no están ahí.`);
+      }
+      await loadData();
+    } catch (err: any) {
+      alert(`No se pudo sincronizar: ${err.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     const cats = new Set(categoriasDisponibles);
@@ -330,10 +350,16 @@ export default function ComprasManualesPanel() {
       <div className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2"><ShoppingCart className="w-5 h-5 text-emerald-400" /><h3 className="text-base font-bold text-white">Compras Manuales {itemsAplanados.length > 0 && <span className="text-slate-500 font-normal">({itemsAplanados.length})</span>}</h3></div>
-          <button onClick={() => setShowManualForm(true)}
-            className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Registrar Compra Manual
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={handleSincronizar} disabled={syncing} title="Trae al panel lo que se haya agregado o borrado en la pestaña 'Pedidos confirmados' del Google Sheet"
+              className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-colors border border-slate-700">
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Sincronizando...' : 'Sincronizar con Google Sheet'}
+            </button>
+            <button onClick={() => setShowManualForm(true)}
+              className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Registrar Compra Manual
+            </button>
+          </div>
         </div>
 
         {fetching ? (
