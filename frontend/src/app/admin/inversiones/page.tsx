@@ -5,12 +5,13 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
   ShieldAlert, ArrowLeft, Wallet, Plus, X, Check,
-  Package, Cpu, Layers, Pencil, Trash2, Calendar,
+  Package, Cpu, Layers, Pencil, Trash2, Calendar, RefreshCw,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatCOP } from '../components/shared';
 import { GRANULARIDADES, bucketKey, bucketLabel, resolverPeriodo, type Granularidad } from '../components/periodo';
 import { fetchInversiones, crearInversion, actualizarInversion, eliminarInversion } from '@/services/inversionService';
+import { sincronizarInversiones } from '@/services/syncService';
 import type { Inversion, InversionInput, TipoInversion } from '@/types/inversiones';
 
 const tipoBadgeClass = (tipo: TipoInversion) =>
@@ -45,6 +46,7 @@ export default function InversionesPage() {
   const [form, setForm] = useState<InversionInput>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const fetchAll = async () => {
     if (!token) return;
@@ -63,6 +65,24 @@ export default function InversionesPage() {
     if (!user || profile?.rol !== 'administrador') return;
     fetchAll();
   }, [user, profile, token]);
+
+  const handleSincronizar = async () => {
+    if (!token || syncing) return;
+    setSyncing(true);
+    try {
+      const r = await sincronizarInversiones(token);
+      if (r.creados === 0 && r.eliminados === 0) {
+        alert('Sin cambios: el Sheet y la app ya están sincronizados.');
+      } else {
+        alert(`Sincronizado: ${r.creados} inversión(es) nueva(s) traída(s) del Sheet, ${r.eliminados} eliminada(s) porque ya no están ahí.`);
+      }
+      await fetchAll();
+    } catch (err: any) {
+      alert(`No se pudo sincronizar: ${err.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const { periodosAscendente, periodoEfectivo } = useMemo(
     () => resolverPeriodo(inversiones, i => i.fecha, granularidad, periodoSeleccionado),
@@ -228,12 +248,22 @@ export default function InversionesPage() {
             )}
           </div>
 
-          <button
-            onClick={openCreateModal}
-            className="py-2.5 px-5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" /> Agregar inversión
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSincronizar}
+              disabled={syncing}
+              title="Trae al panel lo que se haya agregado o borrado en la pestaña 'Inversiónes' del Google Sheet"
+              className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold rounded-xl text-sm cursor-pointer transition-colors border border-slate-700 flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Sincronizando...' : 'Sincronizar con Google Sheet'}
+            </button>
+            <button
+              onClick={openCreateModal}
+              className="py-2.5 px-5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" /> Agregar inversión
+            </button>
+          </div>
         </div>
 
         {/* KPIs */}
