@@ -81,9 +81,10 @@ export default function ReportesPage() {
     const now = new Date();
     return `${MONTHS[now.getMonth()]}/${String(now.getFullYear()).slice(-2)}`;
   });
-  // Granularidad del filtro de periodo: mes puntual (como siempre), un año
-  // completo, o todo el histórico sin filtrar por fecha.
-  const [filtroGranularidadReporte, setFiltroGranularidadReporte] = useState<'mensual' | 'anual' | 'todo'>('mensual');
+  // Granularidad del filtro de periodo: mes puntual, un año completo, o todo
+  // el histórico sin filtrar por fecha. Arranca en "todo" para no esconder
+  // por defecto compras sin fecha registrada (ej. las importadas del Sheet).
+  const [filtroGranularidadReporte, setFiltroGranularidadReporte] = useState<'mensual' | 'anual' | 'todo'>('todo');
   const [filtroAnio, setFiltroAnio] = useState('');
   const [filtroColaboradores, setFiltroColaboradores] = useState<string[]>([]);
   const [filtroCategoria, setFiltroCategoria] = useState('');
