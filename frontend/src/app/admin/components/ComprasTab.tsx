@@ -62,7 +62,14 @@ export default function ComprasTab({ isColaborador = false, quotesList, handleUp
   const [granularidad, setGranularidad] = useState<Granularidad>('total');
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState<string>('');
 
-  const comprasBase = quotesList.filter(q => q.estado === 'aceptado');
+  // comprasBase iba sin useMemo: quotesList.filter(...) creaba un array nuevo
+  // en cada render, y como el useMemo de abajo lo usa como dependencia, ese
+  // memo tampoco servía de nada (su dependencia "cambiaba" todo el tiempo,
+  // aunque quotesList en realidad fuera el mismo).
+  const comprasBase = useMemo(
+    () => quotesList.filter(q => q.estado === 'aceptado'),
+    [quotesList]
+  );
 
   const { periodosAscendente, periodoEfectivo } = useMemo(
     () => resolverPeriodo(comprasBase, getFechaCompra, granularidad, periodoSeleccionado),
@@ -70,9 +77,12 @@ export default function ComprasTab({ isColaborador = false, quotesList, handleUp
   );
   const periodosParaDropdown = useMemo(() => [...periodosAscendente].reverse(), [periodosAscendente]);
 
-  const compras = granularidad === 'total'
-    ? comprasBase
-    : comprasBase.filter(q => bucketKey(getFechaCompra(q), granularidad) === periodoEfectivo);
+  const compras = useMemo(
+    () => granularidad === 'total'
+      ? comprasBase
+      : comprasBase.filter(q => bucketKey(getFechaCompra(q), granularidad) === periodoEfectivo),
+    [comprasBase, granularidad, periodoEfectivo]
+  );
 
   const expandedQuote = compras.find(q => q.id === expandedId) || null;
 

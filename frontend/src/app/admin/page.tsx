@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth, UserProfile } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
@@ -544,22 +544,33 @@ export default function AdminPage() {
 
   // ── Filtros ───────────────────────────────────────────────────────────────
 
-  const filteredUsers = usersList.filter(u => {
+  // Este componente tiene mucho estado (inputs de cálculo, formulario de
+  // reportes, diálogo de asignación) que cambia con cada tecla; sin useMemo,
+  // estos tres cálculos se repetían en cada uno de esos renders aunque sus
+  // propias dependencias no hubieran cambiado (usersList/quotesList pueden
+  // tener hasta 1000/2000 registros por el límite defensivo del backend).
+  const filteredUsers = useMemo(() => usersList.filter(u => {
     const q = userSearchTerm.toLowerCase();
     return (
       (u.nombre?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.cedula?.includes(q)) &&
       (userRoleFilter === 'todos' || u.rol === userRoleFilter)
     );
-  });
+  }), [usersList, userSearchTerm, userRoleFilter]);
 
-  const filteredQuotes = quotesList.filter(q =>
+  const filteredQuotes = useMemo(() => quotesList.filter(q =>
     (q.cliente?.nombre?.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
      q.cliente?.email?.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
      q.id?.toLowerCase().includes(quoteSearchTerm.toLowerCase())) &&
     (quoteStatusFilter === 'todos' || q.estado === quoteStatusFilter)
-  );
+  ), [quotesList, quoteSearchTerm, quoteStatusFilter]);
 
-  const totals = getQuoteTotals();
+  // El contexto se arma acá adentro (no se reutiliza el `pricingCtx` ya
+  // declarado arriba) para que las dependencias del memo sean los valores
+  // primitivos reales, no un objeto que de por sí es distinto en cada render.
+  const totals = useMemo(
+    () => getQuoteTotalsPure(selectedQuote, { calcValues, precioKwhHora, precioKwhMinuto, precioFilamentoKg }),
+    [selectedQuote, calcValues, precioKwhHora, precioKwhMinuto, precioFilamentoKg]
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────
 
