@@ -274,8 +274,10 @@ export default function ReportesPage() {
         c = { uid, nombre: r.colaboradorNombre || 'Sin Asignar', totalGanado: 0, totalItems: 0, itemsPorCategoria: {}, valorPorCategoria: {} };
         mapa.set(uid, c);
       }
+      const esCompra = r.tipo === 'compra';
+      if (esCompra) c.totalGanado += r.totalRecibido || 0;
       for (const it of r.items) {
-        c.totalGanado += it.valor;
+        if (!esCompra) c.totalGanado += it.valor;
         c.totalItems += it.cantidad;
         c.itemsPorCategoria[it.categoria] = (c.itemsPorCategoria[it.categoria] || 0) + it.cantidad;
         c.valorPorCategoria[it.categoria] = (c.valorPorCategoria[it.categoria] || 0) + it.valor;
@@ -348,17 +350,28 @@ export default function ReportesPage() {
   }, [comprasEntregadas, inversiones, rentGranularidad]);
 
   const kpiTotales = useMemo(() => {
-    let totalGanado = 0, totalItems = 0;
+    // "Total Ganado" no debe incluir el saldo pendiente de cobro de las
+    // compras (item.valor ahí es el precio de venta completo, no lo que ya
+    // entró). Para reportes tipo="compra" se usa totalRecibido (a nivel de
+    // reporte); para el resto (trabajo de colaboradores) se sigue sumando
+    // item.valor como siempre, que ahí sí representa lo ganado/adeudado.
+    let totalGanado = 0, totalItems = 0, totalRentabilidad = 0, totalRestante = 0;
     const cols = new Set<string>(), cats = new Set<string>();
     for (const r of reportesFiltrados) {
       cols.add(r.colaboradorUid);
+      const esCompra = r.tipo === 'compra';
+      if (esCompra) {
+        totalGanado += r.totalRecibido || 0;
+        totalRestante += r.restante || 0;
+      }
       for (const it of r.items) {
-        totalGanado += it.valor;
+        if (!esCompra) totalGanado += it.valor;
+        totalRentabilidad += it.rentabilidad || 0;
         totalItems += it.cantidad;
         cats.add(it.categoria);
       }
     }
-    return { totalGanado, totalItems, colaboradoresUnicos: cols.size, categoriasUnicas: cats.size };
+    return { totalGanado, totalItems, colaboradoresUnicos: cols.size, categoriasUnicas: cats.size, totalRentabilidad, totalRestante };
   }, [reportesFiltrados]);
 
   useEffect(() => {
@@ -523,9 +536,11 @@ export default function ReportesPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             { label: 'Total Ganado', value: formatCOP(kpiTotales.totalGanado), icon: DollarSign, color: 'text-emerald-400' },
+            { label: 'Rentabilidad', value: formatCOP(kpiTotales.totalRentabilidad), icon: TrendingUp, color: 'text-emerald-400' },
+            { label: 'Restante por Cobrar', value: formatCOP(kpiTotales.totalRestante), icon: DollarSign, color: 'text-amber-400' },
             { label: 'Items Realizados', value: kpiTotales.totalItems.toLocaleString('es-CO'), icon: Layers, color: 'text-cyan-400' },
             { label: 'Colaboradores Activos', value: kpiTotales.colaboradoresUnicos, icon: Users, color: 'text-blue-400' },
             { label: 'Categorías', value: kpiTotales.categoriasUnicas, icon: Tag, color: 'text-amber-400' },
