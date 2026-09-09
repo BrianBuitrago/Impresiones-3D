@@ -140,7 +140,7 @@ export default function Catalogo() {
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-300 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
+            <button onClick={() => setError(null)} aria-label="Cerrar mensaje de error" className="text-red-300 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
           </div>
         )}
 

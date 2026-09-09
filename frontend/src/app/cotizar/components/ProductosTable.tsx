@@ -70,6 +70,7 @@ export default function ProductosTable({ productos, onRemove }: ProductosTablePr
                   <button
                     type="button"
                     onClick={() => onRemove(p.id)}
+                    aria-label="Eliminar producto"
                     className="inline-flex items-center justify-center p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />

@@ -209,7 +209,7 @@ export default function InversionesPage() {
         {error && (
           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-300 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
+            <button onClick={() => setError(null)} aria-label="Cerrar mensaje de error" className="text-red-300 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
           </div>
         )}
 
@@ -340,11 +340,11 @@ export default function InversionesPage() {
                         <td className="py-4 px-6 text-xs text-slate-400 max-w-[180px] truncate">{inv.observaciones || '---'}</td>
                         <td className="py-4 px-6 text-right">
                           <div className="inline-flex items-center gap-2 justify-end">
-                            <button onClick={() => openEditModal(inv)}
+                            <button onClick={() => openEditModal(inv)} aria-label="Editar inversión"
                               className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-cyan-400 cursor-pointer transition-colors">
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => handleDelete(inv.id)} disabled={deletingId === inv.id}
+                            <button onClick={() => handleDelete(inv.id)} disabled={deletingId === inv.id} aria-label="Eliminar inversión"
                               className="p-1.5 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 cursor-pointer disabled:opacity-50 transition-colors">
                               {deletingId === inv.id
                                 ? <Spinner size="xs" color="red" />

@@ -30,7 +30,7 @@ export default function Models3DManager() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-white">Modelos 3D del inicio</h3>
-              <button type="button" onClick={() => setOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar" className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
