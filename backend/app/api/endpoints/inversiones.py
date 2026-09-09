@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.firebase import db
 from app.api.deps import RoleChecker
 from app.models.inversion import InversionCreate, InversionResponse, InversionUpdate
-from app.services.inversion_sheet_sync import sync_inversion_a_sheet
+from app.services.inversion_sheet_sync import sync_inversion_a_sheet, clear_inversion_row_en_sheet
 from app.utils.firestore import serialize_doc
 from datetime import datetime
 from typing import List
@@ -123,11 +123,22 @@ def delete_inversion(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Servicio de base de datos no disponible.')
     inversion_ref = db.collection('inversiones').document(inversion_id)
-    if not inversion_ref.get().exists:
+    existing_doc = inversion_ref.get()
+    if not existing_doc.exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Inversión no encontrada.')
+    sheet_row = existing_doc.to_dict().get('sheetRow')
     try:
         inversion_ref.delete()
     except Exception as e:
         logger.error('Fallo al eliminar inversión %s: %s', inversion_id, e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail='No se pudo eliminar la inversión.')
+    if sheet_row:
+        try:
+            clear_inversion_row_en_sheet(sheet_row)
+        except Exception as sync_err:
+            # Si esto falla, la inversión ya se borró en la app (lo que importa);
+            # el Sheet queda desactualizado y "Sincronizar con Google Sheet" la
+            # va a recrear la próxima vez — se loguea para poder limpiarla a mano.
+            logger.warning('No se pudo vaciar la fila %s del Sheet tras eliminar la inversión %s: %s',
+                            sheet_row, inversion_id, sync_err)

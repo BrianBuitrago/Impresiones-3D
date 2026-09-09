@@ -5,6 +5,7 @@ from app.api.deps import RoleChecker, get_current_user
 from app.models.report import ReportCreate, ReportResponse, ReportUpdate
 from app.utils.firestore import serialize_doc
 from app.services.reports import calculate_totals
+from app.services.pedidos_sheet_sync import clear_pedido_row_en_sheet
 from datetime import datetime
 from typing import List
 
@@ -124,11 +125,22 @@ def delete_report(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Servicio de base de datos no disponible.')
     report_ref = db.collection('reports').document(report_id)
-    if not report_ref.get().exists:
+    existing_doc = report_ref.get()
+    if not existing_doc.exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Reporte no encontrado.')
+    pedido_id = existing_doc.to_dict().get('pedidoId') or ''
     try:
         report_ref.delete()
     except Exception as e:
         logger.error('Fallo al eliminar reporte %s: %s', report_id, e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail='No se pudo eliminar el reporte.')
+    if pedido_id.startswith('SHEET-'):
+        try:
+            clear_pedido_row_en_sheet(pedido_id)
+        except Exception as sync_err:
+            # El reporte ya se borró en la app (lo que importa); el Sheet queda
+            # desactualizado y "Sincronizar con Google Sheet" lo va a recrear
+            # la próxima vez — se loguea para poder limpiarlo a mano.
+            logger.warning('No se pudo vaciar la fila del Sheet para %s tras eliminar el reporte %s: %s',
+                            pedido_id, report_id, sync_err)
