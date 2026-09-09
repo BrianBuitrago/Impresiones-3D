@@ -41,6 +41,7 @@ venv.bak/
 .env.test.local
 .env.production.local
 firebase-credentials.json
+sheets-credentials.json
 *.json.key
 
 # Logs
