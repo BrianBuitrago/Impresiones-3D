@@ -2,86 +2,40 @@
 Importa el historial de "Inversiónes" (Google Sheets, filas 2-27, las únicas
 con datos reales hoy) como documentos en la colección `inversiones`.
 
+⚠️ YA SE EJECUTÓ (2026-09-09): creó 26 inversiones reales. Volver a correrlo
+(sin filtrar duplicados) crearía otras 26 repetidas. Para traer filas nuevas
+que se agreguen después al Sheet, o reflejar filas borradas (vaciadas), usar
+en cambio el botón "Sincronizar con Google Sheet" del panel (ver
+app/services/sheet_reconciler.py), que sí evita duplicados.
+
 SOLO LEE el Sheet, nunca escribe nada ahí. Corre con --dry-run primero.
 
-Notas de mapeo:
+Notas de mapeo (ver app/services/inversiones_import.py para el detalle):
 - COSTO en el Sheet es el valor TOTAL de la línea (verificado: sumando esa
   columna tal cual da $15.943.400, la cifra real esperada). El modelo del
   backend espera "costo" POR UNIDAD (total = cantidad × costo, calculado en
   servidor), así que acá se guarda costo = COSTO_sheet / CANTIDAD.
-- El Sheet no tiene columna de tipo (insumo/máquina): se clasifica por
-  palabras clave en el nombre del elemento (impresora, bambulab, herramienta,
-  motor tool, secadora, cel corporativo -> máquina; el resto -> insumo).
-  Se puede corregir cualquier registro después desde /admin/inversiones.
-- El Sheet no tiene columna de fecha: se usa la fecha de hoy (día de la
-  importación) para los 26 registros. Si se conocen las fechas reales de
-  compra, se pueden editar una por una después desde el panel.
+- El Sheet no tenía columna de tipo (insumo/máquina) al momento de importar:
+  se clasifica por palabras clave en el nombre del elemento (impresora,
+  bambulab, herramienta, motor tool, secadora, cel corporativo -> máquina;
+  el resto -> insumo). Se puede corregir cualquier registro después desde
+  /admin/inversiones (la corrección se sincroniza sola de vuelta al Sheet).
+- El Sheet no tiene columna de fecha real de compra: se usa la fecha de hoy
+  (día de la importación) para los 26 registros. Si se conocen las fechas
+  reales de compra, se pueden editar una por una después desde el panel.
 
 Uso:
     python scripts/import_inversiones.py --dry-run
     python scripts/import_inversiones.py
 """
 import argparse
-import re
 import sys
 from datetime import datetime
 
 sys.path.insert(0, ".")
 
-from app.core.sheets import sheets_service
 from app.core.firebase import db
-
-SPREADSHEET_ID = "1au2Q0zGxHlZo3wEpHEZeH7VCXayGE54zWTPPenUXtb4"
-SHEET_NAME = "Inversiónes"
-FIRST_ROW = 2
-LAST_ROW = 101
-
-MAQUINA_KEYWORDS = ["impresora", "bambulab", "herramienta", "motor tool", "secadora", "cel corporativo"]
-
-
-def parse_cop(value: str) -> float:
-    digits = re.sub(r"[^\d]", "", str(value or ""))
-    return float(digits) if digits else 0.0
-
-
-def clasificar_tipo(elemento: str) -> str:
-    el = elemento.lower()
-    return "maquina" if any(k in el for k in MAQUINA_KEYWORDS) else "insumo"
-
-
-def fetch_filas():
-    result = sheets_service.spreadsheets().values().get(
-        spreadsheetId=SPREADSHEET_ID,
-        range=f"'{SHEET_NAME}'!A{FIRST_ROW}:D{LAST_ROW}",
-    ).execute()
-    return result.get("values", [])
-
-
-def fila_a_inversion(fila: list, fila_num: int, hoy: str) -> dict | None:
-    fila = list(fila) + [""] * (4 - len(fila))
-    elemento, proveedor, cantidad_raw, costo_raw = fila
-
-    if not str(elemento).strip():
-        return None
-
-    cantidad = parse_cop(cantidad_raw) or 1
-    costo_total_linea = parse_cop(costo_raw)
-    costo_unitario = round(costo_total_linea / cantidad, 2) if cantidad else costo_total_linea
-
-    return {
-        "elemento": str(elemento).strip(),
-        "tipo": clasificar_tipo(elemento),
-        "proveedor": str(proveedor).strip(),
-        "cantidad": cantidad,
-        "costo": costo_unitario,
-        "valorUnitario": 0.0,
-        "fecha": hoy,
-        "observaciones": f"Importado desde Google Sheets, pestaña '{SHEET_NAME}', fila {fila_num}.",
-        "total": round(cantidad * costo_unitario, 2),
-        # Fila real del Sheet: al editar esta inversión desde /admin/inversiones,
-        # esa misma fila se actualiza automáticamente (ver inversion_sheet_sync.py).
-        "sheetRow": fila_num,
-    }
+from app.services.inversiones_import import FIRST_ROW, LAST_ROW, fetch_filas_inversiones, fila_a_inversion
 
 
 def main():
@@ -90,7 +44,7 @@ def main():
     args = parser.parse_args()
 
     hoy = datetime.utcnow().strftime("%Y-%m-%d")
-    filas = fetch_filas()
+    filas = fetch_filas_inversiones()
     print(f"Filas leídas del Sheet (rango {FIRST_ROW}-{LAST_ROW}): {len(filas)}\n")
 
     inversiones = []
