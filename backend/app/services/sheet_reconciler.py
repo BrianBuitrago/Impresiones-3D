@@ -25,6 +25,39 @@ from app.services.inversiones_import import FIRST_ROW as INV_FIRST_ROW, fetch_fi
 
 logger = logging.getLogger(__name__)
 
+# Límite defensivo en las lecturas de Firestore (mismo criterio que ya usan
+# reports/inversiones: muy por encima del volumen real, solo para que la
+# colección no pueda crecer sin control).
+_FIRESTORE_READ_LIMIT = 5000
+
+# Si la API de Sheets devuelve una respuesta vacía o incompleta por un glitch
+# transitorio (cuota, permisos, pestaña renombrada), el reconciliador vería
+# "desaparecer" filas reales y las interpretaría como borradas -> borraría en
+# cascada registros reales de Firestore. Este resguardo corta esa cascada: si
+# lo que se iba a eliminar de una sola pasada es una porción sospechosamente
+# grande de lo que ya existe, se aborta TODA la operación (ni crea ni borra
+# nada) en vez de aplicar un borrado parcial silencioso.
+_MAX_DELETE_RATIO = 0.5
+_MAX_DELETE_ABS_FLOOR = 5  # ni con pocos registros se permite borrar de golpe más que esto
+
+
+class SincronizacionAbortada(Exception):
+    """Se abortó la sincronización por un borrado sospechosamente grande (posible lectura
+    incompleta del Sheet) — no se tocó Firestore."""
+
+
+def _verificar_eliminaciones_seguras(tipo: str, existentes_count: int, a_eliminar_count: int) -> None:
+    if a_eliminar_count == 0:
+        return
+    umbral = max(_MAX_DELETE_ABS_FLOOR, int(existentes_count * _MAX_DELETE_RATIO))
+    if a_eliminar_count >= umbral:
+        raise SincronizacionAbortada(
+            f"Se iban a eliminar {a_eliminar_count} de {existentes_count} registros de "
+            f"{tipo} en una sola pasada — se abortó por seguridad (podría ser una lectura "
+            "incompleta del Sheet, no un borrado real). No se tocó nada en la app. "
+            "Revisá el Sheet manualmente y reintentá."
+        )
+
 
 def reconciliar_pedidos_confirmados(dry_run: bool = False) -> dict:
     filas = fetch_filas_pedidos()
@@ -36,7 +69,7 @@ def reconciliar_pedidos_confirmados(dry_run: bool = False) -> dict:
             vistos_en_sheet[reporte["pedidoId"]] = reporte
 
     existentes = {}
-    for doc in db.collection("reports").where("tipo", "==", "compra").stream():
+    for doc in db.collection("reports").where("tipo", "==", "compra").limit(_FIRESTORE_READ_LIMIT).stream():
         data = doc.to_dict()
         pid = data.get("pedidoId", "")
         if pid.startswith("SHEET-"):
@@ -44,6 +77,8 @@ def reconciliar_pedidos_confirmados(dry_run: bool = False) -> dict:
 
     a_crear = [r for pid, r in vistos_en_sheet.items() if pid not in existentes]
     a_eliminar = [(pid, doc_id) for pid, doc_id in existentes.items() if pid not in vistos_en_sheet]
+
+    _verificar_eliminaciones_seguras("Pedidos confirmados", len(existentes), len(a_eliminar))
 
     resultado = {
         "creados": len(a_crear),
@@ -79,7 +114,7 @@ def reconciliar_inversiones(dry_run: bool = False) -> dict:
             vistos_en_sheet[idx] = inv
 
     existentes = {}
-    for doc in db.collection("inversiones").stream():
+    for doc in db.collection("inversiones").limit(_FIRESTORE_READ_LIMIT).stream():
         data = doc.to_dict()
         row = data.get("sheetRow")
         if row:
@@ -87,6 +122,8 @@ def reconciliar_inversiones(dry_run: bool = False) -> dict:
 
     a_crear = [inv for row, inv in vistos_en_sheet.items() if row not in existentes]
     a_eliminar = [(row, doc_id) for row, doc_id in existentes.items() if row not in vistos_en_sheet]
+
+    _verificar_eliminaciones_seguras("Inversiones", len(existentes), len(a_eliminar))
 
     resultado = {
         "creados": len(a_crear),

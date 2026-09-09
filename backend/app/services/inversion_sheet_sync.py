@@ -43,3 +43,24 @@ def sync_inversion_a_sheet(inversion: dict) -> None:
         valueInputOption="USER_ENTERED",
         body={"values": [fila]},
     ).execute()
+
+
+def clear_inversion_row_en_sheet(sheet_row: int) -> None:
+    """
+    Al eliminar desde la app una inversión que vino de una fila real del
+    Sheet, hay que vaciar esa fila ahí también — si no, la próxima vez que
+    se use "Sincronizar con Google Sheet" (app/services/sheet_reconciler.py)
+    esa fila todavía tendría contenido y el reconciliador la volvería a
+    crear, "resucitando" un registro que el admin ya había borrado.
+
+    Nunca debe romper el borrado en la app si esto falla (el Sheet es
+    secundario) — quien llama debe envolver esto en try/except.
+    """
+    if not sheet_row or sheets_service is None:
+        return
+
+    sheets_service.spreadsheets().values().clear(
+        spreadsheetId=SPREADSHEET_ID,
+        range=f"'{SHEET_NAME}'!A{sheet_row}:F{sheet_row}",
+        body={},
+    ).execute()
