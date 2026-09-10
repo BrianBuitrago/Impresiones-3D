@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   ShieldAlert, ArrowLeft, BarChart3, Users, Tag, DollarSign,
   RefreshCw, Filter,
-  Layers, TrendingUp,
+  Layers, TrendingUp, TrendingDown,
   X,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -183,6 +183,27 @@ export default function ReportesPage() {
     return { totalGanado, totalItems, colaboradoresUnicos: cols.size, categoriasUnicas: cats.size, totalRentabilidad, totalRestante };
   }, [reportesFiltrados]);
 
+  // ── Ganancia = Total Ganado histórico - Inversiones histórico ──────────────
+  // Deliberadamente NO respeta el filtro de período de arriba (a diferencia
+  // de kpiTotales.totalGanado): las inversiones son un desembolso de una
+  // sola vez (comprar una impresora, por ejemplo), así que compararlas
+  // contra la ganancia de un solo mes daría un número sin sentido. Acá
+  // siempre es "desde que arrancamos, ¿ya recuperamos lo invertido?".
+  const gananciaTotal = useMemo(() => {
+    let totalGanadoHistorico = 0;
+    for (const r of reportes) {
+      const esCompra = r.tipo === 'compra';
+      if (esCompra) {
+        totalGanadoHistorico += r.totalRecibido || 0;
+      }
+      for (const it of r.items) {
+        if (!esCompra) totalGanadoHistorico += it.valor;
+      }
+    }
+    const inversionesTotal = inversiones.reduce((acc, i) => acc + (i.total || 0), 0);
+    return { totalGanadoHistorico, inversionesTotal, ganancia: totalGanadoHistorico - inversionesTotal };
+  }, [reportes, inversiones]);
+
   useEffect(() => {
     const cats = new Set(categoriasDisponibles);
     for (const r of reportes) {
@@ -341,13 +362,20 @@ export default function ReportesPage() {
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             { label: 'Total Ganado', value: formatCOP(kpiTotales.totalGanado), icon: DollarSign, color: 'text-emerald-400' },
+            {
+              label: 'Ganancia',
+              value: formatCOP(gananciaTotal.ganancia),
+              icon: gananciaTotal.ganancia >= 0 ? TrendingUp : TrendingDown,
+              color: gananciaTotal.ganancia >= 0 ? 'text-emerald-400' : 'text-red-400',
+              hint: `Total Ganado histórico (${formatCOP(gananciaTotal.totalGanadoHistorico)}) menos Inversiones histórico (${formatCOP(gananciaTotal.inversionesTotal)}). No respeta el filtro de período de arriba.`,
+            },
             { label: 'Rentabilidad', value: formatCOP(kpiTotales.totalRentabilidad), icon: TrendingUp, color: 'text-emerald-400' },
             { label: 'Restante por Cobrar', value: formatCOP(kpiTotales.totalRestante), icon: DollarSign, color: 'text-amber-400' },
             { label: 'Items Realizados', value: kpiTotales.totalItems.toLocaleString('es-CO'), icon: Layers, color: 'text-cyan-400' },
             { label: 'Colaboradores Activos', value: kpiTotales.colaboradoresUnicos, icon: Users, color: 'text-blue-400' },
             { label: 'Categorías', value: kpiTotales.categoriasUnicas, icon: Tag, color: 'text-amber-400' },
           ].map(kpi => (
-            <div key={kpi.label} className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5">
+            <div key={kpi.label} title={'hint' in kpi ? kpi.hint : undefined} className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs uppercase font-semibold text-slate-400 tracking-wider">{kpi.label}</span>
                 <kpi.icon className={`w-4 h-4 ${kpi.color}`} />
