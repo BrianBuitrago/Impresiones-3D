@@ -7,6 +7,7 @@ import {
   ShieldAlert, ArrowLeft, BarChart3, Users, Tag, DollarSign,
   RefreshCw, Filter,
   Layers, TrendingUp, TrendingDown,
+  FileText, Globe, Wallet,
   X,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -164,23 +165,35 @@ export default function ReportesPage() {
     // entró). Para reportes tipo="compra" se usa totalRecibido (a nivel de
     // reporte); para el resto (trabajo de colaboradores) se sigue sumando
     // item.valor como siempre, que ahí sí representa lo ganado/adeudado.
+    // Compras Manuales (tipo='compra', incluye lo importado del Sheet) vs.
+    // Compras Web (items con origen='web', creados al aceptar una cotización
+    // -ver buildQuoteReportItems.ts-): ambas suman a Total Ganado, pero acá
+    // se separan para ver de dónde viene la plata. Respetan el mismo filtro
+    // de período que el resto de esta fila de KPIs (a diferencia de
+    // "Ganancia", que es histórica a propósito).
     let totalGanado = 0, totalItems = 0, totalRentabilidad = 0, totalRestante = 0;
+    let totalComprasManuales = 0, totalComprasWeb = 0;
     const cols = new Set<string>(), cats = new Set<string>();
     for (const r of reportesFiltrados) {
       cols.add(r.colaboradorUid);
       const esCompra = r.tipo === 'compra';
       if (esCompra) {
         totalGanado += r.totalRecibido || 0;
+        totalComprasManuales += r.totalRecibido || 0;
         totalRestante += r.restante || 0;
       }
       for (const it of r.items) {
         if (!esCompra) totalGanado += it.valor;
+        if (it.origen === 'web') totalComprasWeb += it.valor;
         totalRentabilidad += it.rentabilidad || 0;
         totalItems += it.cantidad;
         cats.add(it.categoria);
       }
     }
-    return { totalGanado, totalItems, colaboradoresUnicos: cols.size, categoriasUnicas: cats.size, totalRentabilidad, totalRestante };
+    return {
+      totalGanado, totalItems, colaboradoresUnicos: cols.size, categoriasUnicas: cats.size,
+      totalRentabilidad, totalRestante, totalComprasManuales, totalComprasWeb,
+    };
   }, [reportesFiltrados]);
 
   // ── Ganancia = Total Ganado histórico - Inversiones histórico ──────────────
@@ -369,6 +382,9 @@ export default function ReportesPage() {
               color: gananciaTotal.ganancia >= 0 ? 'text-emerald-400' : 'text-red-400',
               hint: `Total Ganado histórico (${formatCOP(gananciaTotal.totalGanadoHistorico)}) menos Inversiones histórico (${formatCOP(gananciaTotal.inversionesTotal)}). No respeta el filtro de período de arriba.`,
             },
+            { label: 'Compras Manuales', value: formatCOP(kpiTotales.totalComprasManuales), icon: FileText, color: 'text-emerald-400', hint: 'Compras registradas a mano o importadas del histórico del Sheet (tipo="compra"), usando lo efectivamente recibido (totalRecibido).' },
+            { label: 'Compras Web', value: formatCOP(kpiTotales.totalComprasWeb), icon: Globe, color: 'text-cyan-400', hint: 'Cotizaciones aceptadas desde el sitio (items con origen="web"). Se asume 100% cobrado al aceptar, no maneja abono/restante.' },
+            { label: 'Total Compras', value: formatCOP(kpiTotales.totalComprasManuales + kpiTotales.totalComprasWeb), icon: Wallet, color: 'text-white', hint: 'Compras Manuales + Compras Web.' },
             { label: 'Rentabilidad', value: formatCOP(kpiTotales.totalRentabilidad), icon: TrendingUp, color: 'text-emerald-400' },
             { label: 'Restante por Cobrar', value: formatCOP(kpiTotales.totalRestante), icon: DollarSign, color: 'text-amber-400' },
             { label: 'Items Realizados', value: kpiTotales.totalItems.toLocaleString('es-CO'), icon: Layers, color: 'text-cyan-400' },
